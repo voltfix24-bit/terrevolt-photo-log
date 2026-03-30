@@ -14,7 +14,18 @@ interface Foto {
   url: string;
 }
 
-export function generatePdfHtml(station: Station, fotos: Foto[]): string {
+export interface PdfBranding {
+  bedrijfsnaam?: string;
+  regio?: string;
+  logo_url?: string | null;
+  primary_color?: string;
+  primary_light_color?: string;
+}
+
+export function generatePdfHtml(station: Station, fotos: Foto[], branding?: PdfBranding): string {
+  const bedrijfsnaam = branding?.bedrijfsnaam || 'Terrevolt B.V.';
+  const regio = branding?.regio || 'Liander Zuidoost';
+  const logoUrl = branding?.logo_url;
   const categoriesWithFotos = FOTO_CATEGORIEEN
     .map((cat) => ({
       name: cat,
