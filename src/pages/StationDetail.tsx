@@ -467,8 +467,7 @@ export default function StationDetail() {
         <div className="fixed bottom-0 left-0 right-0 z-[50] p-4 bg-surface-white/95 backdrop-blur-xl border-t border-outline-variant/10 pb-[max(16px,env(safe-area-inset-bottom))]">
           <button
             onClick={() => {
-              // Navigate to the section of this category first
-              setActiveSection(nextIncomplete.section);
+              setOpenSections(prev => prev.includes(nextIncomplete.section) ? prev : [...prev, nextIncomplete.section]);
               setOpenCategory(nextIncomplete);
             }}
             className="w-full max-w-3xl mx-auto min-h-[52px] bg-gradient-to-r from-primary to-primary-light text-primary-foreground rounded-2xl font-display font-bold text-[15px] shadow-lg shadow-primary/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
