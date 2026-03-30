@@ -4,6 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { FOTO_CATEGORIEEN } from "@/lib/categories";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useQueryClient } from "@tanstack/react-query";
 import { generatePdfHtml } from "@/lib/pdf-generator";
 import { downloadStationZip } from "@/lib/zip-download";
 import { toast } from "sonner";
@@ -13,6 +18,7 @@ export default function Dashboard() {
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [zipProgress, setZipProgress] = useState<number | null>(null);
+  const queryClient = useQueryClient();
 
   const { data: stations, isLoading } = useQuery({
     queryKey: ["stations"],
@@ -39,7 +45,18 @@ export default function Dashboard() {
     if (w) { w.document.write(html); w.document.close(); }
   };
 
-  const stationCount = filtered?.length ?? 0;
+  const handleDeleteStation = async (stationId: string) => {
+    const { data: fotos } = await supabase.from("fotos").select("storage_path").eq("station_id", stationId);
+    if (fotos && fotos.length > 0) {
+      await supabase.storage.from("to-fotos").remove(fotos.map(f => f.storage_path));
+      await supabase.from("fotos").delete().eq("station_id", stationId);
+    }
+    const { error } = await supabase.from("stations").delete().eq("id", stationId);
+    if (error) { toast.error("Verwijderen mislukt"); return; }
+    toast.success("Station verwijderd");
+    setExpandedId(null);
+    queryClient.invalidateQueries({ queryKey: ["stations"] });
+  };
 
   return (
     <div className="min-h-screen bg-primary/[0.04] pb-28 md:pb-8">
@@ -234,6 +251,30 @@ export default function Dashboard() {
                             {zipProgress !== null ? "downloading" : "folder_zip"}
                           </span>
                         </button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <button
+                              className="h-[52px] w-[52px] flex items-center justify-center rounded-2xl bg-destructive/[0.06] hover:bg-destructive/[0.12] active:scale-[0.93] transition-all flex-shrink-0"
+                              title="Station verwijderen"
+                            >
+                              <span className="material-symbols-rounded text-destructive/70 text-[20px]">delete</span>
+                            </button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Station verwijderen?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Alle foto's en gegevens van <strong>{station.naam_msr}</strong> worden permanent verwijderd. Dit kan niet ongedaan worden gemaakt.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDeleteStation(station.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                Verwijderen
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </div>
                   )}
