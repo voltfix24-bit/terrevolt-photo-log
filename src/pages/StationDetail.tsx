@@ -171,14 +171,22 @@ export default function StationDetail() {
   const [highlightCatId, setHighlightCatId] = useState<number | null>(null);
   const { data: voorbeelden } = useVoorbeelden();
   const { skipped, toggleSkip, isSkipped } = useSkippedCategories(id);
+  const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const toggleSection = useCallback((sectionId: string) => {
+    const isOpening = !openSections.includes(sectionId);
     setOpenSections(prev =>
       prev.includes(sectionId)
         ? prev.filter(s => s !== sectionId)
         : [...prev, sectionId]
     );
-  }, []);
+    setTimeout(() => {
+      const el = sectionRefs.current[sectionId];
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: isOpening ? 'start' : 'nearest' });
+      }
+    }, 50);
+  }, [openSections]);
 
   const sectionGroups = useMemo(() => getCategoriesBySection(), []);
 
@@ -309,7 +317,7 @@ export default function StationDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-28 md:pb-8">
+    <div className="min-h-screen bg-background pb-28">
       <Lightbox open={lightboxOpen} close={() => setLightboxOpen(false)} slides={lightboxSlides} index={lightboxIndex} />
       <EditStationDialog station={station} open={editOpen} onOpenChange={setEditOpen} onSaved={() => { queryClient.invalidateQueries({ queryKey: ["station", id] }); queryClient.invalidateQueries({ queryKey: ["stations"] }); }} />
 
@@ -412,6 +420,7 @@ export default function StationDetail() {
 
             return (
               <div
+                ref={el => { sectionRefs.current[section.id] = el; }}
                 key={section.id}
                 className={`rounded-2xl overflow-hidden transition-all ${
                   isComplete
@@ -524,7 +533,7 @@ export default function StationDetail() {
                 setOpenCategory(nextIncomplete);
               }, 300);
             }}
-            className="w-full max-w-3xl mx-auto min-h-[52px] bg-gradient-to-r from-primary to-primary-light text-primary-foreground rounded-2xl font-display font-bold text-[15px] shadow-lg shadow-primary/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            className="w-full max-w-3xl mx-auto min-h-[52px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-2xl font-display font-bold text-[15px] shadow-[0_6px_20px_-4px_rgba(0,100,47,0.35)] active:scale-[0.97] transition-all flex items-center justify-center gap-2.5"
           >
             <span className="material-symbols-rounded text-[20px]">arrow_forward</span>
             Doorgaan: <span className="truncate max-w-[220px]">{nextIncomplete.name}</span>
@@ -535,7 +544,7 @@ export default function StationDetail() {
         <div className="fixed bottom-0 left-0 right-0 z-[50] p-4 bg-surface-white/95 backdrop-blur-xl border-t border-outline-variant/10 pb-[max(16px,env(safe-area-inset-bottom))]">
           <button
             onClick={openPdf}
-            className="w-full max-w-3xl mx-auto min-h-[52px] bg-gradient-to-r from-primary to-primary-light text-primary-foreground rounded-2xl font-display font-bold text-[15px] shadow-lg shadow-primary/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            className="w-full max-w-3xl mx-auto min-h-[52px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-2xl font-display font-bold text-[15px] shadow-[0_6px_20px_-4px_rgba(0,100,47,0.35)] active:scale-[0.97] transition-all flex items-center justify-center gap-2.5"
           >
             <span className="material-symbols-rounded text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>picture_as_pdf</span>
             Alles klaar — PDF downloaden
