@@ -477,8 +477,9 @@ export default function StationDetail() {
                     {/* Done items */}
                     {doneCats.length > 0 && (
                       <>
-                        <div className="px-4 pt-2 pb-1.5">
-                          <span className="text-[10px] font-black uppercase tracking-wider text-primary/60">
+                        <div className="px-4 pt-2 pb-1.5 flex items-center gap-1.5">
+                          <div className="w-1.5 h-1.5 rounded-full bg-primary/60 flex-shrink-0" />
+                          <span className="text-[11px] font-black uppercase tracking-wider text-primary/60">
                             Klaar ({doneCats.length})
                           </span>
                         </div>
