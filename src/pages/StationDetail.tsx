@@ -360,9 +360,12 @@ interface StepByStepViewProps {
   onUpload: (files: FileList) => void; onDelete: (id: string, path: string) => void;
   onNext: () => void; onPrev: () => void; onSkip: () => void;
   onClickThumb: (idx: number) => void;
+  onBackToList: () => void;
+  filledCount: number;
+  totalCategories: number;
 }
 
-function StepByStepView({ station, category, step, total, fotos, tipOpen, onToggleTip, isUploading, uploadProgress, onUpload, onDelete, onNext, onPrev, onSkip, onClickThumb }: StepByStepViewProps) {
+function StepByStepView({ station, category, step, total, fotos, tipOpen, onToggleTip, isUploading, uploadProgress, onUpload, onDelete, onNext, onPrev, onSkip, onClickThumb, onBackToList, filledCount, totalCategories }: StepByStepViewProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const isVermogensveld = category.id === 14;
   const isDaKast = category.id === 15;
