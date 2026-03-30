@@ -572,7 +572,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
       </div>
 
       {/* ── Premium bottom action bar ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-[60] bg-surface/90 backdrop-blur-2xl border-t border-on-surface/5 px-5 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
+      <div className="fixed bottom-0 left-0 right-0 z-[60] bg-surface-white/90 backdrop-blur-2xl border-t border-outline-variant/10 px-5 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
         <div className="flex items-center gap-3 max-w-lg mx-auto">
           {/* Vorige */}
           <button
