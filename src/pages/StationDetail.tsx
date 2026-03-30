@@ -196,7 +196,7 @@ function CategoryRow({ cat, fotos, isSkipped, sectionComplete, onOpen }: {
         data-cat-id={cat.id}
         onClick={onOpen}
         className="flex items-center justify-between w-full p-4 rounded-xl
-                   bg-card shadow-sm ring-1 ring-outline-variant/20
+                   bg-primary/[0.04] border border-primary/15
                    relative overflow-hidden text-left active:scale-[0.98] group"
       >
         <div className="absolute left-0 top-0 bottom-0 w-1 bg-orange" />
