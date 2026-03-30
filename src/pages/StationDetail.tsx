@@ -171,14 +171,22 @@ export default function StationDetail() {
   const [highlightCatId, setHighlightCatId] = useState<number | null>(null);
   const { data: voorbeelden } = useVoorbeelden();
   const { skipped, toggleSkip, isSkipped } = useSkippedCategories(id);
+  const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const toggleSection = useCallback((sectionId: string) => {
+    const isOpening = !openSections.includes(sectionId);
     setOpenSections(prev =>
       prev.includes(sectionId)
         ? prev.filter(s => s !== sectionId)
         : [...prev, sectionId]
     );
-  }, []);
+    setTimeout(() => {
+      const el = sectionRefs.current[sectionId];
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: isOpening ? 'start' : 'nearest' });
+      }
+    }, 50);
+  }, [openSections]);
 
   const sectionGroups = useMemo(() => getCategoriesBySection(), []);
 
