@@ -611,10 +611,23 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
 
 /* ==================== COMPLETION SCREEN ==================== */
 
-function CompletionScreen({ filledCount, total, stationName, onReset, onBack, onPdf }: { filledCount: number; total: number; stationName: string; onReset: () => void; onBack: () => void; onPdf: () => void }) {
+function CompletionScreen({ filledCount, total, stationName, fotos, onReset, onBack, onPdf }: { filledCount: number; total: number; stationName: string; fotos: { id: string; categorie: string; url: string }[]; onReset: () => void; onBack: () => void; onPdf: () => void }) {
+  const [zipProgress, setZipProgress] = useState<number | null>(null);
+
+  const handleZip = async () => {
+    const { downloadStationZip } = await import("@/lib/zip-download");
+    setZipProgress(0);
+    try {
+      await downloadStationZip(stationName, fotos, (pct) => setZipProgress(pct));
+      toast.success("ZIP gedownload ✓");
+    } catch {
+      toast.error("ZIP downloaden mislukt");
+    }
+    setZipProgress(null);
+  };
+
   return (
     <div className="max-w-lg mx-auto flex flex-col items-center justify-center py-12 text-center animate-pop">
-      {/* Big icon */}
       <div className="w-24 h-24 bg-gradient-to-br from-primary to-primary-light rounded-[28px] flex items-center justify-center mb-5 shadow-xl shadow-primary/35">
         <span className="material-symbols-outlined fill text-primary-foreground text-5xl">check_circle</span>
       </div>
@@ -625,7 +638,6 @@ function CompletionScreen({ filledCount, total, stationName, onReset, onBack, on
       </p>
       <p className="text-[13px] text-muted-foreground font-mono mb-8">{stationName}</p>
 
-      {/* Stats grid */}
       <div className="grid grid-cols-3 gap-2.5 mb-8 w-full">
         <div className="bg-card rounded-2xl p-3 shadow-sm text-center">
           <div className="text-[22px] font-black text-primary">{filledCount}</div>
@@ -641,10 +653,17 @@ function CompletionScreen({ filledCount, total, stationName, onReset, onBack, on
         </div>
       </div>
 
-      {/* Buttons — large, thumb-friendly */}
       <div className="flex flex-col gap-2.5 w-full">
         <button onClick={onPdf} className="w-full min-h-[56px] bg-gradient-to-br from-primary to-primary-light text-primary-foreground rounded-2xl text-base font-bold shadow-lg shadow-primary/30 active:scale-[0.97] transition-transform flex items-center justify-center gap-2">
           <span className="material-symbols-outlined fill">picture_as_pdf</span>PDF downloaden
+        </button>
+        <button
+          onClick={handleZip}
+          disabled={zipProgress !== null || fotos.length === 0}
+          className="w-full min-h-[52px] bg-card border border-outline-variant/20 rounded-2xl text-[15px] font-bold text-on-surface shadow-sm active:scale-[0.97] transition-transform flex items-center justify-center gap-2 disabled:opacity-50"
+        >
+          <span className="material-symbols-outlined">folder_zip</span>
+          {zipProgress !== null ? `Downloaden… ${zipProgress}%` : "Foto's als ZIP"}
         </button>
         <button onClick={onBack} className="w-full min-h-[52px] bg-surface-container rounded-2xl text-[15px] font-semibold text-on-surface-variant active:scale-[0.97] transition-transform">
           Terug naar overzicht
