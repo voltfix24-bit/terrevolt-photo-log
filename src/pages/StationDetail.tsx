@@ -399,15 +399,15 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
   }, [onNext, onPrev, step]);
 
   return (
-    <div className="flex flex-col" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{ minHeight: "calc(100vh - 180px)" }}>
-      {/* ── Sticky progress header (matches screen 4 reference) ── */}
-      <div className="sticky top-16 z-30 bg-white/92 backdrop-blur-xl border-b border-black/[0.06] -mx-6 px-4 pt-2.5 pb-3 md:rounded-2xl md:mx-0 md:border md:border-outline-variant/20 md:bg-card md:backdrop-blur-none md:mb-4">
-        <div className="flex items-center justify-between mb-2.5">
-          <button onClick={onPrev} disabled={step === 0} className="flex items-center gap-0.5 text-primary font-semibold text-sm disabled:opacity-30 active:scale-95 transition-transform min-h-[44px]">
+    <div className="flex flex-col" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{ minHeight: "calc(100dvh - 80px)" }}>
+      {/* ── Sticky progress header ── */}
+      <div className="sticky top-16 z-30 bg-white/92 backdrop-blur-xl border-b border-black/[0.06] -mx-4 px-4 pt-2.5 pb-3 md:rounded-2xl md:mx-0 md:border md:border-outline-variant/20 md:bg-card md:backdrop-blur-none md:mb-4">
+        <div className="flex items-center justify-between mb-2">
+          <button onClick={onBackToList} className="flex items-center gap-0.5 text-primary font-semibold text-sm active:scale-95 transition-transform min-h-[44px]">
             <span className="material-symbols-outlined text-lg">arrow_back_ios</span>
-            <span className="hidden sm:inline">Overzicht</span>
+            <span className="truncate max-w-[120px]">{station.naam_msr}</span>
           </button>
-          <span className="text-xs font-extrabold text-primary">Stap {step + 1} van {total}</span>
+          <span className="text-xs font-extrabold text-primary">{filledCount}/{totalCategories}</span>
           <button onClick={onSkip} className="text-[13px] font-semibold text-muted-foreground active:bg-surface-low px-3 py-2 rounded-xl transition-colors min-h-[44px]">
             Sla over
           </button>
