@@ -156,12 +156,12 @@ export default function NewStation() {
           <div>
             <label className="block text-[11px] font-bold uppercase tracking-widest text-accent-gold mb-3">Extra opties</label>
             <div className="space-y-3">
-              <div className="flex items-center justify-between px-5 py-4 bg-primary-container/15 rounded-2xl">
+              <div className="flex items-center justify-between px-5 py-4 bg-surface-low rounded-2xl">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <span className="material-symbols-rounded text-primary text-xl">bolt</span>
+                  <div className="w-10 h-10 rounded-xl bg-accent-gold/[0.08] flex items-center justify-center">
+                    <span className="material-symbols-rounded text-accent-gold text-xl">bolt</span>
                   </div>
-                  <span className="text-sm font-semibold text-on-surface">Vermogensveld aanwezig</span>
+                  <span className="text-sm font-semibold text-text-primary">Vermogensveld aanwezig</span>
                 </div>
                 <button
                   type="button"
