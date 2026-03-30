@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -17,6 +18,8 @@ export default function NewStation() {
     type_ruimte: "",
     ingevuld_door: "",
     datum: new Date().toISOString().split("T")[0],
+    vermogensveld: false,
+    da_kast: false,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -34,6 +37,8 @@ export default function NewStation() {
         type_ruimte: form.type_ruimte,
         ingevuld_door: form.ingevuld_door || null,
         datum: form.datum || null,
+        vermogensveld: form.vermogensveld,
+        da_kast: form.da_kast,
       })
       .select()
       .single();
@@ -104,10 +109,29 @@ export default function NewStation() {
               onChange={(e) => setForm({ ...form, datum: e.target.value })}
             />
           </div>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Station aanmaken
-          </Button>
+          <div className="flex items-center justify-between rounded-lg border border-border bg-card p-4">
+            <Label className="cursor-pointer">Vermogensveld aanwezig</Label>
+            <Switch
+              checked={form.vermogensveld}
+              onCheckedChange={(v) => setForm({ ...form, vermogensveld: v })}
+            />
+          </div>
+          <div className="flex items-center justify-between rounded-lg border border-border bg-card p-4">
+            <Label className="cursor-pointer">DA-kast aanwezig</Label>
+            <Switch
+              checked={form.da_kast}
+              onCheckedChange={(v) => setForm({ ...form, da_kast: v })}
+            />
+          </div>
+          <div className="flex gap-3 pt-2">
+            <Button type="button" variant="outline" className="flex-1" onClick={() => navigate("/")}>
+              Annuleren
+            </Button>
+            <Button type="submit" className="flex-1" disabled={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Opslaan
+            </Button>
+          </div>
         </form>
       </main>
     </div>

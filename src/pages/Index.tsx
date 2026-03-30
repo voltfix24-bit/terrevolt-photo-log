@@ -7,7 +7,7 @@ import { Search, Plus, Zap } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -63,13 +63,20 @@ export default function Dashboard() {
         </div>
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="rounded-xl border border-border bg-card p-5">
+                <Skeleton className="mb-3 h-5 w-3/4" />
+                <Skeleton className="mb-2 h-4 w-1/2" />
+                <Skeleton className="mb-3 h-6 w-20" />
+                <Skeleton className="h-2 w-full" />
+              </div>
+            ))}
           </div>
         ) : filtered?.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
             <Zap className="mb-3 h-12 w-12 opacity-30" />
-            <p className="text-lg font-medium">Geen stations gevonden</p>
+            <p className="text-lg font-medium">Nog geen stations</p>
             <p className="text-sm">Maak een nieuw station aan om te beginnen</p>
           </div>
         ) : (
@@ -84,31 +91,36 @@ export default function Dashboard() {
                 <button
                   key={station.id}
                   onClick={() => navigate(`/stations/${station.id}`)}
-                  className="rounded-lg border border-border bg-card p-4 text-left transition-colors hover:border-primary/50"
+                  className="rounded-xl border border-border bg-card p-5 text-left transition-colors hover:border-primary/50"
                 >
-                  <div className="mb-2 flex items-start justify-between gap-2">
+                  <div className="mb-1 flex items-start justify-between gap-2">
                     <h3 className="font-semibold text-foreground">{station.naam_msr}</h3>
                     <Badge
                       variant={station.type_ruimte === "Compact Station" ? "default" : "secondary"}
                       className={
                         station.type_ruimte === "Compact Station"
                           ? "bg-primary/15 text-primary border-primary/30"
-                          : "bg-secondary/15 text-secondary border-secondary/30"
+                          : "bg-secondary/15 text-secondary-foreground border-secondary/30"
                       }
                     >
                       {station.type_ruimte === "Compact Station" ? "CS" : "BS"}
                     </Badge>
                   </div>
                   {station.behuizingsnummer && (
-                    <p className="mb-2 text-sm text-muted-foreground">
+                    <p className="mb-2 font-mono text-sm text-muted-foreground">
                       {station.behuizingsnummer}
                     </p>
                   )}
                   <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
                     <span>{station.datum}</span>
-                    <span>{uniqueCategories.size}/{FOTO_CATEGORIEEN.length}</span>
+                    <span>{uniqueCategories.size} / {FOTO_CATEGORIEEN.length} categorieën</span>
                   </div>
-                  <Progress value={progress} className="h-1.5" />
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-primary to-secondary transition-all"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
                 </button>
               );
             })}
