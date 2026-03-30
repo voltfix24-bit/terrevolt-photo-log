@@ -506,14 +506,14 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/heic,image/webp" multiple className="hidden"
           onChange={(e) => { if (e.target.files) onUpload(e.target.files); e.target.value = ""; }} />
 
-        {/* Large upload zone — dashed card like Saudia's camera zone */}
+        {/* Upload zone — compact */}
         {!hasPhotos && (
           <DropZone onFiles={onUpload} disabled={isUploading} onClick={() => fileRef.current?.click()}>
-            <div className="w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center bg-primary-container/30">
-              <span className="material-symbols-outlined fill text-[32px] text-primary">add_a_photo</span>
+            <div className="w-12 h-12 rounded-xl mx-auto mb-2 flex items-center justify-center bg-primary-container/30">
+              <span className="material-symbols-outlined fill text-[26px] text-primary">add_a_photo</span>
             </div>
-            <div className="font-display text-[17px] font-extrabold mb-1 text-foreground">Tik om foto's te maken</div>
-            <div className="text-[13px] text-muted-foreground">Hoge resolutie aanbevolen voor verificatie.</div>
+            <div className="font-display text-[15px] font-extrabold mb-0.5 text-foreground">Tik om foto's te maken</div>
+            <div className="text-[12px] text-muted-foreground">Hoge resolutie aanbevolen.</div>
           </DropZone>
         )}
 
