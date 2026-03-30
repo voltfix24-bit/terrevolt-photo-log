@@ -748,101 +748,77 @@ export default function StationDetail() {
         </div>
 
         {/* ── 2. SECTION ACCORDION ── */}
-        <div className="space-y-3 mb-8">
+        <div className="space-y-6 mb-8">
           {sectionGroups.map(({ section, categories: cats }) => {
             const doneCats = cats.filter(c => fotosByCategorie(c.name).length > 0);
             const openCats = cats.filter(c => fotosByCategorie(c.name).length === 0 && !isSkipped(c.name));
             const skippedCats = cats.filter(c => fotosByCategorie(c.name).length === 0 && isSkipped(c.name));
             const isComplete = openCats.length === 0 && skippedCats.length === 0;
             const isSectionOpen = openSections.includes(section.id);
-            const totalFotosInSection = cats.reduce((sum, c) => sum + fotosByCategorie(c.name).length, 0);
-            const openCount = openCats.length;
 
             return (
-              <div
-                ref={el => { sectionRefs.current[section.id] = el; }}
-                key={section.id}
-                className={`rounded-2xl overflow-hidden transition-all ${
-                  isComplete
-                    ? 'bg-primary/[0.06] border border-primary/20'
-                    : 'bg-card border border-outline-variant/15 shadow-sm'
-                }`}
-              >
-                <button onClick={() => toggleSection(section.id)} className="w-full flex items-center gap-3 px-4 py-4 text-left">
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${
-                    isComplete
-                      ? 'bg-primary shadow-sm shadow-primary/30'
-                      : 'bg-surface-high border border-outline-variant/40'
-                  }`}>
-                    {isComplete ? (
-                      <span className="material-symbols-rounded text-lg text-primary-foreground" style={{ fontVariationSettings: "'FILL' 1" }}>check</span>
-                    ) : (
-                      <span className="text-sm font-extrabold text-on-surface">{openCount + skippedCats.length}</span>
-                    )}
+              <div ref={el => { sectionRefs.current[section.id] = el; }} key={section.id}>
+                {/* Section header — flat, no card */}
+                <button onClick={() => toggleSection(section.id)} className="w-full flex items-center justify-between mb-3 px-1 text-left">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-1 h-6 rounded-full flex-shrink-0 ${isComplete ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
+                    <h3 className="font-display font-extrabold text-[17px] text-on-surface">{section.label}</h3>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className={`font-display font-extrabold text-[15px] ${isComplete ? 'text-primary' : 'text-on-surface'}`}>{section.label}</div>
-                    <div className={`text-xs font-semibold mt-0.5 ${isComplete ? 'text-primary/60' : 'text-muted-foreground'}`}>
-                      {doneCats.length} / {cats.length} klaar
-                      {!isComplete && openCount > 0 && (
-                        <span className="text-orange font-bold ml-2">· {openCount} open</span>
-                      )}
-                      {!isComplete && skippedCats.length > 0 && (
-                        <span className="text-text-faint ml-2">· {skippedCats.length} NVT</span>
-                      )}
-                      {isComplete && <span> · {totalFotosInSection} foto's</span>}
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                      isComplete ? 'bg-primary/10 text-primary' : 'bg-surface-container text-muted-foreground'
+                    }`}>
+                      {doneCats.length}/{cats.length}
+                    </span>
+                    <span className="material-symbols-rounded text-muted-foreground/40 text-xl">
+                      {isSectionOpen ? 'expand_less' : 'expand_more'}
+                    </span>
                   </div>
-                  <span className={`material-symbols-rounded text-xl ${isComplete ? 'text-primary/60' : 'text-muted-foreground/40'}`}>
-                    {isSectionOpen ? 'expand_less' : 'expand_more'}
-                  </span>
                 </button>
 
+                {/* Category list card */}
                 {isSectionOpen && (
-                  <div className={`border-t ${isComplete ? 'border-primary/15 bg-primary/[0.03]' : 'border-outline-variant/10'}`}>
+                  <div className="bg-card rounded-2xl overflow-hidden border border-outline-variant/10 shadow-sm mb-2">
                     {openCats.length > 0 && (
                       <>
-                        <div className="px-4 pt-3 pb-1.5 flex items-center gap-1.5">
-                          <div className="w-1.5 h-1.5 rounded-full bg-orange flex-shrink-0" />
-                          <span className="text-[11px] font-black uppercase tracking-wider text-orange">Nog te doen ({openCats.length})</span>
+                        <div className="px-4 pt-3 pb-2 bg-orange/[0.04] border-b border-orange/10">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-orange">● Nog te doen ({openCats.length})</span>
                         </div>
-                        {openCats.map((cat, idx) => (
-                          <CategoryRow key={cat.id} cat={cat} fotos={[]} isLast={idx === openCats.length - 1 && doneCats.length === 0 && skippedCats.length === 0} onOpen={() => openWizardAt(cat)} highlight={highlightCatId === cat.id} />
+                        {openCats.map(cat => (
+                          <CategoryRow key={cat.id} cat={cat} fotos={[]} onOpen={() => openWizardAt(cat)} />
                         ))}
                       </>
                     )}
 
-                    {openCats.length > 0 && (doneCats.length > 0 || skippedCats.length > 0) && (
-                      <div className="mx-4 my-1 h-px bg-outline-variant/20" />
+                    {openCats.length > 0 && doneCats.length > 0 && (
+                      <div className="px-4 pt-3 pb-2 bg-primary/[0.03] border-t border-outline-variant/10 border-b border-outline-variant/10">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-primary/60">● Klaar ({doneCats.length})</span>
+                      </div>
                     )}
-
-                    {doneCats.length > 0 && (
-                      <>
-                        <div className="px-4 pt-2 pb-1.5 flex items-center gap-1.5">
-                          <div className="w-1.5 h-1.5 rounded-full bg-primary/60 flex-shrink-0" />
-                          <span className="text-[11px] font-black uppercase tracking-wider text-primary/60">Klaar ({doneCats.length})</span>
-                        </div>
-                        {doneCats.map((cat, idx) => (
-                          <CategoryRow key={cat.id} cat={cat} fotos={fotosByCategorie(cat.name)} isLast={idx === doneCats.length - 1 && skippedCats.length === 0} onOpen={() => openWizardAt(cat)} highlight={highlightCatId === cat.id} />
-                        ))}
-                      </>
+                    {openCats.length === 0 && doneCats.length > 0 && (
+                      <div className="px-4 pt-3 pb-2 bg-primary/[0.03] border-b border-outline-variant/10">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-primary/60">● Klaar ({doneCats.length})</span>
+                      </div>
                     )}
+                    {doneCats.map(cat => (
+                      <CategoryRow key={cat.id} cat={cat} fotos={fotosByCategorie(cat.name)} onOpen={() => openWizardAt(cat)} />
+                    ))}
 
                     {skippedCats.length > 0 && (
                       <>
-                        {(openCats.length > 0 || doneCats.length > 0) && <div className="mx-4 my-1 h-px bg-outline-variant/15" />}
-                        <div className="px-4 pt-2 pb-1.5 flex items-center gap-1.5">
-                          <div className="w-1.5 h-1.5 rounded-full bg-text-faint flex-shrink-0" />
-                          <span className="text-[11px] font-black uppercase tracking-wider text-text-faint">Overgeslagen ({skippedCats.length})</span>
+                        <div className="px-4 pt-3 pb-2 border-t border-outline-variant/10">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">— Overgeslagen ({skippedCats.length})</span>
                         </div>
-                        {skippedCats.map((cat, idx) => (
-                          <CategoryRow key={cat.id} cat={cat} fotos={[]} isLast={idx === skippedCats.length - 1} isSkipped onOpen={() => openWizardAt(cat)} highlight={highlightCatId === cat.id} />
+                        {skippedCats.map(cat => (
+                          <CategoryRow key={cat.id} cat={cat} fotos={[]} isSkipped onOpen={() => openWizardAt(cat)} />
                         ))}
                       </>
                     )}
                   </div>
                 )}
               </div>
+            );
+          })}
             );
           })}
         </div>
