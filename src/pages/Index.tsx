@@ -40,45 +40,45 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-primary-container/15 pb-28 md:pb-8">
-      <main className="pt-20 pb-8 px-4 max-w-7xl mx-auto animate-fade-up">
-        {/* Header */}
-        <section className="mb-6 pt-5">
-          <h1 className="font-display text-[34px] font-extrabold tracking-tight text-primary leading-[1.1]">
+    <div className="min-h-screen bg-surface pb-28 md:pb-8">
+      <main className="pt-20 pb-8 px-5 max-w-lg mx-auto animate-fade-up">
+        {/* Hero header — Saudia style */}
+        <section className="mb-8 pt-6">
+          <h1 className="font-display text-[38px] font-extrabold tracking-tight text-primary leading-[1.05]">
             Stations
           </h1>
-          <p className="text-muted-foreground text-[15px] mt-1.5 leading-relaxed">
+          <p className="text-on-surface-variant text-[15px] mt-2 leading-relaxed">
             Beheer en monitor alle technische opleveringen.
           </p>
         </section>
 
-        {/* Search */}
-        <div className="relative mb-7">
-          <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-muted-foreground/60 text-[22px]">search</span>
+        {/* Search — large pill */}
+        <div className="relative mb-8">
+          <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-on-surface-variant/50 text-[22px]">search</span>
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Zoek station of behuizingsnummer..."
-            className="w-full bg-surface-container/60 border-none rounded-[20px] py-4 pl-14 pr-5 text-[15px] shadow-none focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all placeholder:text-muted-foreground/50 font-medium"
+            className="w-full bg-primary-container/12 border-none rounded-2xl py-4.5 pl-14 pr-5 text-[15px] focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all placeholder:text-on-surface-variant/40 font-medium text-on-surface"
           />
         </div>
 
         {/* Station cards */}
         {isLoading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3 p-4 rounded-[20px] bg-surface-low/60">
-                <Skeleton className="w-5 h-5 rounded-full" />
-                <Skeleton className="h-5 flex-1" />
+          <div className="space-y-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="p-5 rounded-3xl bg-primary-container/8">
+                <Skeleton className="h-5 w-3/4 mb-3" />
+                <Skeleton className="h-3 w-1/2" />
               </div>
             ))}
           </div>
         ) : filtered?.length === 0 ? (
-          <div className="py-16 text-center text-muted-foreground text-[15px]">
+          <div className="py-20 text-center text-on-surface-variant text-[15px]">
             {search ? "Geen stations gevonden" : "Nog geen stations aangemaakt."}
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {filtered?.map((station) => {
               const uniqueCategories = new Set(
                 station.fotos?.map((f: { categorie: string }) => f.categorie)
@@ -90,62 +90,77 @@ export default function Dashboard() {
               const isExpanded = expandedId === station.id;
 
               return (
-                <div key={station.id} className="overflow-hidden rounded-[20px]">
-                  {/* Station row */}
+                <div key={station.id} className="rounded-3xl overflow-hidden">
+                  {/* Station card */}
                   <button
                     onClick={() => setExpandedId(isExpanded ? null : station.id)}
-                    className={`w-full flex items-center justify-between px-5 py-4 transition-all text-left active:scale-[0.99] ${
+                    className={`w-full text-left px-5 py-5 transition-all active:scale-[0.99] ${
                       isExpanded
-                        ? "bg-card rounded-t-[20px] rounded-b-none shadow-sm"
-                        : "bg-surface-low/50 hover:bg-surface-container/40 rounded-[20px]"
+                        ? "bg-card shadow-md rounded-t-3xl rounded-b-none"
+                        : "bg-primary-container/10 hover:bg-primary-container/18 rounded-3xl"
                     }`}
                   >
-                    <div className="flex-1 min-w-0">
-                      <span className="font-display text-[16px] font-bold text-foreground">{station.naam_msr}</span>
-                      {station.behuizingsnummer && (
-                        <span className="text-[13px] text-muted-foreground ml-2">({station.behuizingsnummer})</span>
-                      )}
+                    {/* Top: label + badge */}
+                    <div className="flex items-start justify-between mb-1">
+                      <span className="text-[11px] font-bold uppercase tracking-widest text-primary/70">
+                        {station.type_ruimte || "Station"}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        {complete && (
+                          <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
+                            <span className="material-symbols-outlined fill text-primary text-[18px]">check_circle</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <span className={`material-symbols-outlined text-[22px] ${
-                      complete ? "fill text-primary" : "text-muted-foreground/30"
-                    }`}>
-                      {complete ? "check_circle" : "more_horiz"}
-                    </span>
+
+                    {/* Name — large */}
+                    <h3 className="font-display text-[22px] font-extrabold text-on-surface leading-tight tracking-tight">
+                      {station.naam_msr}
+                    </h3>
+
+                    {/* Subtitle */}
+                    {station.behuizingsnummer && (
+                      <p className="text-[13px] text-on-surface-variant mt-0.5">{station.behuizingsnummer}</p>
+                    )}
+
+                    {/* Progress bar */}
+                    <div className="flex items-center gap-3 mt-3">
+                      <div className="flex-1 h-1.5 bg-on-surface/8 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary rounded-full transition-all duration-500"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <span className="text-[12px] font-extrabold text-primary font-display">{pct}%</span>
+                    </div>
                   </button>
 
-                  {/* Expanded actions */}
+                  {/* Expanded action panel */}
                   {isExpanded && (
-                    <div className="bg-card rounded-b-[20px] px-5 pb-4 pt-2 shadow-sm animate-fade-up">
-                      {/* Stats row */}
-                      <div className="flex items-center gap-4 mb-3 text-[12px] text-muted-foreground">
+                    <div className="bg-card rounded-b-3xl px-5 pb-5 pt-1 shadow-md animate-fade-up">
+                      {/* Meta row */}
+                      <div className="flex items-center gap-3 mb-4 text-[12px] text-on-surface-variant">
                         {station.datum && <span>{station.datum}</span>}
                         <span>{totalFotos} foto's</span>
-                        <span>{cats}/{FOTO_CATEGORIEEN.length} categorieën</span>
+                        <span>{cats}/{FOTO_CATEGORIEEN.length} cat.</span>
                       </div>
 
-                      {/* Progress bar */}
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="flex-1 h-1.5 bg-outline-variant/15 rounded-full overflow-hidden">
-                          <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
-                        </div>
-                        <span className="font-display text-[12px] font-extrabold text-primary">{pct}%</span>
-                      </div>
-
-                      {/* Action buttons */}
+                      {/* Buttons */}
                       <div className="flex gap-2">
                         <button
                           onClick={() => navigate(`/stations/${station.id}`)}
-                          className="flex-1 min-h-[50px] bg-gradient-to-r from-primary to-primary-light text-primary-foreground rounded-2xl font-display text-[15px] font-bold shadow-lg shadow-primary/20 active:scale-[0.97] transition-transform flex items-center justify-center gap-2"
+                          className="flex-1 min-h-[52px] bg-primary text-primary-foreground rounded-2xl font-display text-[15px] font-bold shadow-lg shadow-primary/20 active:scale-[0.97] transition-transform flex items-center justify-center gap-2"
                         >
                           <span className="material-symbols-outlined text-lg">edit_note</span>
                           Invullen
                         </button>
                         <button
                           onClick={() => openPdf(station)}
-                          className="h-[50px] w-[50px] flex items-center justify-center rounded-2xl bg-surface-low border border-outline-variant/12 shadow-sm active:scale-[0.95] transition-transform flex-shrink-0"
-                          title="Rapport downloaden"
+                          className="h-[52px] w-[52px] flex items-center justify-center rounded-2xl bg-primary-container/15 active:scale-[0.95] transition-transform flex-shrink-0"
+                          title="PDF rapport"
                         >
-                          <span className="material-symbols-outlined text-destructive/70 text-xl">picture_as_pdf</span>
+                          <span className="material-symbols-outlined text-primary/70 text-xl">picture_as_pdf</span>
                         </button>
                         <button
                           onClick={async () => {
@@ -159,13 +174,13 @@ export default function Dashboard() {
                             setZipProgress(null);
                           }}
                           disabled={zipProgress !== null}
-                          className="relative h-[50px] w-[50px] flex items-center justify-center rounded-2xl bg-surface-low border border-outline-variant/12 shadow-sm active:scale-[0.95] transition-transform flex-shrink-0 disabled:opacity-60 overflow-hidden"
-                          title="Foto's als ZIP downloaden"
+                          className="relative h-[52px] w-[52px] flex items-center justify-center rounded-2xl bg-primary-container/15 active:scale-[0.95] transition-transform flex-shrink-0 disabled:opacity-60 overflow-hidden"
+                          title="Foto's als ZIP"
                         >
                           {zipProgress !== null && (
-                            <div className="absolute bottom-0 left-0 right-0 bg-primary/10 transition-all duration-300" style={{ height: `${zipProgress}%` }} />
+                            <div className="absolute bottom-0 left-0 right-0 bg-primary/15 transition-all duration-300" style={{ height: `${zipProgress}%` }} />
                           )}
-                          <span className="material-symbols-outlined text-tertiary text-xl relative z-10">
+                          <span className="material-symbols-outlined text-primary/70 text-xl relative z-10">
                             {zipProgress !== null ? "downloading" : "folder_zip"}
                           </span>
                         </button>
