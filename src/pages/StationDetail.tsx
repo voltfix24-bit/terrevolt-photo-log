@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { CATEGORIES, FOTO_CATEGORIEEN, SECTIONS, getCategoriesBySection, slugify } from "@/lib/categories";
+import { CATEGORIES, FOTO_CATEGORIEEN, SECTIONS, getCategoriesBySection, slugify, type Category, type Section } from "@/lib/categories";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { useRef, useState, useCallback, useMemo } from "react";
+import { useRef, useState, useCallback, useMemo, useEffect } from "react";
 import imageCompression from "browser-image-compression";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
@@ -21,72 +21,36 @@ import { useVoorbeelden } from "@/components/CategorieSettings";
 const MAX_SIZE = 10 * 1024 * 1024;
 const ACCEPTED = ["image/jpeg", "image/png", "image/heic", "image/webp"];
 
-const CATEGORY_ICONS: Record<number, string> = {
-  1: "label", 2: "home", 3: "door_front", 4: "lock", 5: "width_full",
-  6: "stairs", 7: "cable", 8: "electrical_services", 9: "view_column", 10: "power",
-  11: "description", 12: "format_list_numbered", 13: "bolt", 14: "transform", 15: "grid_3x3",
-  16: "commit", 17: "hub", 18: "label_important", 19: "precision_manufacturing", 20: "vertical_align_top",
-  21: "tune", 22: "link", 23: "signpost", 24: "view_agenda", 25: "label",
-  26: "electric_meter", 27: "bolt", 28: "numbers", 29: "cable", 30: "electrical_services",
-  31: "transform", 32: "view_in_ar", 33: "security", 34: "router", 35: "wifi",
-  36: "electric_meter", 37: "light", 38: "bolt", 39: "circle", 40: "fence", 41: "door_sliding",
-};
-
 type FotoRow = { id: string; url: string; storage_path: string; categorie: string };
 
 /* ==================== DROP ZONE COMPONENT ==================== */
-function DropZone({ onFiles, disabled, onClick, compact, children }: {
+function DropZone({ onFiles, disabled, onClick, children }: {
   onFiles: (files: FileList) => void;
   disabled?: boolean;
   onClick?: (e: React.MouseEvent) => void;
-  compact?: boolean;
   children: React.ReactNode;
 }) {
   const [dragging, setDragging] = useState(false);
   const dragCounter = useRef(0);
 
   const handleDrag = useCallback((e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); }, []);
-
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault(); e.stopPropagation();
     dragCounter.current++;
     if (e.dataTransfer.items?.length) setDragging(true);
   }, []);
-
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault(); e.stopPropagation();
     dragCounter.current--;
     if (dragCounter.current === 0) setDragging(false);
   }, []);
-
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault(); e.stopPropagation();
     setDragging(false);
     dragCounter.current = 0;
     if (disabled) return;
-    const files = e.dataTransfer.files;
-    if (files?.length) onFiles(files);
+    if (e.dataTransfer.files?.length) onFiles(e.dataTransfer.files);
   }, [disabled, onFiles]);
-
-  if (compact) {
-    return (
-      <button
-        onClick={onClick}
-        disabled={disabled}
-        onDragOver={handleDrag}
-        onDragEnter={handleDragEnter}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        className={`w-full py-2 bg-card border rounded-xl text-xs font-semibold transition-all active:scale-95 flex items-center justify-center gap-1 ${
-          dragging
-            ? "border-primary bg-primary/5 text-primary scale-[1.02]"
-            : "border-outline-variant/20 text-text-secondary hover:text-primary hover:border-primary/30 hover:bg-primary/[0.04]"
-        }`}
-      >
-        {children}
-      </button>
-    );
-  }
 
   return (
     <button
@@ -107,6 +71,38 @@ function DropZone({ onFiles, disabled, onClick, compact, children }: {
   );
 }
 
+/* ==================== SKIP TRACKING ==================== */
+function useSkippedCategories(stationId: string | undefined) {
+  const key = `skipped-${stationId}`;
+  const [skipped, setSkippedRaw] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  });
+
+  const setSkipped = useCallback((fn: (prev: string[]) => string[]) => {
+    setSkippedRaw(prev => {
+      const next = fn(prev);
+      try { localStorage.setItem(key, JSON.stringify(next)); } catch { /* */ }
+      return next;
+    });
+  }, [key]);
+
+  const toggleSkip = useCallback((catName: string) => {
+    setSkipped(prev =>
+      prev.includes(catName)
+        ? prev.filter(n => n !== catName)
+        : [...prev, catName]
+    );
+  }, [setSkipped]);
+
+  const isSkipped = useCallback((catName: string) => skipped.includes(catName), [skipped]);
+
+  return { skipped, toggleSkip, isSkipped };
+}
+
+/* ==================== MAIN COMPONENT ==================== */
 export default function StationDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -117,51 +113,14 @@ export default function StationDetail() {
   const [lightboxSlides, setLightboxSlides] = useState<{ src: string }[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [editOpen, setEditOpen] = useState(false);
-  const { data: voorbeelden } = useVoorbeelden();
-
-  const storageKey = `to-fotos-progress-${id}`;
-  const savedProgress = (() => {
-    try {
-      const raw = localStorage.getItem(storageKey);
-      if (raw) return JSON.parse(raw) as { step: number; mode: "overzicht" | "invullen" };
-    } catch { /* ignore */ }
-    return null;
-  })();
-
-  const [viewMode, setViewModeRaw] = useState<"overzicht" | "invullen">(savedProgress?.mode || "invullen");
-  const [currentStep, setCurrentStepRaw] = useState(savedProgress?.step || 0);
+  const [activeSection, setActiveSection] = useState(SECTIONS[0].id);
+  const [openCategory, setOpenCategory] = useState<Category | null>(null);
   const [tipOpen, setTipOpen] = useState<Record<number, boolean>>({});
-  const [completed, setCompleted] = useState(false);
+  const { data: voorbeelden } = useVoorbeelden();
+  const { skipped, toggleSkip, isSkipped } = useSkippedCategories(id);
+  const tabsRef = useRef<HTMLDivElement>(null);
 
-  const persistProgress = useCallback((step: number, mode: "overzicht" | "invullen") => {
-    try { localStorage.setItem(storageKey, JSON.stringify({ step, mode })); } catch { /* ignore */ }
-  }, [storageKey]);
-
-  const setViewMode = useCallback((mode: "overzicht" | "invullen") => {
-    setViewModeRaw(mode);
-    persistProgress(currentStep, mode);
-  }, [currentStep, persistProgress]);
-
-  const setCurrentStep = useCallback((step: number | ((prev: number) => number)) => {
-    setCurrentStepRaw(prev => {
-      const next = typeof step === "function" ? step(prev) : step;
-      persistProgress(next, viewMode);
-      return next;
-    });
-  }, [viewMode, persistProgress]);
-
-  // Section-aware navigation helpers
   const sectionGroups = useMemo(() => getCategoriesBySection(), []);
-
-  const currentSectionInfo = useMemo(() => {
-    const cat = CATEGORIES[currentStep];
-    if (!cat) return null;
-    const section = SECTIONS.find(s => s.id === cat.section);
-    const sectionCats = CATEGORIES.filter(c => c.section === cat.section);
-    const stepInSection = sectionCats.indexOf(cat) + 1;
-    const totalInSection = sectionCats.length;
-    return { section, stepInSection, totalInSection };
-  }, [currentStep]);
 
   const { data: station, isLoading } = useQuery({
     queryKey: ["station", id],
@@ -187,7 +146,7 @@ export default function StationDetail() {
   );
 
   const filledCount = new Set(fotos?.map((f) => f.categorie)).size;
-  const pct = Math.round((filledCount / FOTO_CATEGORIEEN.length) * 100);
+  const pct = Math.round((filledCount / CATEGORIES.length) * 100);
 
   const compressImage = async (file: File): Promise<File> => {
     if (file.type === "image/heic") return file;
@@ -247,19 +206,40 @@ export default function StationDetail() {
     if (w) { w.document.write(html); w.document.close(); }
   };
 
-  const goNext = () => {
-    if (currentStep < CATEGORIES.length - 1) { setCurrentStep(currentStep + 1); }
-    else { setCompleted(true); }
-  };
-  const goPrev = () => { if (currentStep > 0) setCurrentStep(currentStep - 1); };
+  // Find the active section's categories
+  const activeSectionData = useMemo(() => {
+    return sectionGroups.find(g => g.section.id === activeSection) ?? sectionGroups[0];
+  }, [sectionGroups, activeSection]);
+
+  // Find next incomplete category across ALL sections
+  const nextIncomplete = useMemo(() => {
+    for (const cat of CATEGORIES) {
+      if (fotosByCategorie(cat.name).length === 0 && !isSkipped(cat.name)) {
+        return cat;
+      }
+    }
+    return null;
+  }, [fotosByCategorie, isSkipped]);
+
+  const allDone = !nextIncomplete;
+
+  // Scroll active tab into view
+  useEffect(() => {
+    if (!tabsRef.current) return;
+    const activeBtn = tabsRef.current.querySelector(`[data-section="${activeSection}"]`) as HTMLElement;
+    if (activeBtn) {
+      activeBtn.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    }
+  }, [activeSection]);
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background pt-24 px-6 max-w-7xl mx-auto">
-        <Skeleton className="h-40 w-full rounded-3xl mb-6" />
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="h-48 rounded-[1.5rem]" />
+        <Skeleton className="h-20 w-full rounded-3xl mb-4" />
+        <Skeleton className="h-12 w-full rounded-2xl mb-4" />
+        <div className="space-y-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-16 rounded-2xl" />
           ))}
         </div>
       </div>
@@ -271,207 +251,273 @@ export default function StationDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-28 md:pb-8" style={viewMode === "invullen" && !completed ? { height: "100dvh", overflow: "hidden" } : undefined}>
+    <div className="min-h-screen bg-background pb-28 md:pb-8">
       <Lightbox open={lightboxOpen} close={() => setLightboxOpen(false)} slides={lightboxSlides} index={lightboxIndex} />
       <EditStationDialog station={station} open={editOpen} onOpenChange={setEditOpen} onSaved={() => { queryClient.invalidateQueries({ queryKey: ["station", id] }); queryClient.invalidateQueries({ queryKey: ["stations"] }); }} />
 
-      <main className="pt-20 pb-0 px-4 max-w-7xl mx-auto animate-fade-up">
-        {viewMode === "invullen" && !completed ? (
-          <StepByStepView
-            station={station}
-            category={CATEGORIES[currentStep]}
-            step={currentStep}
-            total={CATEGORIES.length}
-            sectionInfo={currentSectionInfo}
-            fotos={fotosByCategorie(CATEGORIES[currentStep].name)}
-            tipOpen={!!tipOpen[CATEGORIES[currentStep].id]}
-            onToggleTip={() => setTipOpen(prev => ({ ...prev, [CATEGORIES[currentStep].id]: !prev[CATEGORIES[currentStep].id] }))}
-            isUploading={uploadingCat === CATEGORIES[currentStep].name}
-            uploadProgress={uploadProgress[CATEGORIES[currentStep].name]}
-            onUpload={(files) => handleUpload(CATEGORIES[currentStep].name, files)}
-            onDelete={handleDelete}
-            onNext={goNext}
-            onPrev={goPrev}
-            onSkip={goNext}
-            onClickThumb={(idx) => openLightbox(CATEGORIES[currentStep].name, idx)}
-            onBackToList={() => navigate("/")}
-            filledCount={filledCount}
-            totalCategories={FOTO_CATEGORIEEN.length}
-            voorbeelden={voorbeelden?.filter(v => v.categorie === CATEGORIES[currentStep].name) ?? []}
-          />
-        ) : completed ? (
-          <CompletionScreen
-            filledCount={filledCount}
-            total={CATEGORIES.length}
-            stationName={station.naam_msr}
-            fotos={(fotos ?? []).map(f => ({ id: f.id, categorie: f.categorie, url: f.url }))}
-            onReset={() => { setCurrentStep(0); setCompleted(false); }}
-            onBack={() => navigate("/")}
-            onPdf={openPdf}
-          />
-        ) : (
-          <>
-            {/* Back row */}
-            <div className="flex items-center justify-between mb-6">
-              <button onClick={() => navigate("/")} className="flex items-center gap-1 text-sm text-text-secondary hover:text-primary-hover transition-colors font-semibold">
-                <span className="material-symbols-rounded text-lg">arrow_back_ios</span> Alle stations
-              </button>
-              <button onClick={() => setEditOpen(true)} className="p-2.5 bg-surface-white border border-outline-variant/30 rounded-xl shadow-sm hover:shadow-md hover:border-primary/20 transition-all active:scale-95 text-text-secondary hover:text-primary">
-                <span className="material-symbols-rounded text-lg">edit</span>
-              </button>
-            </div>
+      {/* ── Category Detail Overlay ── */}
+      {openCategory && (
+        <CategoryDetailView
+          station={station}
+          category={openCategory}
+          fotos={fotosByCategorie(openCategory.name)}
+          isUploading={uploadingCat === openCategory.name}
+          uploadProgress={uploadProgress[openCategory.name]}
+          tipOpen={!!tipOpen[openCategory.id]}
+          onToggleTip={() => setTipOpen(prev => ({ ...prev, [openCategory.id]: !prev[openCategory.id] }))}
+          onUpload={(files) => handleUpload(openCategory.name, files)}
+          onDelete={handleDelete}
+          onClickThumb={(idx) => openLightbox(openCategory.name, idx)}
+          onClose={() => setOpenCategory(null)}
+          onSkip={() => { toggleSkip(openCategory.name); setOpenCategory(null); toast("Overgeslagen"); }}
+          voorbeelden={voorbeelden?.filter(v => v.categorie === openCategory.name) ?? []}
+        />
+      )}
 
-            {/* Hero card */}
-            <div className="bg-surface-white rounded-3xl p-6 shadow-sm border border-outline-variant/10 mb-6">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-accent-gold/[0.08] text-accent-gold"
-                >{station.type_ruimte}</span>
-              </div>
-              <h2 className="font-display text-2xl font-extrabold tracking-tight mb-1 text-text-primary">{station.naam_msr}</h2>
-              <div className="mt-4">
-                <div className="flex justify-between items-center mb-1.5">
-                  <span className="text-xs font-semibold text-text-secondary">Categorieën ingevuld</span>
-                  <span className="text-xs font-black text-accent-gold">{filledCount} / {FOTO_CATEGORIEEN.length}</span>
-                </div>
-                <div className="h-2 bg-surface-high rounded-full overflow-hidden">
-                  <div className="h-full rounded-full bg-gradient-to-r from-primary to-primary-light transition-all duration-800" style={{ width: `${pct}%` }} />
-                </div>
-              </div>
+      <main className="pt-20 pb-0 px-4 max-w-3xl mx-auto animate-fade-up">
+        {/* ── 1. STICKY HEADER ── */}
+        <div className="flex items-center gap-3 mb-5">
+          <button onClick={() => navigate("/")} className="flex items-center gap-1 text-sm text-text-secondary hover:text-primary-hover transition-colors font-semibold flex-shrink-0">
+            <span className="material-symbols-rounded text-lg">arrow_back_ios</span>
+          </button>
+          <div className="flex-1 min-w-0">
+            <h1 className="font-display text-xl font-extrabold tracking-tight text-text-primary truncate">{station.naam_msr}</h1>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-accent-gold/[0.08] text-accent-gold">{station.type_ruimte}</span>
+              <span className="text-[11px] font-bold text-text-faint">{filledCount}/{CATEGORIES.length}</span>
             </div>
+          </div>
+          {/* Progress ring */}
+          <div className="relative w-11 h-11 flex-shrink-0">
+            <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
+              <circle cx="18" cy="18" r="15.5" fill="none" className="stroke-surface-high" strokeWidth="3" />
+              <circle cx="18" cy="18" r="15.5" fill="none" className="stroke-primary" strokeWidth="3" strokeLinecap="round"
+                strokeDasharray={`${pct * 0.975} 100`} />
+            </svg>
+            <span className="absolute inset-0 flex items-center justify-center font-display text-[11px] font-extrabold text-text-primary">{pct}%</span>
+          </div>
+          {/* Actions */}
+          <div className="flex gap-1.5 flex-shrink-0">
+            <button onClick={openPdf} className="p-2.5 bg-surface-white border border-outline-variant/20 rounded-xl shadow-sm hover:shadow-md hover:border-primary/20 transition-all active:scale-95 text-text-secondary hover:text-primary">
+              <span className="material-symbols-rounded text-lg">picture_as_pdf</span>
+            </button>
+            <button onClick={() => setEditOpen(true)} className="p-2.5 bg-surface-white border border-outline-variant/20 rounded-xl shadow-sm hover:shadow-md hover:border-primary/20 transition-all active:scale-95 text-text-secondary hover:text-primary">
+              <span className="material-symbols-rounded text-lg">edit</span>
+            </button>
+          </div>
+        </div>
 
-            {/* Category grid grouped by section */}
-            {sectionGroups.map(({ section, categories: sectionCats }) => {
-              const filledInSection = sectionCats.filter(c => fotosByCategorie(c.name).length > 0).length;
-              return (
-                <div key={section.id} className="mb-6">
-                  {/* Section header */}
-                  <div className="flex items-center gap-3 mb-3 px-1">
-                    <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: section.color }} />
-                    <h3 className="font-display text-[15px] font-extrabold text-text-primary tracking-tight flex-1">{section.label}</h3>
-                    <span className="text-[11px] font-bold text-text-faint">{filledInSection} / {sectionCats.length}</span>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {sectionCats.map((cat) => {
-                      const catFotos = fotosByCategorie(cat.name);
-                      return (
-                        <CategoryCard
-                          key={cat.id}
-                          category={cat}
-                          sectionColor={section.color}
-                          fotos={catFotos}
-                          icon={CATEGORY_ICONS[cat.id] || "photo_camera"}
-                          isUploading={uploadingCat === cat.name}
-                          uploadProgress={uploadProgress[cat.name]}
-                          onUpload={(files) => handleUpload(cat.name, files)}
-                          onDelete={handleDelete}
-                          onClickThumb={(idx) => openLightbox(cat.name, idx)}
-                        />
-                      );
-                    })}
-                  </div>
+        {/* ── 2. SECTION TABS ── */}
+        <div ref={tabsRef} className="flex gap-2 overflow-x-auto snap-x snap-mandatory pb-3 -mx-4 px-4 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
+          {SECTIONS.map(section => {
+            const cats = CATEGORIES.filter(c => c.section === section.id);
+            const filled = cats.filter(c => fotosByCategorie(c.name).length > 0).length;
+            const skippedCount = cats.filter(c => isSkipped(c.name)).length;
+            const complete = filled + skippedCount === cats.length && filled > 0;
+            const isActive = activeSection === section.id;
+
+            return (
+              <button
+                key={section.id}
+                data-section={section.id}
+                onClick={() => setActiveSection(section.id)}
+                className={`flex-shrink-0 snap-start flex items-center gap-2 px-4 py-2.5 rounded-full text-[13px] font-bold transition-all active:scale-[0.97] whitespace-nowrap ${
+                  isActive
+                    ? 'bg-primary text-primary-foreground shadow-md shadow-primary/25'
+                    : complete
+                    ? 'bg-primary/10 text-primary border border-primary/20'
+                    : 'bg-surface-low text-on-surface-variant border border-outline-variant/20'
+                }`}
+              >
+                {complete && <span className="material-symbols-rounded text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>}
+                {section.label}
+                <span className={`text-[11px] font-mono ${isActive ? 'opacity-70' : 'text-text-faint'}`}>
+                  {filled}/{cats.length}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ── 3. SECTION COMPLETION BANNER ── */}
+        {(() => {
+          const cats = CATEGORIES.filter(c => c.section === activeSection);
+          const filled = cats.filter(c => fotosByCategorie(c.name).length > 0).length;
+          const totalFotos = cats.reduce((sum, c) => sum + fotosByCategorie(c.name).length, 0);
+          const sectionComplete = filled === cats.length;
+
+          if (sectionComplete) {
+            return (
+              <div className="p-4 bg-primary/[0.06] border border-primary/15 rounded-2xl flex items-center gap-3 mb-4">
+                <span className="material-symbols-rounded text-primary text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
+                <div>
+                  <div className="font-bold text-sm text-primary">Sectie volledig afgerond</div>
+                  <div className="text-xs text-text-muted">{cats.length} categorieën · {totalFotos} foto's</div>
                 </div>
-              );
-            })}
-          </>
-        )}
+              </div>
+            );
+          }
+          return null;
+        })()}
+
+        {/* ── 4. CATEGORY LIST ── */}
+        <div className="bg-card rounded-2xl overflow-hidden border border-outline-variant/10 shadow-sm mb-6">
+          {activeSectionData.categories.map((cat, idx) => {
+            const catFotos = fotosByCategorie(cat.name);
+            const isDone = catFotos.length > 0;
+            const catIsSkipped = isSkipped(cat.name);
+
+            return (
+              <div key={cat.id}>
+                {idx > 0 && <div className="h-px bg-outline-variant/10 mx-4" />}
+                <button
+                  onClick={() => setOpenCategory(cat)}
+                  className="w-full flex items-center gap-3 px-4 py-4 text-left active:bg-surface-low transition-colors"
+                >
+                  {/* Status icon */}
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                    isDone
+                      ? 'bg-primary text-primary-foreground'
+                      : catIsSkipped
+                      ? 'bg-surface-high text-text-faint'
+                      : 'bg-accent-gold/10 border-2 border-accent-gold/30'
+                  }`}>
+                    <span className="material-symbols-rounded text-[16px]" style={{ fontVariationSettings: isDone ? "'FILL' 1" : "'FILL' 0" }}>
+                      {isDone ? 'check' : catIsSkipped ? 'remove' : 'photo_camera'}
+                    </span>
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className={`text-sm font-bold ${isDone ? 'text-text-primary' : catIsSkipped ? 'text-text-faint line-through' : 'text-text-primary'}`}>
+                      {cat.name}
+                    </div>
+                    {/* Photo thumbnails */}
+                    {isDone && (
+                      <div className="flex gap-1.5 mt-1.5">
+                        {catFotos.slice(0, 4).map(f => (
+                          <img key={f.id} src={f.url} className="w-10 h-10 rounded-lg object-cover border border-outline-variant/20" alt="" />
+                        ))}
+                        {catFotos.length > 4 && (
+                          <div className="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-xs font-bold text-text-faint">
+                            +{catFotos.length - 4}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {/* Status text */}
+                    {!isDone && !catIsSkipped && (
+                      <div className="text-xs text-accent-gold font-semibold mt-0.5">Nog geen foto's</div>
+                    )}
+                    {catIsSkipped && (
+                      <div className="text-xs text-text-faint mt-0.5">Overgeslagen (NVT)</div>
+                    )}
+                  </div>
+
+                  <span className="material-symbols-rounded text-text-faint/40">chevron_right</span>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Section description */}
+        <div className="px-1 mb-8">
+          <p className="text-[12px] text-text-faint leading-relaxed">{activeSectionData.section.description}</p>
+        </div>
       </main>
+
+      {/* ── 5. BOTTOM CTA ── */}
+      {nextIncomplete && !openCategory && (
+        <div className="fixed bottom-0 left-0 right-0 z-[50] p-4 bg-surface-white/95 backdrop-blur-xl border-t border-outline-variant/10 pb-[max(16px,env(safe-area-inset-bottom))]">
+          <button
+            onClick={() => {
+              // Navigate to the section of this category first
+              setActiveSection(nextIncomplete.section);
+              setOpenCategory(nextIncomplete);
+            }}
+            className="w-full max-w-3xl mx-auto min-h-[52px] bg-gradient-to-r from-primary to-primary-light text-primary-foreground rounded-2xl font-display font-bold text-[15px] shadow-lg shadow-primary/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+          >
+            <span className="material-symbols-rounded text-[20px]">arrow_forward</span>
+            Doorgaan: {nextIncomplete.name}
+          </button>
+        </div>
+      )}
+      {allDone && !openCategory && (
+        <div className="fixed bottom-0 left-0 right-0 z-[50] p-4 bg-surface-white/95 backdrop-blur-xl border-t border-outline-variant/10 pb-[max(16px,env(safe-area-inset-bottom))]">
+          <button
+            onClick={openPdf}
+            className="w-full max-w-3xl mx-auto min-h-[52px] bg-gradient-to-r from-primary to-primary-light text-primary-foreground rounded-2xl font-display font-bold text-[15px] shadow-lg shadow-primary/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+          >
+            <span className="material-symbols-rounded text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>picture_as_pdf</span>
+            Alles klaar — PDF downloaden
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
-/* ==================== STEP-BY-STEP VIEW ==================== */
+/* ==================== CATEGORY DETAIL VIEW (Full-screen overlay) ==================== */
 
-interface StepByStepViewProps {
+interface CategoryDetailViewProps {
   station: { vermogensveld: boolean | null; da_kast: boolean | null; naam_msr: string };
-  category: { id: number; name: string; instruction: string; tip?: string; section: string };
-  step: number; total: number;
-  sectionInfo: { section: import("@/lib/categories").Section | undefined; stepInSection: number; totalInSection: number } | null;
-  fotos: FotoRow[]; tipOpen: boolean; onToggleTip: () => void;
-  isUploading: boolean; uploadProgress?: number;
-  onUpload: (files: FileList) => void; onDelete: (id: string, path: string) => void;
-  onNext: () => void; onPrev: () => void; onSkip: () => void;
+  category: Category;
+  fotos: FotoRow[];
+  isUploading: boolean;
+  uploadProgress?: number;
+  tipOpen: boolean;
+  onToggleTip: () => void;
+  onUpload: (files: FileList) => void;
+  onDelete: (id: string, path: string) => void;
   onClickThumb: (idx: number) => void;
-  onBackToList: () => void;
-  filledCount: number;
-  totalCategories: number;
+  onClose: () => void;
+  onSkip: () => void;
   voorbeelden: { id: string; url: string }[];
 }
 
-function StepByStepView({ station, category, step, total, sectionInfo, fotos, tipOpen, onToggleTip, isUploading, uploadProgress, onUpload, onDelete, onNext, onPrev, onSkip, onClickThumb, onBackToList, filledCount, totalCategories, voorbeelden }: StepByStepViewProps) {
+function CategoryDetailView({ station, category, fotos, isUploading, uploadProgress, tipOpen, onToggleTip, onUpload, onDelete, onClickThumb, onClose, onSkip, voorbeelden }: CategoryDetailViewProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [showVoorbeeld, setShowVoorbeeld] = useState(false);
   const [voorbeeldLightbox, setVoorbeeldLightbox] = useState<number | null>(null);
   const isVermogensveld = category.id === 14;
   const isDaKast = category.id === 15;
-  const notApplicable = (isVermogensveld && !station.vermogensveld) || (isDaKast && !station.da_kast);
   const hasPhotos = fotos.length > 0;
-  const progressPct = Math.round(((step + 1) / total) * 100);
-
-  // Swipe gesture
-  const touchStart = useRef<{ x: number; y: number } | null>(null);
-
-  const onTouchStart = useCallback((e: React.TouchEvent) => {
-    touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-  }, []);
-
-  const onTouchEnd = useCallback((e: React.TouchEvent) => {
-    if (!touchStart.current) return;
-    const dx = e.changedTouches[0].clientX - touchStart.current.x;
-    const dy = e.changedTouches[0].clientY - touchStart.current.y;
-    touchStart.current = null;
-    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-      if (dx < 0) onNext();
-      else if (step > 0) onPrev();
-    }
-  }, [onNext, onPrev, step]);
+  const section = SECTIONS.find(s => s.id === category.section);
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-56px)] overflow-hidden" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+    <div className="fixed inset-0 z-[70] bg-background flex flex-col animate-fade-up">
+      {/* Header */}
+      <div className="shrink-0 bg-surface px-5 pt-[max(16px,env(safe-area-inset-top))] pb-3 border-b border-outline-variant/10">
+        <div className="flex items-center gap-3 mb-2">
+          <button onClick={onClose} className="flex items-center gap-1 text-text-muted hover:text-primary-hover text-[13px] font-medium active:scale-95 transition-all">
+            <span className="material-symbols-rounded text-[20px]">close</span>
+          </button>
+          <div className="flex-1" />
+          <button
+            onClick={onSkip}
+            className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-text-faint hover:text-text-muted active:scale-[0.97] transition-all"
+          >
+            NVT
+          </button>
+        </div>
 
-      {/* ── Premium sticky header ── */}
-      <div className="relative z-10 shrink-0 bg-surface -mx-4 px-6 pt-4 pb-3 border-b border-outline-variant/10">
-        {/* Back affordance */}
-        <button onClick={onBackToList} className="flex items-center gap-1 text-text-muted hover:text-primary-hover text-[13px] font-medium mb-3 active:scale-95 transition-all">
-          <span className="material-symbols-rounded text-[18px]">arrow_back_ios</span>
-          <span>Terug</span>
-        </button>
-
-        {/* Section label */}
-        {sectionInfo?.section && (
-          <div className="flex items-center gap-2 mb-1.5">
-            <div className="w-2 h-2 rounded-full" style={{ background: sectionInfo.section.color }} />
-            <span className="text-[11px] font-bold uppercase tracking-[0.15em]" style={{ color: sectionInfo.section.color }}>
-              {sectionInfo.section.label}
-            </span>
-            <span className="text-[11px] font-semibold text-text-faint ml-auto">
-              stap {sectionInfo.stepInSection} van {sectionInfo.totalInSection}
+        {/* Section + category label */}
+        {section && (
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-2 h-2 rounded-full" style={{ background: section.color }} />
+            <span className="text-[11px] font-bold uppercase tracking-[0.15em]" style={{ color: section.color }}>
+              {section.label}
             </span>
           </div>
         )}
-
-        {/* Title + counter row */}
-        <div className="flex items-start justify-between gap-3 mb-4">
-          <h2 className="font-display text-[22px] font-extrabold tracking-tight leading-[1.15] text-text-primary min-w-0 flex-1 break-words">
-            {category.name}
-          </h2>
-          <div className="flex items-baseline gap-0.5 pt-1 flex-shrink-0">
-            <span className="font-display text-[28px] font-extrabold text-text-primary leading-none">{step + 1}</span>
-            <span className="font-display text-[14px] font-medium text-text-faint">/{total}</span>
-          </div>
-        </div>
-
-        {/* Elegant thin progress bar */}
-        <div className="h-[3px] bg-on-surface/6 rounded-full overflow-hidden">
-          <div
-            className="h-full rounded-full bg-primary transition-all duration-700 ease-out"
-            style={{ width: `${progressPct}%` }}
-          />
-        </div>
+        <h2 className="font-display text-[20px] font-extrabold tracking-tight leading-tight text-text-primary">
+          {category.name}
+        </h2>
       </div>
 
-      {/* ── Content area ── */}
-      <div className="flex-1 flex flex-col px-2 pt-4 pb-20 gap-3 overflow-y-auto min-h-0 scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
-
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-24 space-y-3" style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
         {/* Instruction */}
         <div className="bg-primary/[0.06] rounded-2xl border border-primary/12">
           <button
@@ -500,13 +546,13 @@ function StepByStepView({ station, category, step, total, sectionInfo, fotos, ti
         {isVermogensveld && (
           <div className="rounded-2xl px-5 py-4 flex gap-3 items-start bg-amber-50/60 border border-amber-200/30">
             <span className="material-symbols-rounded text-amber-500/70 text-[20px] flex-shrink-0 mt-0.5">error</span>
-            <span className="text-[13px] text-on-surface-variant leading-relaxed">Alleen fotograferen als <strong>vermogensveld aanwezig</strong> is bij dit station.</span>
+            <span className="text-[13px] text-on-surface-variant leading-relaxed">Alleen fotograferen als <strong>vermogensveld aanwezig</strong> is.</span>
           </div>
         )}
         {isDaKast && (
           <div className="rounded-2xl px-5 py-4 flex gap-3 items-start bg-amber-50/60 border border-amber-200/30">
             <span className="material-symbols-rounded text-amber-500/70 text-[20px] flex-shrink-0 mt-0.5">error</span>
-            <span className="text-[13px] text-on-surface-variant leading-relaxed">Alleen fotograferen als <strong>DA-kast aanwezig</strong> is bij dit station.</span>
+            <span className="text-[13px] text-on-surface-variant leading-relaxed">Alleen fotograferen als <strong>DA-kast aanwezig</strong> is.</span>
           </div>
         )}
 
@@ -516,9 +562,7 @@ function StepByStepView({ station, category, step, total, sectionInfo, fotos, ti
             <button
               onClick={() => setShowVoorbeeld(!showVoorbeeld)}
               className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-[12px] font-semibold transition-all active:scale-95 ${
-                showVoorbeeld
-                  ? 'bg-primary/8 text-primary'
-                  : 'bg-surface-high text-text-muted hover:text-primary hover:bg-primary/[0.06]'
+                showVoorbeeld ? 'bg-primary/8 text-primary' : 'bg-surface-high text-text-muted hover:text-primary hover:bg-primary/[0.06]'
               }`}
             >
               <span className="material-symbols-rounded text-[16px]">{showVoorbeeld ? 'visibility_off' : 'visibility'}</span>
@@ -563,7 +607,7 @@ function StepByStepView({ station, category, step, total, sectionInfo, fotos, ti
           </div>
         )}
 
-        {/* Status badge + photo grid */}
+        {/* Photos */}
         {hasPhotos && (
           <>
             <div className="flex items-center gap-2.5 px-5 py-3 rounded-2xl bg-primary/5">
@@ -603,184 +647,16 @@ function StepByStepView({ station, category, step, total, sectionInfo, fotos, ti
         )}
       </div>
 
-      {/* ── Premium bottom action bar ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-[60] bg-surface-white/90 backdrop-blur-2xl border-t border-outline-variant/10 px-5 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
-        <div className="flex items-center gap-3 max-w-lg mx-auto">
-          <button
-            onClick={onPrev}
-            disabled={step === 0}
-            className="min-h-[48px] px-4 flex items-center gap-1.5 font-display text-[14px] font-semibold text-text-muted hover:text-primary-hover active:scale-[0.97] transition-all disabled:opacity-20"
-          >
-            <span className="material-symbols-rounded text-[18px]">chevron_left</span>
-            Vorige
-          </button>
-
-          <button
-            onClick={() => { onSkip(); toast("Overgeslagen"); }}
-            className="min-h-[48px] px-3 font-display text-[12px] font-semibold text-text-faint hover:text-text-muted uppercase tracking-wider active:scale-[0.97] transition-all"
-          >
-            NVT
-          </button>
-
-          <button
-            onClick={onNext}
-            className="flex-1 min-h-[48px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-2xl font-display text-[15px] font-bold active:scale-[0.97] transition-all flex items-center justify-center gap-1.5"
-          >
-            {step === total - 1 ? "Afronden" : "Volgende"}
-            <span className="material-symbols-rounded text-[18px]">chevron_right</span>
-          </button>
-        </div>
+      {/* Bottom bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-[75] bg-surface-white/90 backdrop-blur-2xl border-t border-outline-variant/10 px-5 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
+        <button
+          onClick={onClose}
+          className="w-full min-h-[48px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-2xl font-display text-[15px] font-bold active:scale-[0.97] transition-all flex items-center justify-center gap-1.5"
+        >
+          <span className="material-symbols-rounded text-[18px]">check</span>
+          Klaar
+        </button>
       </div>
-    </div>
-  );
-}
-
-/* ==================== COMPLETION SCREEN ==================== */
-
-function CompletionScreen({ filledCount, total, stationName, fotos, onReset, onBack, onPdf }: { filledCount: number; total: number; stationName: string; fotos: { id: string; categorie: string; url: string }[]; onReset: () => void; onBack: () => void; onPdf: () => void }) {
-  const [zipProgress, setZipProgress] = useState<number | null>(null);
-  const pct = Math.round((filledCount / total) * 100);
-
-  const handleZip = async () => {
-    const { downloadStationZip } = await import("@/lib/zip-download");
-    setZipProgress(0);
-    try {
-      await downloadStationZip(stationName, fotos, (pct) => setZipProgress(pct));
-      toast.success("ZIP gedownload ✓");
-    } catch {
-      toast.error("ZIP downloaden mislukt");
-    }
-    setZipProgress(null);
-  };
-
-  return (
-    <div className="max-w-lg mx-auto flex flex-col px-2 pt-8 pb-10 animate-fade-up min-h-[calc(100dvh-120px)]">
-      <div className="flex justify-center mb-8">
-        <div className="w-20 h-20 rounded-full bg-primary/8 flex items-center justify-center">
-          <span className="material-symbols-rounded text-primary text-[40px]">check_circle</span>
-        </div>
-      </div>
-
-      <div className="text-center mb-10">
-        <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-accent-gold mb-3">Oplevering voltooid</div>
-        <h2 className="font-display text-[36px] font-extrabold tracking-tight text-text-primary leading-none mb-3">Klaar!</h2>
-        <p className="text-[14px] text-text-muted leading-relaxed max-w-[260px] mx-auto">
-          Alle gegevens en foto's voor <strong className="text-text-primary font-semibold">{stationName}</strong> zijn verwerkt.
-        </p>
-      </div>
-
-      <div className="bg-surface-low rounded-3xl px-6 py-5 border border-outline-variant/10 mb-4">
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-accent-gold">Voortgang</span>
-          <div className="flex items-baseline gap-0.5">
-            <span className="font-display text-[28px] font-extrabold text-text-primary leading-none">{pct}</span>
-            <span className="font-display text-[14px] font-medium text-text-faint">%</span>
-          </div>
-        </div>
-        <div className="h-[3px] bg-surface-high rounded-full overflow-hidden mb-4">
-          <div className="h-full rounded-full bg-primary transition-all duration-700" style={{ width: `${pct}%` }} />
-        </div>
-        <p className="text-[13px] text-text-muted leading-relaxed">{filledCount} van de {total} categorieën gevalideerd.</p>
-      </div>
-
-      <div className="bg-surface-low rounded-3xl px-6 py-5 border border-outline-variant/10 mb-8">
-        <div className="text-[11px] font-bold uppercase tracking-[0.15em] text-accent-gold mb-4">Bestanden downloaden</div>
-        <div className="flex flex-col gap-2.5">
-          <button onClick={onPdf} className="w-full min-h-[48px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-2xl font-display text-[14px] font-bold active:scale-[0.97] transition-all flex items-center justify-center gap-2.5">
-            <span className="material-symbols-rounded text-[18px]">description</span> PDF rapport
-          </button>
-          <button onClick={handleZip} disabled={zipProgress !== null || fotos.length === 0} className="w-full min-h-[48px] bg-surface-high hover:bg-surface-highest rounded-2xl font-display text-[14px] font-semibold text-text-primary active:scale-[0.97] transition-all flex items-center justify-center gap-2.5 disabled:opacity-40">
-            <span className="material-symbols-rounded text-[18px] text-text-muted">folder_zip</span>
-            {zipProgress !== null ? `Downloaden… ${zipProgress}%` : "Foto's als ZIP"}
-          </button>
-        </div>
-      </div>
-
-      <button onClick={onBack} className="flex items-center justify-center gap-1.5 py-3 font-display text-[13px] font-semibold text-text-muted hover:text-primary-hover active:scale-[0.97] transition-all mx-auto">
-        <span className="material-symbols-rounded text-[16px]">chevron_left</span> Terug naar overzicht
-      </button>
-
-      <div className="mt-auto pt-12 text-center">
-        <span className="font-display text-[13px] font-extrabold text-primary/20 tracking-tight">TerreVolt</span>
-        <div className="text-[9px] font-medium uppercase tracking-[0.18em] text-text-faint/40 mt-0.5">Technische Oplevering</div>
-      </div>
-    </div>
-  );
-}
-
-/* ==================== CATEGORY CARD (OVERZICHT MODE) ==================== */
-
-interface CategoryCardProps {
-  category: { id: number; name: string };
-  sectionColor: string;
-  fotos: FotoRow[];
-  icon: string;
-  isUploading: boolean;
-  uploadProgress?: number;
-  onUpload: (files: FileList) => void;
-  onDelete: (id: string, storagePath: string) => void;
-  onClickThumb: (index: number) => void;
-}
-
-function CategoryCard({ category, sectionColor, fotos, icon, isUploading, uploadProgress, onUpload, onDelete, onClickThumb }: CategoryCardProps) {
-  const fileRef = useRef<HTMLInputElement>(null);
-  const filled = fotos.length > 0;
-
-  return (
-    <div
-      className="group bg-surface-low hover:bg-surface-white transition-all duration-200 rounded-[1.5rem] p-3 border border-transparent hover:border-outline-variant/20 hover:shadow-md space-y-2 relative overflow-hidden cursor-pointer active:scale-[0.98]"
-      style={{ borderLeftWidth: '3px', borderLeftColor: sectionColor }}
-    >
-      <div className={`relative aspect-square rounded-xl flex items-center justify-center overflow-hidden ${
-        filled ? "bg-primary-container/40" : "bg-surface-high border-2 border-dashed border-outline-variant/40"
-      }`}>
-        {filled ? (
-          <>
-            <span className="material-symbols-rounded text-primary text-3xl">{icon}</span>
-            <div className="absolute top-1.5 right-1.5 w-6 h-6 bg-gradient-to-br from-primary to-primary-light rounded-full flex items-center justify-center shadow-sm">
-              <span className="material-symbols-rounded text-primary-foreground text-xs">check</span>
-            </div>
-          </>
-        ) : (
-          <span className="material-symbols-rounded text-on-surface-variant/30 text-3xl">photo_camera</span>
-        )}
-
-        {filled && fotos.length > 0 && (
-          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
-            {fotos.slice(0, 2).map((foto, i) => (
-              <button key={foto.id} onClick={(e) => { e.stopPropagation(); onClickThumb(i); }} className="w-10 h-10 rounded-lg overflow-hidden">
-                <img src={foto.url} alt="" className="w-full h-full object-cover" />
-              </button>
-            ))}
-            {fotos.length > 2 && <span className="text-primary-foreground text-xs font-bold">+{fotos.length - 2}</span>}
-          </div>
-        )}
-      </div>
-
-      <div className="px-0.5">
-        <div className="text-[9px] font-black text-text-faint uppercase tracking-wider">#{String(category.id).padStart(2, "0")}</div>
-        <div className="text-xs font-bold leading-tight text-text-primary">{category.name}</div>
-        <div className="flex items-center gap-1 mt-1">
-          <span className={`w-1.5 h-1.5 rounded-full ${filled ? "bg-accent-gold-bright" : "bg-text-faint"}`} />
-          <span className={`text-[9px] font-black uppercase tracking-wide ${filled ? "text-accent-gold" : "text-text-faint"}`}>
-            {filled ? `${fotos.length} FOTO${fotos.length > 1 ? "'S" : ""}` : "ONTBREEKT"}
-          </span>
-        </div>
-      </div>
-
-      {isUploading && uploadProgress !== undefined && (
-        <div className="h-1.5 overflow-hidden rounded-full bg-surface-high">
-          <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${uploadProgress}%` }} />
-        </div>
-      )}
-
-      <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/heic,image/webp" multiple className="hidden"
-        onChange={(e) => { if (e.target.files) onUpload(e.target.files); e.target.value = ""; }} />
-
-      <DropZone onFiles={onUpload} disabled={isUploading} onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }} compact>
-        <span className="material-symbols-rounded text-sm">photo_camera</span>
-        {isUploading ? "Uploaden..." : "Toevoegen"}
-      </DropZone>
     </div>
   );
 }
