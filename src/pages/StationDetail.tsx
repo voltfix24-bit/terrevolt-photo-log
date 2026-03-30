@@ -126,7 +126,7 @@ export default function StationDetail() {
     return null;
   })();
 
-  const [viewMode, setViewModeRaw] = useState<"overzicht" | "invullen">(savedProgress?.mode || "overzicht");
+  const [viewMode, setViewModeRaw] = useState<"overzicht" | "invullen">(savedProgress?.mode || "invullen");
   const [currentStep, setCurrentStepRaw] = useState(savedProgress?.step || 0);
   const [tipOpen, setTipOpen] = useState<Record<number, boolean>>({});
   const [completed, setCompleted] = useState(false);
