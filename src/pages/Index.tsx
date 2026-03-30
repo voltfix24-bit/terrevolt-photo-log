@@ -196,14 +196,14 @@ export default function Dashboard() {
                       <div className="flex gap-2.5">
                         <button
                           onClick={() => navigate(`/stations/${station.id}`)}
-                          className="flex-1 min-h-[52px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-2xl font-display text-[15px] font-bold shadow-[0_6px_20px_-4px_rgba(0,100,47,0.35)] active:scale-[0.97] transition-all flex items-center justify-center gap-2.5"
+                          className="flex-1 min-w-0 min-h-[52px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-2xl font-display text-[15px] font-bold shadow-[0_6px_20px_-4px_rgba(0,100,47,0.35)] active:scale-[0.97] transition-all flex items-center justify-center gap-2.5"
                         >
-                          <span className="material-symbols-rounded text-[18px]">edit_note</span>
-                          Invullen
+                          <span className="material-symbols-rounded text-[18px] flex-shrink-0">edit_note</span>
+                          <span className="truncate">Invullen</span>
                         </button>
                         <button
                           onClick={() => openPdf(station)}
-                          className="h-[52px] w-[52px] flex items-center justify-center rounded-2xl bg-surface-low hover:bg-surface transition-all active:scale-[0.93] flex-shrink-0"
+                          className="h-[52px] w-[48px] flex items-center justify-center rounded-2xl bg-surface-low hover:bg-surface transition-all active:scale-[0.93] flex-shrink-0"
                           title="PDF rapport"
                         >
                           <span className="material-symbols-rounded text-text-secondary text-[20px]">description</span>
