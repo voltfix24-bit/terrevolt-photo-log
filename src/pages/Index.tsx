@@ -233,7 +233,7 @@ export default function Dashboard() {
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <button
-                              className="h-[52px] w-[52px] flex items-center justify-center rounded-2xl bg-destructive/[0.06] hover:bg-destructive/[0.12] active:scale-[0.93] transition-all flex-shrink-0"
+                              className="h-[52px] w-[48px] flex items-center justify-center rounded-2xl bg-destructive/[0.06] hover:bg-destructive/[0.12] active:scale-[0.93] transition-all flex-shrink-0"
                               title="Station verwijderen"
                             >
                               <span className="material-symbols-rounded text-destructive/70 text-[20px]">delete</span>
