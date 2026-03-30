@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { CATEGORIES, FOTO_CATEGORIEEN, slugify } from "@/lib/categories";
+import { CATEGORIES, FOTO_CATEGORIEEN, SECTIONS, getCategoriesBySection, slugify } from "@/lib/categories";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useMemo } from "react";
 import imageCompression from "browser-image-compression";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
@@ -29,7 +29,7 @@ const CATEGORY_ICONS: Record<number, string> = {
   21: "tune", 22: "link", 23: "signpost", 24: "view_agenda", 25: "label",
   26: "electric_meter", 27: "bolt", 28: "numbers", 29: "cable", 30: "electrical_services",
   31: "transform", 32: "view_in_ar", 33: "security", 34: "router", 35: "wifi",
-  36: "light", 37: "bolt", 38: "circle", 39: "fence", 40: "door_sliding",
+  36: "electric_meter", 37: "light", 38: "bolt", 39: "circle", 40: "fence", 41: "door_sliding",
 };
 
 type FotoRow = { id: string; url: string; storage_path: string; categorie: string };
@@ -118,7 +118,7 @@ export default function StationDetail() {
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [editOpen, setEditOpen] = useState(false);
   const { data: voorbeelden } = useVoorbeelden();
-  // Persist invullen progress in localStorage
+
   const storageKey = `to-fotos-progress-${id}`;
   const savedProgress = (() => {
     try {
@@ -149,6 +149,19 @@ export default function StationDetail() {
       return next;
     });
   }, [viewMode, persistProgress]);
+
+  // Section-aware navigation helpers
+  const sectionGroups = useMemo(() => getCategoriesBySection(), []);
+
+  const currentSectionInfo = useMemo(() => {
+    const cat = CATEGORIES[currentStep];
+    if (!cat) return null;
+    const section = SECTIONS.find(s => s.id === cat.section);
+    const sectionCats = CATEGORIES.filter(c => c.section === cat.section);
+    const stepInSection = sectionCats.indexOf(cat) + 1;
+    const totalInSection = sectionCats.length;
+    return { section, stepInSection, totalInSection };
+  }, [currentStep]);
 
   const { data: station, isLoading } = useQuery({
     queryKey: ["station", id],
@@ -257,13 +270,10 @@ export default function StationDetail() {
     return <div className="flex min-h-screen items-center justify-center bg-background text-text-primary">Station niet gevonden</div>;
   }
 
-  const isCS = station.type_ruimte === "Compact Station";
-
   return (
     <div className="min-h-screen bg-background pb-28 md:pb-8" style={viewMode === "invullen" && !completed ? { height: "100dvh", overflow: "hidden" } : undefined}>
       <Lightbox open={lightboxOpen} close={() => setLightboxOpen(false)} slides={lightboxSlides} index={lightboxIndex} />
       <EditStationDialog station={station} open={editOpen} onOpenChange={setEditOpen} onSaved={() => { queryClient.invalidateQueries({ queryKey: ["station", id] }); queryClient.invalidateQueries({ queryKey: ["stations"] }); }} />
-      
 
       <main className="pt-20 pb-0 px-4 max-w-7xl mx-auto animate-fade-up">
         {viewMode === "invullen" && !completed ? (
@@ -272,6 +282,7 @@ export default function StationDetail() {
             category={CATEGORIES[currentStep]}
             step={currentStep}
             total={CATEGORIES.length}
+            sectionInfo={currentSectionInfo}
             fotos={fotosByCategorie(CATEGORIES[currentStep].name)}
             tipOpen={!!tipOpen[CATEGORIES[currentStep].id]}
             onToggleTip={() => setTipOpen(prev => ({ ...prev, [CATEGORIES[currentStep].id]: !prev[CATEGORIES[currentStep].id] }))}
@@ -328,24 +339,39 @@ export default function StationDetail() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {CATEGORIES.map((cat) => {
-                const catFotos = fotosByCategorie(cat.name);
-                return (
-                  <CategoryCard
-                    key={cat.id}
-                    category={cat}
-                    fotos={catFotos}
-                    icon={CATEGORY_ICONS[cat.id] || "photo_camera"}
-                    isUploading={uploadingCat === cat.name}
-                    uploadProgress={uploadProgress[cat.name]}
-                    onUpload={(files) => handleUpload(cat.name, files)}
-                    onDelete={handleDelete}
-                    onClickThumb={(idx) => openLightbox(cat.name, idx)}
-                  />
-                );
-              })}
-            </div>
+            {/* Category grid grouped by section */}
+            {sectionGroups.map(({ section, categories: sectionCats }) => {
+              const filledInSection = sectionCats.filter(c => fotosByCategorie(c.name).length > 0).length;
+              return (
+                <div key={section.id} className="mb-6">
+                  {/* Section header */}
+                  <div className="flex items-center gap-3 mb-3 px-1">
+                    <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: section.color }} />
+                    <h3 className="font-display text-[15px] font-extrabold text-text-primary tracking-tight flex-1">{section.label}</h3>
+                    <span className="text-[11px] font-bold text-text-faint">{filledInSection} / {sectionCats.length}</span>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {sectionCats.map((cat) => {
+                      const catFotos = fotosByCategorie(cat.name);
+                      return (
+                        <CategoryCard
+                          key={cat.id}
+                          category={cat}
+                          sectionColor={section.color}
+                          fotos={catFotos}
+                          icon={CATEGORY_ICONS[cat.id] || "photo_camera"}
+                          isUploading={uploadingCat === cat.name}
+                          uploadProgress={uploadProgress[cat.name]}
+                          onUpload={(files) => handleUpload(cat.name, files)}
+                          onDelete={handleDelete}
+                          onClickThumb={(idx) => openLightbox(cat.name, idx)}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
           </>
         )}
       </main>
@@ -357,8 +383,9 @@ export default function StationDetail() {
 
 interface StepByStepViewProps {
   station: { vermogensveld: boolean | null; da_kast: boolean | null; naam_msr: string };
-  category: { id: number; name: string; instruction: string; tip?: string };
+  category: { id: number; name: string; instruction: string; tip?: string; section: string };
   step: number; total: number;
+  sectionInfo: { section: import("@/lib/categories").Section | undefined; stepInSection: number; totalInSection: number } | null;
   fotos: FotoRow[]; tipOpen: boolean; onToggleTip: () => void;
   isUploading: boolean; uploadProgress?: number;
   onUpload: (files: FileList) => void; onDelete: (id: string, path: string) => void;
@@ -370,7 +397,7 @@ interface StepByStepViewProps {
   voorbeelden: { id: string; url: string }[];
 }
 
-function StepByStepView({ station, category, step, total, fotos, tipOpen, onToggleTip, isUploading, uploadProgress, onUpload, onDelete, onNext, onPrev, onSkip, onClickThumb, onBackToList, filledCount, totalCategories, voorbeelden }: StepByStepViewProps) {
+function StepByStepView({ station, category, step, total, sectionInfo, fotos, tipOpen, onToggleTip, isUploading, uploadProgress, onUpload, onDelete, onNext, onPrev, onSkip, onClickThumb, onBackToList, filledCount, totalCategories, voorbeelden }: StepByStepViewProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [showVoorbeeld, setShowVoorbeeld] = useState(false);
   const [voorbeeldLightbox, setVoorbeeldLightbox] = useState<number | null>(null);
@@ -379,9 +406,6 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
   const notApplicable = (isVermogensveld && !station.vermogensveld) || (isDaKast && !station.da_kast);
   const hasPhotos = fotos.length > 0;
   const progressPct = Math.round(((step + 1) / total) * 100);
-
-  const maxDots = 10;
-  const dots = Array.from({ length: Math.min(maxDots, total) }, (_, i) => i);
 
   // Swipe gesture
   const touchStart = useRef<{ x: number; y: number } | null>(null);
@@ -402,7 +426,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
   }, [onNext, onPrev, step]);
 
   return (
-      <div className="flex flex-col h-[calc(100dvh-56px)] overflow-hidden" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+    <div className="flex flex-col h-[calc(100dvh-56px)] overflow-hidden" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
 
       {/* ── Premium sticky header ── */}
       <div className="relative z-10 shrink-0 bg-surface -mx-4 px-6 pt-4 pb-3 border-b border-outline-variant/10">
@@ -413,9 +437,17 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
         </button>
 
         {/* Section label */}
-        <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-accent-gold mb-1">
-          Technische oplevering
-        </div>
+        {sectionInfo?.section && (
+          <div className="flex items-center gap-2 mb-1.5">
+            <div className="w-2 h-2 rounded-full" style={{ background: sectionInfo.section.color }} />
+            <span className="text-[11px] font-bold uppercase tracking-[0.15em]" style={{ color: sectionInfo.section.color }}>
+              {sectionInfo.section.label}
+            </span>
+            <span className="text-[11px] font-semibold text-text-faint ml-auto">
+              stap {sectionInfo.stepInSection} van {sectionInfo.totalInSection}
+            </span>
+          </div>
+        )}
 
         {/* Title + counter row */}
         <div className="flex items-start justify-between gap-3 mb-4">
@@ -437,10 +469,10 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
         </div>
       </div>
 
-      {/* ── Content area — no scroll, fills viewport ── */}
+      {/* ── Content area ── */}
       <div className="flex-1 flex flex-col px-2 pt-4 pb-20 gap-3 overflow-y-auto min-h-0 scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
 
-        {/* Instruction — collapsed by default, expandable */}
+        {/* Instruction */}
         <div className="bg-primary/[0.06] rounded-2xl border border-primary/12">
           <button
             onClick={onToggleTip}
@@ -478,7 +510,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
           </div>
         )}
 
-        {/* Example photos — compact pill */}
+        {/* Example photos */}
         {voorbeelden.length > 0 && (
           <div>
             <button
@@ -505,18 +537,18 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
           </div>
         )}
 
-        {/* ── Hidden file input ── */}
+        {/* Hidden file input */}
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/heic,image/webp" multiple className="hidden"
           onChange={(e) => { if (e.target.files) onUpload(e.target.files); e.target.value = ""; }} />
 
-        {/* ── Upload zone — premium empty state ── */}
+        {/* Upload zone */}
         {!hasPhotos && (
           <DropZone onFiles={onUpload} disabled={isUploading} onClick={() => fileRef.current?.click()}>
             <div className="flex flex-col items-center justify-center py-6">
               <div className="w-16 h-16 rounded-full bg-primary/6 flex items-center justify-center mb-5">
                 <span className="material-symbols-rounded text-[32px] text-primary/70">photo_camera</span>
               </div>
-               <div className="font-display text-[17px] font-extrabold text-text-primary mb-1.5">Tik om foto's te maken</div>
+              <div className="font-display text-[17px] font-extrabold text-text-primary mb-1.5">Tik om foto's te maken</div>
               <div className="text-[13px] text-text-muted leading-relaxed text-center max-w-[240px]">
                 Hoge resolutie aanbevolen voor verificatie.
               </div>
@@ -574,7 +606,6 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
       {/* ── Premium bottom action bar ── */}
       <div className="fixed bottom-0 left-0 right-0 z-[60] bg-surface-white/90 backdrop-blur-2xl border-t border-outline-variant/10 px-5 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
         <div className="flex items-center gap-3 max-w-lg mx-auto">
-          {/* Vorige */}
           <button
             onClick={onPrev}
             disabled={step === 0}
@@ -584,7 +615,6 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
             Vorige
           </button>
 
-          {/* NVT */}
           <button
             onClick={() => { onSkip(); toast("Overgeslagen"); }}
             className="min-h-[48px] px-3 font-display text-[12px] font-semibold text-text-faint hover:text-text-muted uppercase tracking-wider active:scale-[0.97] transition-all"
@@ -592,7 +622,6 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
             NVT
           </button>
 
-          {/* Volgende — primary CTA */}
           <button
             onClick={onNext}
             className="flex-1 min-h-[48px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-2xl font-display text-[15px] font-bold active:scale-[0.97] transition-all flex items-center justify-center gap-1.5"
@@ -606,7 +635,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
   );
 }
 
-/* ==================== COMPLETION SCREEN — Saudia "Klaar!" style ==================== */
+/* ==================== COMPLETION SCREEN ==================== */
 
 function CompletionScreen({ filledCount, total, stationName, fotos, onReset, onBack, onPdf }: { filledCount: number; total: number; stationName: string; fotos: { id: string; categorie: string; url: string }[]; onReset: () => void; onBack: () => void; onPdf: () => void }) {
   const [zipProgress, setZipProgress] = useState<number | null>(null);
@@ -626,28 +655,20 @@ function CompletionScreen({ filledCount, total, stationName, fotos, onReset, onB
 
   return (
     <div className="max-w-lg mx-auto flex flex-col px-2 pt-8 pb-10 animate-fade-up min-h-[calc(100dvh-120px)]">
-
-      {/* Success icon */}
       <div className="flex justify-center mb-8">
         <div className="w-20 h-20 rounded-full bg-primary/8 flex items-center justify-center">
           <span className="material-symbols-rounded text-primary text-[40px]">check_circle</span>
         </div>
       </div>
 
-      {/* Heading area */}
       <div className="text-center mb-10">
-        <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-accent-gold mb-3">
-          Oplevering voltooid
-        </div>
-        <h2 className="font-display text-[36px] font-extrabold tracking-tight text-text-primary leading-none mb-3">
-          Klaar!
-        </h2>
+        <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-accent-gold mb-3">Oplevering voltooid</div>
+        <h2 className="font-display text-[36px] font-extrabold tracking-tight text-text-primary leading-none mb-3">Klaar!</h2>
         <p className="text-[14px] text-text-muted leading-relaxed max-w-[260px] mx-auto">
           Alle gegevens en foto's voor <strong className="text-text-primary font-semibold">{stationName}</strong> zijn verwerkt.
         </p>
       </div>
 
-      {/* Progress card */}
       <div className="bg-surface-low rounded-3xl px-6 py-5 border border-outline-variant/10 mb-4">
         <div className="flex items-center justify-between mb-4">
           <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-accent-gold">Voortgang</span>
@@ -659,45 +680,26 @@ function CompletionScreen({ filledCount, total, stationName, fotos, onReset, onB
         <div className="h-[3px] bg-surface-high rounded-full overflow-hidden mb-4">
           <div className="h-full rounded-full bg-primary transition-all duration-700" style={{ width: `${pct}%` }} />
         </div>
-        <p className="text-[13px] text-text-muted leading-relaxed">
-          {filledCount} van de {total} categorieën gevalideerd.
-        </p>
+        <p className="text-[13px] text-text-muted leading-relaxed">{filledCount} van de {total} categorieën gevalideerd.</p>
       </div>
 
-      {/* Downloads card */}
       <div className="bg-surface-low rounded-3xl px-6 py-5 border border-outline-variant/10 mb-8">
-        <div className="text-[11px] font-bold uppercase tracking-[0.15em] text-accent-gold mb-4">
-          Bestanden downloaden
-        </div>
+        <div className="text-[11px] font-bold uppercase tracking-[0.15em] text-accent-gold mb-4">Bestanden downloaden</div>
         <div className="flex flex-col gap-2.5">
-          <button
-            onClick={onPdf}
-            className="w-full min-h-[48px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-2xl font-display text-[14px] font-bold active:scale-[0.97] transition-all flex items-center justify-center gap-2.5"
-          >
-            <span className="material-symbols-rounded text-[18px]">description</span>
-            PDF rapport
+          <button onClick={onPdf} className="w-full min-h-[48px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-2xl font-display text-[14px] font-bold active:scale-[0.97] transition-all flex items-center justify-center gap-2.5">
+            <span className="material-symbols-rounded text-[18px]">description</span> PDF rapport
           </button>
-          <button
-            onClick={handleZip}
-            disabled={zipProgress !== null || fotos.length === 0}
-            className="w-full min-h-[48px] bg-surface-high hover:bg-surface-highest rounded-2xl font-display text-[14px] font-semibold text-text-primary active:scale-[0.97] transition-all flex items-center justify-center gap-2.5 disabled:opacity-40"
-          >
+          <button onClick={handleZip} disabled={zipProgress !== null || fotos.length === 0} className="w-full min-h-[48px] bg-surface-high hover:bg-surface-highest rounded-2xl font-display text-[14px] font-semibold text-text-primary active:scale-[0.97] transition-all flex items-center justify-center gap-2.5 disabled:opacity-40">
             <span className="material-symbols-rounded text-[18px] text-text-muted">folder_zip</span>
             {zipProgress !== null ? `Downloaden… ${zipProgress}%` : "Foto's als ZIP"}
           </button>
         </div>
       </div>
 
-      {/* Back link */}
-      <button
-        onClick={onBack}
-        className="flex items-center justify-center gap-1.5 py-3 font-display text-[13px] font-semibold text-text-muted hover:text-primary-hover active:scale-[0.97] transition-all mx-auto"
-      >
-        <span className="material-symbols-rounded text-[16px]">chevron_left</span>
-        Terug naar overzicht
+      <button onClick={onBack} className="flex items-center justify-center gap-1.5 py-3 font-display text-[13px] font-semibold text-text-muted hover:text-primary-hover active:scale-[0.97] transition-all mx-auto">
+        <span className="material-symbols-rounded text-[16px]">chevron_left</span> Terug naar overzicht
       </button>
 
-      {/* Brand footer */}
       <div className="mt-auto pt-12 text-center">
         <span className="font-display text-[13px] font-extrabold text-primary/20 tracking-tight">TerreVolt</span>
         <div className="text-[9px] font-medium uppercase tracking-[0.18em] text-text-faint/40 mt-0.5">Technische Oplevering</div>
@@ -710,6 +712,7 @@ function CompletionScreen({ filledCount, total, stationName, fotos, onReset, onB
 
 interface CategoryCardProps {
   category: { id: number; name: string };
+  sectionColor: string;
   fotos: FotoRow[];
   icon: string;
   isUploading: boolean;
@@ -719,12 +722,15 @@ interface CategoryCardProps {
   onClickThumb: (index: number) => void;
 }
 
-function CategoryCard({ category, fotos, icon, isUploading, uploadProgress, onUpload, onDelete, onClickThumb }: CategoryCardProps) {
+function CategoryCard({ category, sectionColor, fotos, icon, isUploading, uploadProgress, onUpload, onDelete, onClickThumb }: CategoryCardProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const filled = fotos.length > 0;
 
   return (
-    <div className="group bg-surface-low hover:bg-surface-white transition-all duration-200 rounded-[1.5rem] p-3 border border-transparent hover:border-outline-variant/20 hover:shadow-md space-y-2 relative overflow-hidden cursor-pointer active:scale-[0.98]">
+    <div
+      className="group bg-surface-low hover:bg-surface-white transition-all duration-200 rounded-[1.5rem] p-3 border border-transparent hover:border-outline-variant/20 hover:shadow-md space-y-2 relative overflow-hidden cursor-pointer active:scale-[0.98]"
+      style={{ borderLeftWidth: '3px', borderLeftColor: sectionColor }}
+    >
       <div className={`relative aspect-square rounded-xl flex items-center justify-center overflow-hidden ${
         filled ? "bg-primary-container/40" : "bg-surface-high border-2 border-dashed border-outline-variant/40"
       }`}>
@@ -739,7 +745,6 @@ function CategoryCard({ category, fotos, icon, isUploading, uploadProgress, onUp
           <span className="material-symbols-rounded text-on-surface-variant/30 text-3xl">photo_camera</span>
         )}
 
-        {/* Thumbnail overlay on hover for filled cards */}
         {filled && fotos.length > 0 && (
           <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
             {fotos.slice(0, 2).map((foto, i) => (
