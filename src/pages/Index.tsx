@@ -81,7 +81,7 @@ export default function Dashboard() {
 
           {/* Main title — editorial scale */}
           <h1 className="font-display text-[48px] font-extrabold tracking-[-0.035em] text-text-primary leading-[0.95] mb-4">
-            Stations
+            TO-Foto's
           </h1>
 
           {/* Supporting text */}
