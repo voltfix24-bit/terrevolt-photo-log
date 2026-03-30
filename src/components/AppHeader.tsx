@@ -39,7 +39,7 @@ export default function AppHeader() {
       {/* Bottom nav (mobile) */}
       <nav className={`md:hidden fixed bottom-0 w-full z-50 bg-surface-white/95 backdrop-blur-2xl shadow-[0_-4px_24px_rgba(0,0,0,0.06)] border-t border-outline-variant/8 ${location.pathname.startsWith("/stations/") && location.pathname !== "/stations/new" ? "hidden" : ""}`}>
         <div className="flex justify-around items-center h-[68px] px-2">
-          <button onClick={() => navigate("/")} className={`flex flex-col items-center gap-0.5 px-5 py-2 rounded-2xl transition-all min-w-[72px] ${isActive("/") && !isActive("/stations") ? "text-primary" : "text-muted-foreground"}`}>
+          <button onClick={() => navigate("/")} className={`flex flex-col items-center gap-0.5 px-5 py-2 rounded-2xl transition-all min-w-[72px] ${isActive("/") && !isActive("/stations") ? "text-primary" : "text-text-muted hover:text-primary-hover"}`}>
             <span className={`material-symbols-rounded ${isActive("/") && !isActive("/stations") ? "fill" : ""} text-[24px]`}>dashboard</span>
             <span className="font-display text-[9px] font-extrabold uppercase tracking-[0.12em]">Dashboard</span>
           </button>
