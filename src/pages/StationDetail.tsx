@@ -380,17 +380,14 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
   const hasPhotos = fotos.length > 0;
   const progressPct = Math.round(((step + 1) / total) * 100);
 
-  // Show max 10 step dots, with a "+N" indicator
   const maxDots = 10;
   const dots = Array.from({ length: Math.min(maxDots, total) }, (_, i) => i);
 
   // Swipe gesture
   const touchStart = useRef<{ x: number; y: number } | null>(null);
-  const swiping = useRef(false);
 
   const onTouchStart = useCallback((e: React.TouchEvent) => {
     touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    swiping.current = false;
   }, []);
 
   const onTouchEnd = useCallback((e: React.TouchEvent) => {
@@ -398,7 +395,6 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
     const dx = e.changedTouches[0].clientX - touchStart.current.x;
     const dy = e.changedTouches[0].clientY - touchStart.current.y;
     touchStart.current = null;
-    // Only swipe if horizontal movement > 60px and mostly horizontal
     if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
       if (dx < 0) onNext();
       else if (step > 0) onPrev();
@@ -439,36 +435,48 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
       </div>
 
       {/* ── Scrollable content area ── */}
-      <div className="flex-1 py-4 space-y-3">
+      <div className="flex-1 py-3 space-y-2 pb-[80px]">
         {/* Category heading */}
-        <div>
-          <div className="text-[11px] font-extrabold uppercase tracking-widest text-muted-foreground mb-1">
+        <div className="mb-2">
+          <div className="text-[11px] font-extrabold uppercase tracking-widest text-muted-foreground mb-0.5">
             Categorie {String(category.id).padStart(2, "0")}
           </div>
           <h3 className="text-[22px] font-black tracking-tight leading-tight text-on-surface">{category.name}</h3>
         </div>
 
         {/* Instruction card (blue) */}
-        <div className="rounded-2xl p-3.5 flex gap-2.5 items-start" style={{ background: "rgba(59,130,246,0.07)", border: "1px solid rgba(59,130,246,0.18)" }}>
+        <div className="rounded-2xl p-3 flex gap-2.5 items-start" style={{ background: "rgba(59,130,246,0.07)", border: "1px solid rgba(59,130,246,0.18)" }}>
           <span className="material-symbols-outlined fill text-blue-400 flex-shrink-0 text-xl">info</span>
           <p className="text-[13px] leading-relaxed text-blue-400">{category.instruction}</p>
         </div>
 
-        {/* Example photos — toggle */}
+        {/* Example photos — pill toggle */}
         {voorbeelden.length > 0 && (
           <div>
             <button
               onClick={() => setShowVoorbeeld(!showVoorbeeld)}
-              className={`flex items-center gap-2 text-[13px] font-semibold py-1.5 transition-colors ${showVoorbeeld ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
+              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-full border text-[13px] font-semibold transition-all active:scale-95 ${
+                showVoorbeeld
+                  ? 'bg-primary/8 border-primary/30 text-primary'
+                  : 'bg-surface-container border-outline-variant/30 text-muted-foreground hover:text-on-surface hover:border-outline-variant/60'
+              }`}
             >
-              <span className="material-symbols-outlined text-lg">image</span>
-              {showVoorbeeld ? "Verberg voorbeeld" : "Toon voorbeeld foto"}
-              <span className="material-symbols-outlined text-base">{showVoorbeeld ? "expand_less" : "expand_more"}</span>
+              <span className="material-symbols-outlined text-base">
+                {showVoorbeeld ? 'image_not_supported' : 'image'}
+              </span>
+              {showVoorbeeld ? 'Verberg voorbeeld' : 'Toon voorbeeld foto'}
+              <span className="material-symbols-outlined text-sm">
+                {showVoorbeeld ? 'expand_less' : 'expand_more'}
+              </span>
             </button>
             {showVoorbeeld && (
-              <div className="flex gap-2 overflow-x-auto pb-1 mt-1.5">
+              <div className="flex gap-2.5 overflow-x-auto pb-2 mt-2 -mx-1 px-1 snap-x snap-mandatory">
                 {voorbeelden.map((v, i) => (
-                  <button key={v.id} onClick={() => setVoorbeeldLightbox(i)} className="flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden border border-outline-variant/20 bg-surface-container active:scale-95 transition-transform">
+                  <button
+                    key={v.id}
+                    onClick={() => setVoorbeeldLightbox(i)}
+                    className="flex-shrink-0 snap-start w-28 h-28 rounded-2xl overflow-hidden border border-outline-variant/20 shadow-sm active:scale-95 transition-transform"
+                  >
                     <img src={v.url} alt="Voorbeeld" className="w-full h-full object-cover" />
                   </button>
                 ))}
@@ -485,13 +493,13 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
 
         {/* Conditional warnings */}
         {isVermogensveld && (
-          <div className="rounded-2xl p-3 flex gap-2 text-xs" style={{ background: "rgba(234,179,8,0.07)", border: "1px solid rgba(234,179,8,0.2)", color: "#fbbf24" }}>
+          <div className="rounded-2xl p-2.5 flex gap-2 text-[12px]" style={{ background: "rgba(234,179,8,0.07)", border: "1px solid rgba(234,179,8,0.2)", color: "#fbbf24" }}>
             <span className="material-symbols-outlined fill text-yellow-400 text-base flex-shrink-0">warning</span>
             <span>Alleen fotograferen als <strong>vermogensveld aanwezig</strong> is bij dit station.</span>
           </div>
         )}
         {isDaKast && (
-          <div className="rounded-2xl p-3 flex gap-2 text-xs" style={{ background: "rgba(234,179,8,0.07)", border: "1px solid rgba(234,179,8,0.2)", color: "#fbbf24" }}>
+          <div className="rounded-2xl p-2.5 flex gap-2 text-[12px]" style={{ background: "rgba(234,179,8,0.07)", border: "1px solid rgba(234,179,8,0.2)", color: "#fbbf24" }}>
             <span className="material-symbols-outlined fill text-yellow-400 text-base flex-shrink-0">warning</span>
             <span>Alleen fotograferen als <strong>DA-kast aanwezig</strong> is bij dit station.</span>
           </div>
@@ -500,39 +508,32 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
         {/* Tip toggle */}
         {category.tip && (
           <>
-            <button onClick={onToggleTip} className={`flex items-center gap-1.5 text-[13px] font-semibold transition-colors py-1.5 ${tipOpen ? "text-yellow-500" : "text-muted-foreground hover:text-yellow-500"}`}>
+            <button onClick={onToggleTip} className={`flex items-center gap-1.5 text-[13px] font-semibold transition-colors py-1 ${tipOpen ? "text-yellow-500" : "text-muted-foreground hover:text-yellow-500"}`}>
               <span className={`material-symbols-outlined ${tipOpen ? "fill" : ""} text-lg`} style={{ color: "#eab308" }}>lightbulb</span>
               {tipOpen ? "Verberg tip" : "Toon tip"}
             </button>
             {tipOpen && (
-              <div className="rounded-2xl p-3 text-xs leading-relaxed" style={{ background: "rgba(234,179,8,0.07)", border: "1px solid rgba(234,179,8,0.18)", color: "#fbbf24" }}>
+              <div className="rounded-2xl p-2.5 text-[12px] leading-relaxed" style={{ background: "rgba(234,179,8,0.07)", border: "1px solid rgba(234,179,8,0.18)", color: "#fbbf24" }}>
                 {category.tip}
               </div>
             )}
           </>
         )}
 
-        {/* ── UPLOAD ZONE — LARGE & THUMB-FRIENDLY (matches reference) ── */}
+        {/* ── UPLOAD / PHOTOS ── */}
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/heic,image/webp" multiple className="hidden"
           onChange={(e) => { if (e.target.files) onUpload(e.target.files); e.target.value = ""; }} />
 
-        <DropZone onFiles={onUpload} disabled={isUploading} onClick={() => fileRef.current?.click()}>
-          <div className={`w-[60px] h-[60px] rounded-[18px] mx-auto mb-3 flex items-center justify-center ${
-            hasPhotos
-              ? "bg-gradient-to-br from-primary to-primary-light shadow-lg shadow-primary/30"
-              : "bg-surface-container"
-          }`}>
-            <span className={`material-symbols-outlined fill text-[28px] ${hasPhotos ? "text-primary-foreground" : "text-muted-foreground"}`}>
-              {hasPhotos ? "add_photo_alternate" : "photo_camera"}
-            </span>
-          </div>
-          <div className="text-base font-bold mb-1 text-on-surface">
-            {hasPhotos ? "Foto's geüpload ✓" : "Tik om foto's te maken"}
-          </div>
-          <div className="text-[13px] text-muted-foreground">
-            {hasPhotos ? "Tik voor meer foto's" : <>JPG · PNG · HEIC · max <strong className="text-primary">10MB</strong></>}
-          </div>
-        </DropZone>
+        {/* Large upload zone — only when NO photos */}
+        {!hasPhotos && (
+          <DropZone onFiles={onUpload} disabled={isUploading} onClick={() => fileRef.current?.click()}>
+            <div className="w-[56px] h-[56px] rounded-[16px] mx-auto mb-2 flex items-center justify-center bg-surface-container">
+              <span className="material-symbols-outlined fill text-[28px] text-muted-foreground">photo_camera</span>
+            </div>
+            <div className="text-base font-bold mb-0.5 text-on-surface">Tik om foto's te maken</div>
+            <div className="text-[13px] text-muted-foreground">JPG · PNG · HEIC · max <strong className="text-primary">10MB</strong></div>
+          </DropZone>
+        )}
 
         {/* Upload progress */}
         {isUploading && uploadProgress !== undefined && (
@@ -541,62 +542,64 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
           </div>
         )}
 
-        {/* Status badge */}
+        {/* Status badge + photo grid — only when photos exist */}
         {hasPhotos && (
-          <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl" style={{ background: "rgba(28,176,80,0.08)", border: "1px solid rgba(28,176,80,0.2)" }}>
-            <span className="material-symbols-outlined fill text-xl" style={{ color: "#1cb050" }}>check_circle</span>
-            <span className="text-[13px] font-bold text-primary">{fotos.length} foto{fotos.length > 1 ? "'s" : ""} geüpload</span>
-          </div>
-        )}
+          <>
+            <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl" style={{ background: "rgba(28,176,80,0.08)", border: "1px solid rgba(28,176,80,0.2)" }}>
+              <span className="material-symbols-outlined fill text-lg" style={{ color: "#1cb050" }}>check_circle</span>
+              <span className="text-[13px] font-bold text-primary">{fotos.length} foto{fotos.length > 1 ? "'s" : ""} geüpload</span>
+            </div>
 
-        {/* Photo thumbnail grid + add more tile */}
-        {hasPhotos && (
-          <div className="grid grid-cols-3 gap-1.5">
-            {fotos.map((foto, i) => (
-              <div key={foto.id} className="relative aspect-square rounded-xl bg-surface-container overflow-hidden">
-                <button onClick={() => onClickThumb(i)} className="w-full h-full">
-                  <img src={foto.url} alt="" className="w-full h-full object-cover" />
-                </button>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <button className="absolute top-1 right-1 w-5 h-5 bg-red-500/90 rounded-full text-white text-[11px] flex items-center justify-center border-[1.5px] border-white active:scale-90 transition-transform">×</button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader><AlertDialogTitle>Foto verwijderen?</AlertDialogTitle><AlertDialogDescription>Deze actie kan niet ongedaan worden gemaakt.</AlertDialogDescription></AlertDialogHeader>
-                    <AlertDialogFooter><AlertDialogCancel>Annuleren</AlertDialogCancel><AlertDialogAction onClick={() => onDelete(foto.id, foto.storage_path)}>Verwijderen</AlertDialogAction></AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-            ))}
-            {/* Add more tile */}
-            <button
-              onClick={() => fileRef.current?.click()}
-              disabled={isUploading}
-              className="aspect-square rounded-xl border-2 border-dashed border-outline-variant/40 bg-surface-container/50 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:border-primary/40 hover:text-primary active:scale-95 transition-all"
-            >
-              <span className="material-symbols-outlined text-2xl">add_photo_alternate</span>
-              <span className="text-[10px] font-bold">Meer</span>
-            </button>
-          </div>
+            <div className="grid grid-cols-3 gap-1.5">
+              {fotos.map((foto, i) => (
+                <div key={foto.id} className="relative aspect-square rounded-xl bg-surface-container overflow-hidden">
+                  <button onClick={() => onClickThumb(i)} className="w-full h-full">
+                    <img src={foto.url} alt="" className="w-full h-full object-cover" />
+                  </button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <button className="absolute top-1 right-1 w-5 h-5 bg-red-500/90 rounded-full text-white text-[11px] flex items-center justify-center border-[1.5px] border-white active:scale-90 transition-transform">×</button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader><AlertDialogTitle>Foto verwijderen?</AlertDialogTitle><AlertDialogDescription>Deze actie kan niet ongedaan worden gemaakt.</AlertDialogDescription></AlertDialogHeader>
+                      <AlertDialogFooter><AlertDialogCancel>Annuleren</AlertDialogCancel><AlertDialogAction onClick={() => onDelete(foto.id, foto.storage_path)}>Verwijderen</AlertDialogAction></AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              ))}
+              {/* Add more tile */}
+              <button
+                onClick={() => fileRef.current?.click()}
+                disabled={isUploading}
+                className="aspect-square rounded-xl border-2 border-dashed border-outline-variant/40 bg-surface-container/50 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:border-primary/40 hover:text-primary active:scale-95 transition-all"
+              >
+                <span className="material-symbols-outlined text-2xl">add_photo_alternate</span>
+                <span className="text-[10px] font-bold">Meer</span>
+              </button>
+            </div>
+          </>
         )}
-
-        {/* Spacer for fixed bottom nav */}
-        <div className="h-24" />
       </div>
 
-      {/* ── FIXED BOTTOM NAV — always pinned ── */}
+      {/* ── FIXED BOTTOM NAV — always pinned, 3 buttons ── */}
       <div className="fixed bottom-0 left-0 right-0 z-[60] bg-white/95 backdrop-blur-xl border-t border-black/[0.06] p-3 pb-[max(16px,env(safe-area-inset-bottom))]">
-        <div className="flex gap-2.5 max-w-lg mx-auto">
+        <div className="flex gap-2 max-w-lg mx-auto">
           <button
             onClick={onPrev}
             disabled={step === 0}
-            className="flex-1 min-h-[52px] bg-surface-container rounded-2xl text-[15px] font-bold text-on-surface-variant active:scale-[0.97] transition-transform disabled:opacity-30 flex items-center justify-center gap-2"
+            className="flex-1 min-h-[52px] bg-surface-container rounded-2xl text-[15px] font-bold text-on-surface-variant active:scale-[0.97] transition-transform disabled:opacity-30 flex items-center justify-center gap-1.5"
           >
             <span className="material-symbols-outlined text-xl">arrow_back</span>Vorige
           </button>
           <button
+            onClick={() => { onSkip(); toast("Overgeslagen"); }}
+            className="flex-1 min-h-[52px] bg-surface-container/60 border border-outline-variant/30 rounded-2xl text-[13px] font-semibold text-muted-foreground active:scale-[0.97] transition-transform flex items-center justify-center"
+          >
+            NVT
+          </button>
+          <button
             onClick={onNext}
-            className="flex-[2] min-h-[52px] bg-gradient-to-br from-primary to-primary-light text-primary-foreground rounded-2xl text-[15px] font-bold shadow-lg shadow-primary/30 active:scale-[0.97] transition-transform flex items-center justify-center gap-2"
+            className="flex-[2] min-h-[52px] bg-gradient-to-br from-primary to-primary-light text-primary-foreground rounded-2xl text-[15px] font-bold shadow-lg shadow-primary/30 active:scale-[0.97] transition-transform flex items-center justify-center gap-1.5"
           >
             {step === total - 1 ? "Afronden" : "Volgende"}<span className="material-symbols-outlined text-xl">arrow_forward</span>
           </button>
