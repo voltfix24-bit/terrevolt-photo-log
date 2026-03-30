@@ -845,67 +845,68 @@ export default function StationDetail() {
             const isComplete = openCats.length === 0 && skippedCats.length === 0;
             const isSectionOpen = openSections.includes(section.id);
 
-            // Sort: open first, then done, then skipped
+            // Sort: open first, then in-progress (has photos), then skipped
             const sortedCats = [...openCats, ...doneCats, ...skippedCats];
 
             return (
               <div ref={el => { sectionRefs.current[section.id] = el; }} key={section.id}
-                className={`rounded-2xl overflow-hidden shadow-sm ${
+                className={`rounded-xl overflow-hidden mb-3 ${
                   isComplete
-                    ? 'bg-primary/[0.06] border border-primary/20'
+                    ? 'bg-primary/[0.04] border border-primary/15'
                     : isSectionOpen
-                    ? 'bg-card border border-outline-variant/15 shadow-md'
-                    : 'bg-card border border-outline-variant/10'
+                    ? 'bg-surface-highest/30 shadow-[0px_10px_30px_rgba(19,30,18,0.04)] ring-1 ring-primary/10'
+                    : 'bg-surface-low hover:bg-surface-container transition-all duration-300'
                 }`}
               >
-                <button onClick={() => toggleSection(section.id)} className="w-full flex items-center gap-4 px-4 py-4 text-left">
-                  {/* Icon box */}
-                  <div className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 ${
-                    isComplete ? 'bg-primary shadow-sm shadow-primary/30' : 'bg-surface-container'
-                  }`}>
-                    <span className={`material-symbols-rounded text-xl ${
-                      isComplete ? 'text-primary-foreground' : 'text-muted-foreground'
-                    }`} style={isComplete ? { fontVariationSettings: "'FILL' 1" } : undefined}>
-                      {isComplete ? 'check' : 'folder_open'}
-                    </span>
-                  </div>
-                  {/* Text */}
-                  <div className="flex-1 min-w-0">
-                    <div className={`font-display font-extrabold text-[16px] leading-tight ${
-                      isComplete ? 'text-primary' : 'text-on-surface'
+                {/* Section header */}
+                <button
+                  onClick={() => toggleSection(section.id)}
+                  className={`flex items-center justify-between p-5 w-full cursor-pointer text-left ${
+                    isSectionOpen ? 'bg-surface-low' : ''
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm ${
+                      isComplete
+                        ? 'bg-primary text-primary-foreground shadow-primary/30'
+                        : isSectionOpen
+                        ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
+                        : 'bg-primary/10 text-primary'
                     }`}>
-                      {section.label}
+                      <span className="material-symbols-rounded text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+                        {isComplete ? 'check' : getSectionIcon(section.id)}
+                      </span>
                     </div>
-                    <div className="text-[12px] text-muted-foreground mt-0.5 flex items-center gap-1.5">
-                      <span>{cats.length} taken</span>
-                      {openCats.length > 0 && (
-                        <>
-                          <span>·</span>
-                          <span className="text-orange font-semibold">{openCats.length} open</span>
-                        </>
-                      )}
-                      {isComplete && (
-                        <>
-                          <span>·</span>
-                          <span className="text-primary font-semibold">Voltooid</span>
-                        </>
-                      )}
+                    <div>
+                      <h3 className={`font-display font-bold text-[17px] ${
+                        isSectionOpen ? 'text-primary' : isComplete ? 'text-primary' : 'text-on-surface'
+                      }`}>
+                        {section.label}
+                      </h3>
+                      <p className={`text-xs mt-0.5 ${isSectionOpen ? 'text-primary/70' : 'text-on-surface-variant'}`}>
+                        {cats.length} taken
+                        {openCats.length > 0 && <> · <span className="text-orange font-semibold">{openCats.length} open</span></>}
+                        {isComplete && <> · <span className="text-primary font-semibold">Voltooid</span></>}
+                      </p>
                     </div>
                   </div>
-                  <span className="material-symbols-rounded text-muted-foreground/40 text-xl">
-                    {isSectionOpen ? 'expand_less' : 'expand_more'}
+                  <span className={`material-symbols-rounded text-xl transition-transform ${
+                    isSectionOpen ? 'text-primary rotate-180' : 'text-muted-foreground/40'
+                  }`}>
+                    expand_more
                   </span>
                 </button>
 
                 {/* Expanded content */}
                 {isSectionOpen && (
-                  <div className="border-t border-outline-variant/10">
+                  <div className="p-4 space-y-3">
                     {sortedCats.map(cat => (
                       <CategoryRow
                         key={cat.id}
                         cat={cat}
                         fotos={fotosByCategorie(cat.name)}
                         isSkipped={isSkipped(cat.name)}
+                        sectionComplete={isComplete}
                         onOpen={() => openWizardAt(cat)}
                       />
                     ))}
@@ -915,7 +916,6 @@ export default function StationDetail() {
             );
           })}
         </div>
-      </main>
 
       {/* ── BOTTOM CTA ── */}
       {nextIncomplete && !wizardOpen && (
