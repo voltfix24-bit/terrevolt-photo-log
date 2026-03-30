@@ -86,7 +86,7 @@ export default function NewStation() {
 
           {/* Datum */}
           <div>
-            <label className="block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Datum</label>
+            <label className="block text-[11px] font-bold uppercase tracking-widest text-accent-gold mb-2">Datum</label>
             <input
               type="date"
               value={form.datum}
