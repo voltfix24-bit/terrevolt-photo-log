@@ -439,7 +439,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
       </div>
 
       {/* ── Content area — no scroll, fills viewport ── */}
-      <div className="flex-1 flex flex-col px-2 pt-4 pb-[100px] gap-4 overflow-hidden">
+      <div className="flex-1 flex flex-col px-2 pt-3 pb-0 gap-3 overflow-hidden min-h-0">
 
         {/* Instruction — collapsed by default, expandable */}
         <div className="bg-primary-container/8 rounded-3xl border border-primary/5">
