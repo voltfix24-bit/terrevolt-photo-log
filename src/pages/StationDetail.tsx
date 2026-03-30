@@ -753,11 +753,11 @@ function CategoryCard({ category, fotos, icon, isUploading, uploadProgress, onUp
       </div>
 
       <div className="px-0.5">
-        <div className="text-[9px] font-black text-on-surface-variant/40 uppercase tracking-wider">#{String(category.id).padStart(2, "0")}</div>
-        <div className="text-xs font-bold leading-tight text-on-surface">{category.name}</div>
+        <div className="text-[9px] font-black text-text-faint uppercase tracking-wider">#{String(category.id).padStart(2, "0")}</div>
+        <div className="text-xs font-bold leading-tight text-text-primary">{category.name}</div>
         <div className="flex items-center gap-1 mt-1">
-          <span className={`w-1.5 h-1.5 rounded-full ${filled ? "bg-primary" : "bg-slate-300"}`} />
-          <span className={`text-[9px] font-black uppercase tracking-wide ${filled ? "text-primary" : "text-on-surface-variant/40"}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${filled ? "bg-accent-gold-bright" : "bg-text-faint"}`} />
+          <span className={`text-[9px] font-black uppercase tracking-wide ${filled ? "text-accent-gold" : "text-text-faint"}`}>
             {filled ? `${fotos.length} FOTO${fotos.length > 1 ? "'S" : ""}` : "ONTBREEKT"}
           </span>
         </div>
