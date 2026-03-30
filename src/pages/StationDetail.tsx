@@ -650,8 +650,8 @@ function CompletionScreen({ filledCount, total, stationName, fotos, onReset, onB
       {/* Generated files card */}
       <div className="w-full bg-card rounded-3xl p-5 shadow-sm border border-outline-variant/10 mb-5">
         <div className="flex items-center justify-center gap-3 mb-3">
-          <div className="w-12 h-12 rounded-2xl bg-yellow-100 flex items-center justify-center">
-            <span className="material-symbols-rounded text-yellow-600 text-2xl">description</span>
+          <div className="w-12 h-12 rounded-2xl bg-primary-container/30 flex items-center justify-center">
+            <span className="material-symbols-rounded text-primary text-2xl">description</span>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-primary-container/40 flex items-center justify-center">
             <span className="material-symbols-rounded text-primary text-2xl">photo_library</span>
