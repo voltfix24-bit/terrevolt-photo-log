@@ -516,8 +516,8 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
               <div className="w-16 h-16 rounded-full bg-primary/6 flex items-center justify-center mb-5">
                 <span className="material-symbols-rounded text-[32px] text-primary/70">photo_camera</span>
               </div>
-              <div className="font-display text-[17px] font-extrabold text-on-surface mb-1.5">Tik om foto's te maken</div>
-              <div className="text-[13px] text-on-surface-variant/50 leading-relaxed text-center max-w-[240px]">
+               <div className="font-display text-[17px] font-extrabold text-text-primary mb-1.5">Tik om foto's te maken</div>
+              <div className="text-[13px] text-text-muted leading-relaxed text-center max-w-[240px]">
                 Hoge resolutie aanbevolen voor verificatie.
               </div>
             </div>
