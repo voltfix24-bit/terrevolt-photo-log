@@ -16,7 +16,7 @@ import imageCompression from "browser-image-compression";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { generatePdfHtml } from "@/lib/pdf-generator";
-import { CategorieSettingsDialog, useVoorbeelden } from "@/components/CategorieSettings";
+import { useVoorbeelden } from "@/components/CategorieSettings";
 
 const MAX_SIZE = 10 * 1024 * 1024;
 const ACCEPTED = ["image/jpeg", "image/png", "image/heic", "image/webp"];
