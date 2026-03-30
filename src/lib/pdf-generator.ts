@@ -26,6 +26,20 @@ export function generatePdfHtml(station: Station, fotos: Foto[], branding?: PdfB
   const bedrijfsnaam = branding?.bedrijfsnaam || 'Terrevolt B.V.';
   const regio = branding?.regio || 'Liander Zuidoost';
   const logoUrl = branding?.logo_url;
+  
+  // Derive CSS colors from branding HSL values
+  const primaryHsl = branding?.primary_color || '150 100% 20%';
+  const primaryLightHsl = branding?.primary_light_color || '140 65% 66%';
+  const primaryCss = `hsl(${primaryHsl})`;
+  const primaryLightCss = `hsl(${primaryLightHsl})`;
+  // Parse primary HSL for dark/cover background variant
+  const hslParts = primaryHsl.split(/[\s,]+/);
+  const primaryHue = hslParts[0] || '150';
+  const coverBg = `hsl(${primaryHue} 100% 10%)`;
+  const arcColor = `hsla(${primaryHue}, 80%, 40%, 0.25)`;
+  const arcColor1 = `hsla(${primaryHue}, 80%, 40%, 0.3)`;
+  const arcColor2 = `hsla(${primaryHue}, 80%, 40%, 0.2)`;
+  const arcColor3 = `hsla(${primaryHue}, 80%, 40%, 0.18)`;
   const categoriesWithFotos = FOTO_CATEGORIEEN
     .map((cat) => ({
       name: cat,
