@@ -303,10 +303,10 @@ export default function StationDetail() {
             {/* Back row */}
             <div className="flex items-center justify-between mb-6">
               <button onClick={() => navigate("/")} className="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary transition-colors font-semibold">
-                <span className="material-symbols-outlined text-lg">arrow_back_ios</span> Alle stations
+                <span className="material-symbols-rounded text-lg">arrow_back_ios</span> Alle stations
               </button>
               <button onClick={() => setEditOpen(true)} className="p-2.5 bg-card border border-outline-variant/30 rounded-xl shadow-sm hover:shadow-md transition-all active:scale-95 text-on-surface-variant">
-                <span className="material-symbols-outlined text-lg">edit</span>
+                <span className="material-symbols-rounded text-lg">edit</span>
               </button>
             </div>
 
@@ -409,11 +409,11 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
         {/* Top row: back + station name + close */}
         <div className="flex items-center justify-between mb-3">
           <button onClick={onBackToList} className="flex items-center gap-1 text-on-surface-variant font-semibold text-sm active:scale-95 transition-transform min-h-[40px]">
-            <span className="material-symbols-outlined text-lg">arrow_back_ios</span>
+            <span className="material-symbols-rounded text-lg">arrow_back_ios</span>
           </button>
           <span className="font-display text-[13px] font-bold text-on-surface-variant uppercase tracking-widest">Technische oplevering</span>
           <button onClick={onBackToList} className="w-9 h-9 rounded-full bg-on-surface/8 flex items-center justify-center active:scale-90 transition-transform">
-            <span className="material-symbols-outlined text-lg text-on-surface-variant">close</span>
+            <span className="material-symbols-rounded text-lg text-on-surface-variant">close</span>
           </button>
         </div>
 
@@ -453,13 +453,13 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
         {/* Conditional warnings */}
         {isVermogensveld && (
           <div className="bg-card rounded-2xl p-3 flex gap-2.5 items-start border border-outline-variant/10">
-            <span className="material-symbols-outlined fill text-yellow-500 text-lg flex-shrink-0">warning</span>
+            <span className="material-symbols-rounded text-yellow-500 text-lg flex-shrink-0">warning</span>
             <span className="text-[12px] text-on-surface-variant leading-relaxed">Alleen fotograferen als <strong>vermogensveld aanwezig</strong> is bij dit station.</span>
           </div>
         )}
         {isDaKast && (
           <div className="bg-card rounded-2xl p-3 flex gap-2.5 items-start border border-outline-variant/10">
-            <span className="material-symbols-outlined fill text-yellow-500 text-lg flex-shrink-0">warning</span>
+            <span className="material-symbols-rounded text-yellow-500 text-lg flex-shrink-0">warning</span>
             <span className="text-[12px] text-on-surface-variant leading-relaxed">Alleen fotograferen als <strong>DA-kast aanwezig</strong> is bij dit station.</span>
           </div>
         )}
@@ -469,7 +469,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
           <>
             <button onClick={onToggleTip} className={`flex items-center gap-2 text-[13px] font-semibold transition-colors py-1 ${tipOpen ? "text-yellow-600" : "text-muted-foreground hover:text-yellow-600"}`}>
               <div className="w-8 h-8 rounded-lg bg-yellow-50 flex items-center justify-center">
-                <span className={`material-symbols-outlined ${tipOpen ? "fill" : ""} text-lg text-yellow-500`}>lightbulb</span>
+                <span className={`material-symbols-rounded ${tipOpen ? "fill" : ""} text-lg text-yellow-500`}>lightbulb</span>
               </div>
               {tipOpen ? "Verberg tip" : "Toon tip"}
             </button>
@@ -492,7 +492,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
                   : 'bg-card border-outline-variant/20 text-muted-foreground hover:text-on-surface'
               }`}
             >
-              <span className="material-symbols-outlined text-base">{showVoorbeeld ? 'image_not_supported' : 'image'}</span>
+              <span className="material-symbols-rounded text-base">{showVoorbeeld ? 'image_not_supported' : 'image'}</span>
               {showVoorbeeld ? 'Verberg voorbeeld' : 'Toon voorbeeld foto'}
             </button>
             {showVoorbeeld && (
@@ -516,7 +516,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
         {!hasPhotos && (
           <DropZone onFiles={onUpload} disabled={isUploading} onClick={() => fileRef.current?.click()}>
             <div className="w-12 h-12 rounded-xl mx-auto mb-2 flex items-center justify-center bg-primary-container/30">
-              <span className="material-symbols-outlined fill text-[26px] text-primary">add_a_photo</span>
+              <span className="material-symbols-rounded text-[26px] text-primary">add_a_photo</span>
             </div>
             <div className="font-display text-[15px] font-extrabold mb-0.5 text-foreground">Tik om foto's te maken</div>
             <div className="text-[12px] text-muted-foreground">Hoge resolutie aanbevolen.</div>
@@ -534,7 +534,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
         {hasPhotos && (
           <>
             <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-primary-container/20 border border-primary/10">
-              <span className="material-symbols-outlined fill text-lg text-primary">check_circle</span>
+              <span className="material-symbols-rounded text-lg text-primary">check_circle</span>
               <span className="text-[13px] font-bold text-primary">{fotos.length} foto{fotos.length > 1 ? "'s" : ""} geüpload</span>
             </div>
 
@@ -560,7 +560,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
                 disabled={isUploading}
                 className="aspect-square rounded-xl border-2 border-dashed border-outline-variant/40 bg-card flex flex-col items-center justify-center gap-1 text-muted-foreground hover:border-primary/40 hover:text-primary active:scale-95 transition-all"
               >
-                <span className="material-symbols-outlined text-2xl">add_photo_alternate</span>
+                <span className="material-symbols-rounded text-2xl">add_photo_alternate</span>
                 <span className="text-[10px] font-bold">Meer</span>
               </button>
             </div>
@@ -578,7 +578,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
             disabled={step === 0}
             className="flex items-center justify-center gap-1.5 min-h-[50px] px-5 rounded-2xl font-display text-[15px] font-bold text-primary active:scale-[0.97] transition-transform disabled:opacity-30"
           >
-            <span className="material-symbols-outlined text-lg">arrow_back</span>Vorige
+            <span className="material-symbols-rounded text-lg">arrow_back</span>Vorige
           </button>
           <button
             onClick={() => { onSkip(); toast("Overgeslagen"); }}
@@ -590,7 +590,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
             onClick={onNext}
             className="flex-1 min-h-[50px] bg-gradient-to-r from-primary to-primary-light text-primary-foreground rounded-2xl font-display text-[16px] font-bold shadow-lg shadow-primary/25 active:scale-[0.97] transition-transform flex items-center justify-center gap-1.5"
           >
-            {step === total - 1 ? "Afronden" : "Volgende"}<span className="material-symbols-outlined text-lg">arrow_forward</span>
+            {step === total - 1 ? "Afronden" : "Volgende"}<span className="material-symbols-rounded text-lg">arrow_forward</span>
           </button>
         </div>
       </div>
@@ -620,7 +620,7 @@ function CompletionScreen({ filledCount, total, stationName, fotos, onReset, onB
     <div className="max-w-lg mx-auto flex flex-col items-center py-6 animate-pop min-h-[calc(100dvh-120px)]">
       {/* Big checkmark circle */}
       <div className="w-28 h-28 bg-gradient-to-br from-primary to-primary-light rounded-full flex items-center justify-center mb-5 shadow-xl shadow-primary/30">
-        <span className="material-symbols-outlined fill text-primary-foreground text-[56px]">task_alt</span>
+        <span className="material-symbols-rounded text-primary-foreground text-[56px]">task_alt</span>
       </div>
 
       <div className="text-[11px] font-display font-extrabold uppercase tracking-[0.18em] text-muted-foreground mb-1">Aanvraag voltooid</div>
@@ -651,13 +651,13 @@ function CompletionScreen({ filledCount, total, stationName, fotos, onReset, onB
       <div className="w-full bg-card rounded-3xl p-5 shadow-sm border border-outline-variant/10 mb-5">
         <div className="flex items-center justify-center gap-3 mb-3">
           <div className="w-12 h-12 rounded-2xl bg-yellow-100 flex items-center justify-center">
-            <span className="material-symbols-outlined fill text-yellow-600 text-2xl">description</span>
+            <span className="material-symbols-rounded text-yellow-600 text-2xl">description</span>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-primary-container/40 flex items-center justify-center">
-            <span className="material-symbols-outlined fill text-primary text-2xl">photo_library</span>
+            <span className="material-symbols-rounded text-primary text-2xl">photo_library</span>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-surface-container flex items-center justify-center">
-            <span className="material-symbols-outlined fill text-muted-foreground text-2xl">verified</span>
+            <span className="material-symbols-rounded text-muted-foreground text-2xl">verified</span>
           </div>
         </div>
         <div className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground text-center">
@@ -668,18 +668,18 @@ function CompletionScreen({ filledCount, total, stationName, fotos, onReset, onB
       {/* Action buttons */}
       <div className="flex flex-col gap-2.5 w-full">
         <button onClick={onPdf} className="w-full min-h-[56px] bg-gradient-to-r from-primary to-primary-light text-primary-foreground rounded-2xl font-display text-[16px] font-bold shadow-lg shadow-primary/25 active:scale-[0.97] transition-transform flex items-center justify-center gap-2.5">
-          <span className="material-symbols-outlined fill text-xl">picture_as_pdf</span>PDF downloaden
+          <span className="material-symbols-rounded text-xl">picture_as_pdf</span>PDF downloaden
         </button>
         <button
           onClick={handleZip}
           disabled={zipProgress !== null || fotos.length === 0}
           className="w-full min-h-[52px] bg-card border border-outline-variant/15 rounded-2xl font-display text-[15px] font-bold text-foreground shadow-sm active:scale-[0.97] transition-transform flex items-center justify-center gap-2.5 disabled:opacity-50"
         >
-          <span className="material-symbols-outlined text-xl">folder_zip</span>
+          <span className="material-symbols-rounded text-xl">folder_zip</span>
           {zipProgress !== null ? `Downloaden… ${zipProgress}%` : "Foto's als ZIP"}
         </button>
         <button onClick={onBack} className="w-full flex items-center justify-center gap-2 py-4 font-display text-[14px] font-bold text-primary active:scale-[0.97] transition-transform">
-          <span className="material-symbols-outlined text-lg">arrow_back</span>Terug naar overzicht
+          <span className="material-symbols-rounded text-lg">arrow_back</span>Terug naar overzicht
         </button>
       </div>
 
@@ -717,13 +717,13 @@ function CategoryCard({ category, fotos, icon, isUploading, uploadProgress, onUp
       }`}>
         {filled ? (
           <>
-            <span className="material-symbols-outlined fill text-primary text-3xl">{icon}</span>
+            <span className="material-symbols-rounded text-primary text-3xl">{icon}</span>
             <div className="absolute top-1.5 right-1.5 w-6 h-6 bg-gradient-to-br from-primary to-primary-light rounded-full flex items-center justify-center shadow-sm">
-              <span className="material-symbols-outlined fill text-primary-foreground text-xs">check</span>
+              <span className="material-symbols-rounded text-primary-foreground text-xs">check</span>
             </div>
           </>
         ) : (
-          <span className="material-symbols-outlined text-on-surface-variant/30 text-3xl">photo_camera</span>
+          <span className="material-symbols-rounded text-on-surface-variant/30 text-3xl">photo_camera</span>
         )}
 
         {/* Thumbnail overlay on hover for filled cards */}
@@ -760,7 +760,7 @@ function CategoryCard({ category, fotos, icon, isUploading, uploadProgress, onUp
         onChange={(e) => { if (e.target.files) onUpload(e.target.files); e.target.value = ""; }} />
 
       <DropZone onFiles={onUpload} disabled={isUploading} onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }} compact>
-        <span className="material-symbols-outlined text-sm">photo_camera</span>
+        <span className="material-symbols-rounded text-sm">photo_camera</span>
         {isUploading ? "Uploaden..." : "Toevoegen"}
       </DropZone>
     </div>

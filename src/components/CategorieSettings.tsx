@@ -90,12 +90,12 @@ export function CategorieSettingsDialog({ open, onOpenChange }: { open: boolean;
       <DialogContent className="max-w-lg max-h-[90vh] flex flex-col p-0 gap-0">
         <DialogHeader className="p-5 pb-3 border-b border-outline-variant/20">
           <DialogTitle className="text-lg font-black text-on-surface flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary">settings</span>
+            <span className="material-symbols-rounded text-primary">settings</span>
             Categorieën beheren
           </DialogTitle>
           <p className="text-xs text-muted-foreground mt-1">Voeg voorbeeld foto's toe per categorie zodat monteurs weten wat ze moeten fotograferen.</p>
           <div className="relative mt-3">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-lg">search</span>
+            <span className="material-symbols-rounded absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-lg">search</span>
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -132,7 +132,7 @@ export function CategorieSettingsDialog({ open, onOpenChange }: { open: boolean;
                     disabled={isUploading}
                     className="flex-shrink-0 flex items-center gap-1 text-xs font-semibold text-primary bg-primary-container/30 px-3 py-1.5 rounded-xl hover:bg-primary-container/50 active:scale-95 transition-all disabled:opacity-50"
                   >
-                    <span className="material-symbols-outlined text-sm">add_photo_alternate</span>
+                    <span className="material-symbols-rounded text-sm">add_photo_alternate</span>
                     {isUploading ? "Uploaden..." : "Voorbeeld"}
                   </button>
                 </div>
