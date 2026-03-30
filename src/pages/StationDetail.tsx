@@ -472,7 +472,7 @@ export default function StationDetail() {
 
                     {/* Divider */}
                     {openCats.length > 0 && (doneCats.length > 0 || skippedCats.length > 0) && (
-                      <div className="mx-4 my-1 h-px bg-outline-variant/15" />
+                      <div className="mx-4 my-1 h-px bg-outline-variant/20" />
                     )}
 
                     {/* Done items */}
