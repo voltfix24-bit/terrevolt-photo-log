@@ -195,24 +195,6 @@ export default function Dashboard() {
                   {/* Expanded action panel */}
                   {isExpanded && (
                     <div className="bg-card rounded-b-[28px] px-6 pb-6 pt-2 shadow-xl shadow-on-surface/[0.06] animate-fade-up border-t border-outline-variant/5">
-                      {/* Meta chips */}
-                      <div className="flex flex-wrap items-center gap-2 mb-5">
-                        {station.datum && (
-                          <span className="inline-flex items-center gap-1 bg-surface-low rounded-full px-3 py-1.5 text-[11px] font-semibold text-on-surface-variant/60">
-                            <span className="material-symbols-rounded text-[13px]">calendar_today</span>
-                            {station.datum}
-                          </span>
-                        )}
-                        <span className="inline-flex items-center gap-1 bg-surface-low rounded-full px-3 py-1.5 text-[11px] font-semibold text-on-surface-variant/60">
-                          <span className="material-symbols-rounded text-[13px]">photo_library</span>
-                          {totalFotos} foto's
-                        </span>
-                        <span className="inline-flex items-center gap-1 bg-surface-low rounded-full px-3 py-1.5 text-[11px] font-semibold text-on-surface-variant/60">
-                          <span className="material-symbols-rounded text-[13px]">category</span>
-                          {cats}/{FOTO_CATEGORIEEN.length}
-                        </span>
-                      </div>
-
                       {/* Action buttons */}
                       <div className="flex gap-2.5">
                         <button
