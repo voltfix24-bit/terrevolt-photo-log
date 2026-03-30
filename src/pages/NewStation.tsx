@@ -50,7 +50,7 @@ export default function NewStation() {
       <main className="pt-6 pb-8 px-5 max-w-lg mx-auto animate-fade-up">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <h2 className="text-xl font-extrabold text-on-surface font-display tracking-tight">Nieuw station</h2>
+          <h2 className="text-xl font-extrabold text-text-primary font-display tracking-tight">Nieuw station</h2>
           <button
             onClick={() => navigate("/")}
             className="w-10 h-10 rounded-full bg-on-surface/10 flex items-center justify-center hover:bg-on-surface/20 transition-colors"
