@@ -96,10 +96,10 @@ function DropZone({ onFiles, disabled, onClick, compact, children }: {
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`rounded-[20px] py-8 px-5 text-center cursor-pointer border-2 transition-all mb-3 active:scale-[0.99] w-full ${
+      className={`rounded-3xl py-10 px-6 text-center cursor-pointer border-2 transition-all active:scale-[0.99] w-full ${
         dragging
-          ? "border-primary bg-primary/10 scale-[1.01]"
-          : "border-dashed border-[#bccab9] bg-[#f9fbf9] hover:border-primary/50 hover:bg-primary/5"
+          ? "border-primary bg-primary/8 scale-[1.01]"
+          : "border-dashed border-on-surface/10 bg-card/50 hover:border-primary/30 hover:bg-primary/4"
       }`}
     >
       {children}
@@ -403,102 +403,105 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
   }, [onNext, onPrev, step]);
 
   return (
-    <div className="flex flex-col" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{ minHeight: "calc(100dvh - 80px)" }}>
-      {/* ── Sticky header — Saudia style ── */}
-      <div className="sticky top-14 z-30 bg-surface backdrop-blur-xl -mx-4 px-5 pt-3 pb-4 md:rounded-2xl md:mx-0 md:border md:border-outline-variant/20 md:bg-card md:backdrop-blur-none md:mb-4">
-        {/* Top row: back + station name + close */}
-        <div className="flex items-center justify-between mb-3">
-          <button onClick={onBackToList} className="flex items-center gap-1 text-on-surface-variant font-semibold text-sm active:scale-95 transition-transform min-h-[40px]">
-            <span className="material-symbols-rounded text-lg">arrow_back_ios</span>
-          </button>
-          <span className="font-display text-[13px] font-bold text-on-surface-variant uppercase tracking-widest">Technische oplevering</span>
-          <button onClick={onBackToList} className="w-9 h-9 rounded-full bg-on-surface/8 flex items-center justify-center active:scale-90 transition-transform">
-            <span className="material-symbols-rounded text-lg text-on-surface-variant">close</span>
-          </button>
+    <div className="flex flex-col" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{ minHeight: "calc(100dvh - 56px)" }}>
+
+      {/* ── Premium sticky header ── */}
+      <div className="sticky top-14 z-30 bg-surface -mx-4 px-6 pt-5 pb-5">
+        {/* Back affordance */}
+        <button onClick={onBackToList} className="flex items-center gap-1 text-on-surface-variant/60 text-[13px] font-medium mb-5 active:scale-95 transition-transform">
+          <span className="material-symbols-rounded text-[18px]">arrow_back_ios</span>
+          <span>Terug</span>
+        </button>
+
+        {/* Section label */}
+        <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/50 mb-2">
+          Technische oplevering
         </div>
 
-        {/* Category name + large counter */}
-        <div className="flex items-end justify-between mb-3">
-          <h3 className="font-display text-[26px] font-extrabold tracking-tight leading-[1.1] text-primary max-w-[65%]">{category.name}</h3>
-          <div className="text-right flex items-baseline gap-0.5">
-            <span className="font-display text-[28px] font-extrabold text-on-surface">{step + 1}</span>
-            <span className="font-display text-[16px] text-on-surface-variant font-medium">/{total}</span>
+        {/* Title + counter row */}
+        <div className="flex items-end justify-between mb-5">
+          <h2 className="font-display text-[30px] font-extrabold tracking-tight leading-[1.05] text-primary max-w-[68%]">
+            {category.name}
+          </h2>
+          <div className="flex items-baseline gap-0.5 pb-0.5">
+            <span className="font-display text-[32px] font-extrabold text-on-surface leading-none">{step + 1}</span>
+            <span className="font-display text-[16px] font-medium text-on-surface-variant/40">/{total}</span>
           </div>
         </div>
 
-        {/* Progress bar with bolt */}
-        <div className="relative">
-          <div className="h-2 bg-on-surface/8 rounded-full overflow-hidden">
-            <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${progressPct}%` }} />
-          </div>
+        {/* Elegant thin progress bar */}
+        <div className="h-[3px] bg-on-surface/6 rounded-full overflow-hidden">
           <div
-            className="absolute -top-1.5 w-5 h-5 rounded-full bg-primary flex items-center justify-center transition-all duration-500"
-            style={{ left: `calc(${Math.max(progressPct, 3)}% - 10px)` }}
-          >
-            <span className="material-symbols-rounded text-primary-foreground text-[12px]">bolt</span>
-          </div>
+            className="h-full rounded-full bg-primary transition-all duration-700 ease-out"
+            style={{ width: `${progressPct}%` }}
+          />
         </div>
       </div>
 
       {/* ── Content area ── */}
-      <div className="flex-1 py-3 space-y-3 pb-[80px]">
-        {/* Instruction card — lightbulb style */}
-        <div className="bg-primary-container/10 rounded-2xl p-4 border border-primary/8">
-          <div className="flex gap-3 items-start">
-            <span className="material-symbols-rounded text-xl text-primary flex-shrink-0 mt-0.5">info</span>
-            <p className="text-[13px] leading-relaxed text-on-surface-variant">{category.instruction}</p>
+      <div className="flex-1 px-2 pt-5 pb-[100px] space-y-5">
+
+        {/* Instruction card — premium guidance */}
+        <div className="bg-primary-container/8 rounded-3xl px-6 py-5 border border-primary/5">
+          <div className="flex gap-4 items-start">
+            <div className="w-9 h-9 rounded-2xl bg-primary/8 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <span className="material-symbols-rounded text-primary text-[20px]">info</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[14px] leading-[1.7] text-on-surface-variant">{category.instruction}</p>
+              {/* Integrated tip */}
+              {category.tip && (
+                <>
+                  <button
+                    onClick={onToggleTip}
+                    className="mt-3 text-[12px] font-semibold text-primary/60 hover:text-primary transition-colors flex items-center gap-1"
+                  >
+                    <span className="material-symbols-rounded text-[14px]">{tipOpen ? 'expand_less' : 'expand_more'}</span>
+                    {tipOpen ? 'Verberg tip' : 'Bekijk tip'}
+                  </button>
+                  {tipOpen && (
+                    <p className="mt-2 text-[13px] leading-[1.65] text-on-surface-variant/70 border-t border-primary/5 pt-3">
+                      {category.tip}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Conditional warnings */}
         {isVermogensveld && (
-          <div className="bg-card rounded-2xl p-3 flex gap-2.5 items-start border border-outline-variant/10">
-            <span className="material-symbols-rounded text-amber-500 text-lg flex-shrink-0">warning</span>
-            <span className="text-[12px] text-on-surface-variant leading-relaxed">Alleen fotograferen als <strong>vermogensveld aanwezig</strong> is bij dit station.</span>
+          <div className="rounded-2xl px-5 py-4 flex gap-3 items-start bg-amber-50/60 border border-amber-200/30">
+            <span className="material-symbols-rounded text-amber-500/70 text-[20px] flex-shrink-0 mt-0.5">error</span>
+            <span className="text-[13px] text-on-surface-variant leading-relaxed">Alleen fotograferen als <strong>vermogensveld aanwezig</strong> is bij dit station.</span>
           </div>
         )}
         {isDaKast && (
-          <div className="bg-card rounded-2xl p-3 flex gap-2.5 items-start border border-outline-variant/10">
-            <span className="material-symbols-rounded text-amber-500 text-lg flex-shrink-0">warning</span>
-            <span className="text-[12px] text-on-surface-variant leading-relaxed">Alleen fotograferen als <strong>DA-kast aanwezig</strong> is bij dit station.</span>
+          <div className="rounded-2xl px-5 py-4 flex gap-3 items-start bg-amber-50/60 border border-amber-200/30">
+            <span className="material-symbols-rounded text-amber-500/70 text-[20px] flex-shrink-0 mt-0.5">error</span>
+            <span className="text-[13px] text-on-surface-variant leading-relaxed">Alleen fotograferen als <strong>DA-kast aanwezig</strong> is bij dit station.</span>
           </div>
         )}
 
-        {/* Tip toggle */}
-        {category.tip && (
-          <>
-            <button onClick={onToggleTip} className={`flex items-center gap-2 text-[13px] font-semibold transition-colors py-1 ${tipOpen ? "text-amber-600" : "text-muted-foreground hover:text-amber-600"}`}>
-              <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
-                <span className="material-symbols-rounded text-lg text-amber-500">lightbulb</span>
-              </div>
-              {tipOpen ? "Verberg tip" : "Toon tip"}
-            </button>
-            {tipOpen && (
-              <div className="bg-card rounded-2xl p-3 text-[12px] leading-relaxed text-on-surface-variant border border-outline-variant/10">
-                {category.tip}
-              </div>
-            )}
-          </>
-        )}
-
-        {/* Example photos */}
+        {/* Example photos — compact pill */}
         {voorbeelden.length > 0 && (
           <div>
             <button
               onClick={() => setShowVoorbeeld(!showVoorbeeld)}
-              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-full border text-[13px] font-semibold transition-all active:scale-95 ${
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-[12px] font-semibold transition-all active:scale-95 ${
                 showVoorbeeld
-                  ? 'bg-primary/8 border-primary/30 text-primary'
-                  : 'bg-card border-outline-variant/20 text-muted-foreground hover:text-on-surface'
+                  ? 'bg-primary/8 text-primary'
+                  : 'bg-on-surface/4 text-on-surface-variant/60 hover:text-on-surface-variant'
               }`}
             >
-              <span className="material-symbols-rounded text-base">{showVoorbeeld ? 'image_not_supported' : 'image'}</span>
-              {showVoorbeeld ? 'Verberg voorbeeld' : 'Toon voorbeeld foto'}
+              <span className="material-symbols-rounded text-[16px]">{showVoorbeeld ? 'visibility_off' : 'visibility'}</span>
+              {showVoorbeeld ? 'Verberg voorbeeld' : 'Voorbeeld bekijken'}
             </button>
             {showVoorbeeld && (
-              <div className="flex gap-2.5 overflow-x-auto pb-2 mt-2 -mx-1 px-1 snap-x snap-mandatory">
+              <div className="flex gap-2.5 overflow-x-auto pb-2 mt-3 -mx-1 px-1 snap-x snap-mandatory">
                 {voorbeelden.map((v, i) => (
-                  <button key={v.id} onClick={() => setVoorbeeldLightbox(i)} className="flex-shrink-0 snap-start w-28 h-28 rounded-2xl overflow-hidden border border-outline-variant/15 shadow-sm active:scale-95 transition-transform">
+                  <button key={v.id} onClick={() => setVoorbeeldLightbox(i)} className="flex-shrink-0 snap-start w-28 h-28 rounded-2xl overflow-hidden border border-outline-variant/10 active:scale-95 transition-transform">
                     <img src={v.url} alt="Voorbeeld" className="w-full h-full object-cover" />
                   </button>
                 ))}
@@ -508,24 +511,28 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
           </div>
         )}
 
-        {/* ── UPLOAD / PHOTOS ── */}
+        {/* ── Hidden file input ── */}
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/heic,image/webp" multiple className="hidden"
           onChange={(e) => { if (e.target.files) onUpload(e.target.files); e.target.value = ""; }} />
 
-        {/* Upload zone — compact */}
+        {/* ── Upload zone — premium empty state ── */}
         {!hasPhotos && (
           <DropZone onFiles={onUpload} disabled={isUploading} onClick={() => fileRef.current?.click()}>
-            <div className="w-12 h-12 rounded-xl mx-auto mb-2 flex items-center justify-center bg-primary-container/30">
-              <span className="material-symbols-rounded text-[26px] text-primary">add_a_photo</span>
+            <div className="flex flex-col items-center justify-center py-6">
+              <div className="w-16 h-16 rounded-full bg-primary/6 flex items-center justify-center mb-5">
+                <span className="material-symbols-rounded text-[32px] text-primary/70">photo_camera</span>
+              </div>
+              <div className="font-display text-[17px] font-extrabold text-on-surface mb-1.5">Tik om foto's te maken</div>
+              <div className="text-[13px] text-on-surface-variant/50 leading-relaxed text-center max-w-[240px]">
+                Hoge resolutie aanbevolen voor verificatie.
+              </div>
             </div>
-            <div className="font-display text-[15px] font-extrabold mb-0.5 text-foreground">Tik om foto's te maken</div>
-            <div className="text-[12px] text-muted-foreground">Hoge resolutie aanbevolen.</div>
           </DropZone>
         )}
 
         {/* Upload progress */}
         {isUploading && uploadProgress !== undefined && (
-          <div className="h-2 overflow-hidden rounded-full bg-surface-container">
+          <div className="h-[3px] overflow-hidden rounded-full bg-on-surface/6">
             <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${uploadProgress}%` }} />
           </div>
         )}
@@ -533,20 +540,22 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
         {/* Status badge + photo grid */}
         {hasPhotos && (
           <>
-            <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-primary-container/20 border border-primary/10">
-              <span className="material-symbols-rounded text-lg text-primary">check_circle</span>
-              <span className="text-[13px] font-bold text-primary">{fotos.length} foto{fotos.length > 1 ? "'s" : ""} geüpload</span>
+            <div className="flex items-center gap-2.5 px-5 py-3 rounded-2xl bg-primary/5">
+              <span className="material-symbols-rounded text-[18px] text-primary/70">check_circle</span>
+              <span className="text-[13px] font-semibold text-primary/80">{fotos.length} foto{fotos.length > 1 ? "'s" : ""} geüpload</span>
             </div>
 
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-3 gap-2">
               {fotos.map((foto, i) => (
-                <div key={foto.id} className="relative aspect-square rounded-xl bg-surface-container overflow-hidden">
+                <div key={foto.id} className="relative aspect-square rounded-2xl bg-surface-container overflow-hidden">
                   <button onClick={() => onClickThumb(i)} className="w-full h-full">
                     <img src={foto.url} alt="" className="w-full h-full object-cover" />
                   </button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <button className="absolute top-1 right-1 w-5 h-5 bg-red-500/90 rounded-full text-white text-[11px] flex items-center justify-center border-[1.5px] border-white active:scale-90 transition-transform">×</button>
+                      <button className="absolute top-1.5 right-1.5 w-6 h-6 bg-on-surface/60 backdrop-blur-sm rounded-full text-white flex items-center justify-center active:scale-90 transition-transform">
+                        <span className="material-symbols-rounded text-[14px]">close</span>
+                      </button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader><AlertDialogTitle>Foto verwijderen?</AlertDialogTitle><AlertDialogDescription>Deze actie kan niet ongedaan worden gemaakt.</AlertDialogDescription></AlertDialogHeader>
@@ -558,39 +567,44 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
               <button
                 onClick={() => fileRef.current?.click()}
                 disabled={isUploading}
-                className="aspect-square rounded-xl border-2 border-dashed border-outline-variant/40 bg-card flex flex-col items-center justify-center gap-1 text-muted-foreground hover:border-primary/40 hover:text-primary active:scale-95 transition-all"
+                className="aspect-square rounded-2xl border-2 border-dashed border-on-surface/10 bg-transparent flex flex-col items-center justify-center gap-1.5 text-on-surface-variant/40 hover:border-primary/30 hover:text-primary/60 active:scale-95 transition-all"
               >
-                <span className="material-symbols-rounded text-2xl">add_photo_alternate</span>
-                <span className="text-[10px] font-bold">Meer</span>
+                <span className="material-symbols-rounded text-[24px]">add</span>
+                <span className="text-[10px] font-semibold">Meer</span>
               </button>
             </div>
           </>
         )}
-
-        {/* Removed verbose "Document details" card to reduce scrolling */}
       </div>
 
-      {/* ── FIXED BOTTOM NAV — 3 buttons like Saudia ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-[60] bg-primary-container/15 backdrop-blur-xl border-t border-outline-variant/10 p-3 pb-[max(16px,env(safe-area-inset-bottom))]">
-        <div className="flex gap-2 max-w-lg mx-auto">
+      {/* ── Premium bottom action bar ── */}
+      <div className="fixed bottom-0 left-0 right-0 z-[60] bg-surface/90 backdrop-blur-2xl border-t border-on-surface/5 px-5 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
+        <div className="flex items-center gap-3 max-w-lg mx-auto">
+          {/* Vorige */}
           <button
             onClick={onPrev}
             disabled={step === 0}
-            className="flex items-center justify-center gap-1.5 min-h-[50px] px-5 rounded-2xl font-display text-[15px] font-bold text-primary active:scale-[0.97] transition-transform disabled:opacity-30"
+            className="min-h-[48px] px-4 flex items-center gap-1.5 font-display text-[14px] font-semibold text-on-surface-variant/60 active:scale-[0.97] transition-all disabled:opacity-20"
           >
-            <span className="material-symbols-rounded text-lg">arrow_back</span>Vorige
+            <span className="material-symbols-rounded text-[18px]">chevron_left</span>
+            Vorige
           </button>
+
+          {/* NVT */}
           <button
             onClick={() => { onSkip(); toast("Overgeslagen"); }}
-            className="min-h-[50px] px-4 font-display text-[13px] font-semibold text-muted-foreground active:scale-[0.97] transition-transform"
+            className="min-h-[48px] px-3 font-display text-[12px] font-semibold text-on-surface-variant/40 uppercase tracking-wider active:scale-[0.97] transition-all"
           >
             NVT
           </button>
+
+          {/* Volgende — primary CTA */}
           <button
             onClick={onNext}
-            className="flex-1 min-h-[50px] bg-gradient-to-r from-primary to-primary-light text-primary-foreground rounded-2xl font-display text-[16px] font-bold shadow-lg shadow-primary/25 active:scale-[0.97] transition-transform flex items-center justify-center gap-1.5"
+            className="flex-1 min-h-[48px] bg-primary text-primary-foreground rounded-2xl font-display text-[15px] font-bold active:scale-[0.97] transition-all flex items-center justify-center gap-1.5"
           >
-            {step === total - 1 ? "Afronden" : "Volgende"}<span className="material-symbols-rounded text-lg">arrow_forward</span>
+            {step === total - 1 ? "Afronden" : "Volgende"}
+            <span className="material-symbols-rounded text-[18px]">chevron_right</span>
           </button>
         </div>
       </div>
