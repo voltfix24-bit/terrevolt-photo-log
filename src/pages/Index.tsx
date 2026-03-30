@@ -155,9 +155,9 @@ export default function Dashboard() {
                       {/* Top row: type label + completion badge */}
                       <div className="flex items-center justify-between mb-4">
                         <div className="inline-flex items-center gap-1.5 bg-accent-gold/[0.07] rounded-full px-3.5 py-1.5">
-                          <span className="material-symbols-rounded text-accent-gold text-[13px]">bolt</span>
+                          <span className="material-symbols-rounded text-accent-gold text-[13px]">person</span>
                           <span className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-accent-gold font-display">
-                            {station.type_ruimte || "Station"}
+                            {station.ingevuld_door || "Monteur"}
                           </span>
                         </div>
                         {complete && (
