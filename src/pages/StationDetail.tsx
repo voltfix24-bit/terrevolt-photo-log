@@ -517,7 +517,11 @@ export default function StationDetail() {
           <button
             onClick={() => {
               setOpenSections(prev => prev.includes(nextIncomplete.section) ? prev : [...prev, nextIncomplete.section]);
-              setOpenCategory(nextIncomplete);
+              setHighlightCatId(nextIncomplete.id);
+              setTimeout(() => {
+                setHighlightCatId(null);
+                setOpenCategory(nextIncomplete);
+              }, 300);
             }}
             className="w-full max-w-3xl mx-auto min-h-[52px] bg-gradient-to-r from-primary to-primary-light text-primary-foreground rounded-2xl font-display font-bold text-[15px] shadow-lg shadow-primary/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
           >
