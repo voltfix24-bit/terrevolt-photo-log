@@ -527,7 +527,7 @@ export default function StationDetail() {
             className="w-full max-w-3xl mx-auto min-h-[52px] bg-gradient-to-r from-primary to-primary-light text-primary-foreground rounded-2xl font-display font-bold text-[15px] shadow-lg shadow-primary/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
           >
             <span className="material-symbols-rounded text-[20px]">arrow_forward</span>
-            Doorgaan: {nextIncomplete.name}
+            Doorgaan: <span className="truncate max-w-[220px]">{nextIncomplete.name}</span>
           </button>
         </div>
       )}
