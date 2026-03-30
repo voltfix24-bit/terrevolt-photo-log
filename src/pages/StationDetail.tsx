@@ -112,7 +112,7 @@ function CategoryRow({ cat, fotos, isLast, isSkipped, onOpen, highlight }: {
       data-cat-id={cat.id}
       onClick={onOpen}
       className={`w-full flex items-center gap-3 px-4 py-4 min-h-[56px] text-left active:bg-surface-low transition-colors duration-300 ${
-        !isLast ? 'border-b border-outline-variant/[0.08]' : ''
+        !isLast ? 'border-b border-outline-variant/15' : ''
       } ${highlight ? 'bg-primary/10' : ''}`}
     >
       <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
@@ -472,7 +472,7 @@ export default function StationDetail() {
 
                     {/* Divider */}
                     {openCats.length > 0 && (doneCats.length > 0 || skippedCats.length > 0) && (
-                      <div className="mx-4 my-1 h-px bg-outline-variant/15" />
+                      <div className="mx-4 my-1 h-px bg-outline-variant/20" />
                     )}
 
                     {/* Done items */}
