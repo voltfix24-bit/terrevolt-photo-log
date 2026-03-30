@@ -13,7 +13,7 @@ export default function AppHeader() {
   return (
     <>
       {/* Top header — Saudia style: hamburger + brand + avatar */}
-      <header className="fixed top-0 w-full z-50 bg-primary-container/20 backdrop-blur-md border-b border-outline-variant/8">
+      <header className="fixed top-0 w-full z-50 bg-surface-white/80 backdrop-blur-md border-b border-outline-variant/8">
         <div className="flex justify-between items-center px-5 h-14 max-w-7xl mx-auto">
           <div className="flex items-center gap-3">
             <button className="w-9 h-9 flex items-center justify-center text-on-surface-variant md:hidden">
