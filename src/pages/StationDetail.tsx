@@ -116,10 +116,37 @@ export default function StationDetail() {
   const [lightboxSlides, setLightboxSlides] = useState<{ src: string }[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [editOpen, setEditOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<"overzicht" | "invullen">("overzicht");
-  const [currentStep, setCurrentStep] = useState(0);
+  // Persist invullen progress in localStorage
+  const storageKey = `to-fotos-progress-${id}`;
+  const savedProgress = (() => {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (raw) return JSON.parse(raw) as { step: number; mode: "overzicht" | "invullen" };
+    } catch { /* ignore */ }
+    return null;
+  })();
+
+  const [viewMode, setViewModeRaw] = useState<"overzicht" | "invullen">(savedProgress?.mode || "overzicht");
+  const [currentStep, setCurrentStepRaw] = useState(savedProgress?.step || 0);
   const [tipOpen, setTipOpen] = useState<Record<number, boolean>>({});
   const [completed, setCompleted] = useState(false);
+
+  const persistProgress = useCallback((step: number, mode: "overzicht" | "invullen") => {
+    try { localStorage.setItem(storageKey, JSON.stringify({ step, mode })); } catch { /* ignore */ }
+  }, [storageKey]);
+
+  const setViewMode = useCallback((mode: "overzicht" | "invullen") => {
+    setViewModeRaw(mode);
+    persistProgress(currentStep, mode);
+  }, [currentStep, persistProgress]);
+
+  const setCurrentStep = useCallback((step: number | ((prev: number) => number)) => {
+    setCurrentStepRaw(prev => {
+      const next = typeof step === "function" ? step(prev) : step;
+      persistProgress(next, viewMode);
+      return next;
+    });
+  }, [viewMode, persistProgress]);
 
   const { data: station, isLoading } = useQuery({
     queryKey: ["station", id],
