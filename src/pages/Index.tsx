@@ -59,7 +59,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-app-background pb-28 md:pb-8">
+    <div className="min-h-screen bg-background pb-28 md:pb-8">
 
       {/* ── Branded hero canvas ── */}
       <div className="relative overflow-hidden bg-gradient-to-b from-primary/[0.09] via-primary/[0.04] to-transparent pt-[88px] pb-10 px-6">

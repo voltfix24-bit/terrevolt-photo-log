@@ -242,7 +242,7 @@ export default function StationDetail() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-app-background pt-24 px-6 max-w-7xl mx-auto">
+      <div className="min-h-screen bg-background pt-24 px-6 max-w-7xl mx-auto">
         <Skeleton className="h-40 w-full rounded-3xl mb-6" />
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
@@ -254,13 +254,13 @@ export default function StationDetail() {
   }
 
   if (!station) {
-    return <div className="flex min-h-screen items-center justify-center bg-app-background text-text-primary">Station niet gevonden</div>;
+    return <div className="flex min-h-screen items-center justify-center bg-background text-text-primary">Station niet gevonden</div>;
   }
 
   const isCS = station.type_ruimte === "Compact Station";
 
   return (
-    <div className="min-h-screen bg-app-background pb-28 md:pb-8" style={viewMode === "invullen" && !completed ? { height: "100dvh", overflow: "hidden" } : undefined}>
+    <div className="min-h-screen bg-background pb-28 md:pb-8" style={viewMode === "invullen" && !completed ? { height: "100dvh", overflow: "hidden" } : undefined}>
       <Lightbox open={lightboxOpen} close={() => setLightboxOpen(false)} slides={lightboxSlides} index={lightboxIndex} />
       <EditStationDialog station={station} open={editOpen} onOpenChange={setEditOpen} onSaved={() => { queryClient.invalidateQueries({ queryKey: ["station", id] }); queryClient.invalidateQueries({ queryKey: ["stations"] }); }} />
       
