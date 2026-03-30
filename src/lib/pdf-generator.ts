@@ -335,7 +335,7 @@ body {
   width: 500px; height: 500px;
   top: -70px; right: -150px;
   border-width: 3px;
-  border-color: rgba(28,176,80,0.2);
+  border-color: ${arcColor2};
 }
 .deco-arc-3 {
   width: 450px; height: 450px;
