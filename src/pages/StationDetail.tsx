@@ -264,6 +264,7 @@ export default function StationDetail() {
     <div className="min-h-screen bg-background pb-28 md:pb-8">
       <Lightbox open={lightboxOpen} close={() => setLightboxOpen(false)} slides={lightboxSlides} index={lightboxIndex} />
       <EditStationDialog station={station} open={editOpen} onOpenChange={setEditOpen} onSaved={() => { queryClient.invalidateQueries({ queryKey: ["station", id] }); queryClient.invalidateQueries({ queryKey: ["stations"] }); }} />
+      <CategorieSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
 
       <main className="pt-20 pb-0 px-4 max-w-7xl mx-auto animate-fade-up">
         {viewMode === "invullen" && !completed ? (
@@ -286,6 +287,8 @@ export default function StationDetail() {
             onBackToList={() => navigate("/")}
             filledCount={filledCount}
             totalCategories={FOTO_CATEGORIEEN.length}
+            voorbeelden={voorbeelden?.filter(v => v.categorie === CATEGORIES[currentStep].name) ?? []}
+            onOpenSettings={() => setSettingsOpen(true)}
           />
         ) : completed ? (
           <CompletionScreen
