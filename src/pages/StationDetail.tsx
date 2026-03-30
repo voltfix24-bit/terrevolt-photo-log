@@ -442,7 +442,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
       <div className="flex-1 flex flex-col px-2 pt-3 pb-20 gap-3 overflow-y-auto min-h-0 scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
 
         {/* Instruction — collapsed by default, expandable */}
-        <div className="bg-primary-container/8 rounded-3xl border border-primary/5">
+        <div className="bg-primary/[0.04] rounded-3xl border border-primary/10">
           <button
             onClick={onToggleTip}
             className="w-full flex items-center gap-3 px-5 py-4 text-left active:scale-[0.99] transition-transform"
