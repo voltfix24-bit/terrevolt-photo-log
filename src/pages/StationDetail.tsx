@@ -724,7 +724,7 @@ function CategoryCard({ category, fotos, icon, isUploading, uploadProgress, onUp
   const filled = fotos.length > 0;
 
   return (
-    <div className="group bg-surface-low hover:bg-card transition-all duration-200 rounded-[1.5rem] p-3 border border-transparent hover:border-outline-variant/20 hover:shadow-md space-y-2 relative overflow-hidden cursor-pointer active:scale-[0.98]">
+    <div className="group bg-surface-low hover:bg-surface-white transition-all duration-200 rounded-[1.5rem] p-3 border border-transparent hover:border-outline-variant/20 hover:shadow-md space-y-2 relative overflow-hidden cursor-pointer active:scale-[0.98]">
       <div className={`relative aspect-square rounded-xl flex items-center justify-center overflow-hidden ${
         filled ? "bg-primary-container/40" : "bg-surface-high border-2 border-dashed border-outline-variant/40"
       }`}>
