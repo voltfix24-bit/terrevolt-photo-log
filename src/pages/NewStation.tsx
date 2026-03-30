@@ -29,7 +29,7 @@ export default function NewStation() {
         .select('*')
         .order('naam', { ascending: true });
       if (error) throw error;
-      return data as { id: string; naam: string; created_at: string }[];
+      return (data as any) as { id: string; naam: string; created_at: string }[];
     }
   });
 
