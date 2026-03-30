@@ -881,7 +881,7 @@ export default function StationDetail() {
                       }`}>
                         {section.label}
                       </h3>
-                      <p className={`text-xs mt-0.5 ${isSectionOpen ? 'text-primary/70' : 'text-on-surface-variant'}`}>
+                      <p className="text-xs mt-0.5 text-on-surface-variant">
                         {cats.length} taken
                         {openCats.length > 0 && <> · <span className="text-orange font-semibold">{openCats.length} open</span></>}
                         {isComplete && <> · <span className="text-primary font-semibold">Voltooid</span></>}
