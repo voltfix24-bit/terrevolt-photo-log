@@ -699,33 +699,29 @@ export default function StationDetail() {
       )}
 
       <main className="pt-20 pb-0 px-4 max-w-3xl mx-auto animate-fade-up">
-        {/* ── 1. HERO CARD ── */}
-        <div className="bg-card rounded-3xl p-5 shadow-sm border border-outline-variant/10 mb-4">
+        {/* ── 1. HERO ── */}
+        <div className="px-5 pt-4 pb-5">
+          {/* Eyebrow */}
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-1.5 h-1.5 rounded-full bg-accent-gold-bright" />
+            <span className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-accent-gold font-display">
+              Technische Oplevering
+            </span>
+          </div>
+          {/* Station name */}
           <div className="flex items-start justify-between gap-3 mb-4">
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1.5">
-                <button onClick={() => navigate("/")} className="flex items-center text-text-secondary hover:text-primary-hover transition-colors flex-shrink-0">
-                  <span className="material-symbols-rounded text-lg">arrow_back_ios</span>
-                </button>
-                {station.type_ruimte && (
-                  <span
-                    className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full"
-                    style={station.type_ruimte?.toLowerCase().includes('cs')
-                      ? { background: "rgba(232,84,26,0.1)", color: "#E8541A" }
-                      : { background: "rgba(107,45,139,0.1)", color: "#6B2D8B" }
-                    }
-                  >
-                    {station.type_ruimte}
-                  </span>
-                )}
-                {station.behuizingsnummer && (
-                  <span className="text-xs text-muted-foreground font-mono">{station.behuizingsnummer}</span>
-                )}
-              </div>
-              <h2 className="font-display text-[22px] font-extrabold tracking-tight text-on-surface leading-tight">{station.naam_msr}</h2>
-              <p className="text-xs text-muted-foreground mt-1">{station.datum} · {station.ingevuld_door}</p>
+              <h1 className="font-display text-[28px] font-extrabold tracking-tight text-on-surface leading-tight mb-1">
+                {station.naam_msr}
+              </h1>
+              <p className="text-sm text-muted-foreground font-medium">
+                {[station.type_ruimte, station.behuizingsnummer].filter(Boolean).join(' · ')}
+              </p>
             </div>
-            <div className="flex gap-1.5 flex-shrink-0">
+            <div className="flex gap-1.5 flex-shrink-0 pt-1">
+              <button onClick={() => navigate("/")} className="p-2.5 bg-surface-white border border-outline-variant/20 rounded-xl shadow-sm hover:shadow-md hover:border-primary/20 transition-all active:scale-95 text-text-secondary hover:text-primary">
+                <span className="material-symbols-rounded text-lg">arrow_back</span>
+              </button>
               <button onClick={openPdf} className="p-2.5 bg-surface-white border border-outline-variant/20 rounded-xl shadow-sm hover:shadow-md hover:border-primary/20 transition-all active:scale-95 text-text-secondary hover:text-primary">
                 <span className="material-symbols-rounded text-lg">picture_as_pdf</span>
               </button>
@@ -734,18 +730,23 @@ export default function StationDetail() {
               </button>
             </div>
           </div>
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs font-semibold text-muted-foreground">Voortgang</span>
-              <span className="text-xs font-extrabold text-primary font-mono">{filledCount} / {CATEGORIES.length}</span>
+          {/* Progress row */}
+          <div className="flex items-end justify-between mb-2">
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Overall Progress</div>
+              <div className="font-display text-[42px] font-black leading-none text-on-surface">
+                {pct}<span className="text-[20px] text-muted-foreground">%</span>
+              </div>
             </div>
-            <div className="h-2 bg-surface-container rounded-full overflow-hidden">
-              <div className="h-full rounded-full bg-gradient-to-r from-primary to-primary-light transition-all duration-700 ease-out" style={{ width: `${pct}%` }} />
+            <div className="text-right pb-1">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Categorieën</div>
+              <div className="font-display text-[20px] font-extrabold text-primary">{filledCount} / {CATEGORIES.length}</div>
+              <div className="text-xs text-muted-foreground">{fotos?.length ?? 0} foto's</div>
             </div>
-            <div className="flex justify-between mt-1.5">
-              <span className="text-[11px] text-muted-foreground">{pct === 100 ? "✓ Volledig afgerond" : `${pct}% compleet`}</span>
-              <span className="text-[11px] text-muted-foreground">{fotos?.length ?? 0} foto's</span>
-            </div>
+          </div>
+          {/* Progress bar */}
+          <div className="h-2 bg-surface-container rounded-full overflow-hidden">
+            <div className="h-full rounded-full bg-gradient-to-r from-primary to-primary-light transition-all duration-700" style={{ width: `${pct}%` }} />
           </div>
         </div>
 
