@@ -220,7 +220,7 @@ export default function Dashboard() {
                             setZipProgress(null);
                           }}
                           disabled={zipProgress !== null}
-                          className="relative h-[52px] w-[52px] flex items-center justify-center rounded-2xl bg-surface-low hover:bg-surface transition-all active:scale-[0.93] flex-shrink-0 disabled:opacity-60 overflow-hidden"
+                          className="relative h-[52px] w-[48px] flex items-center justify-center rounded-2xl bg-surface-low hover:bg-surface transition-all active:scale-[0.93] flex-shrink-0 disabled:opacity-60 overflow-hidden"
                           title="Foto's als ZIP"
                         >
                           {zipProgress !== null && (
