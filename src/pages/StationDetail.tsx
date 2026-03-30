@@ -441,8 +441,29 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
   const maxDots = 10;
   const dots = Array.from({ length: Math.min(maxDots, total) }, (_, i) => i);
 
+  // Swipe gesture
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const swiping = useRef(false);
+
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    swiping.current = false;
+  }, []);
+
+  const onTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!touchStart.current) return;
+    const dx = e.changedTouches[0].clientX - touchStart.current.x;
+    const dy = e.changedTouches[0].clientY - touchStart.current.y;
+    touchStart.current = null;
+    // Only swipe if horizontal movement > 60px and mostly horizontal
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      if (dx < 0) onNext();
+      else if (step > 0) onPrev();
+    }
+  }, [onNext, onPrev, step]);
+
   return (
-    <div className="flex flex-col" style={{ minHeight: "calc(100vh - 180px)" }}>
+    <div className="flex flex-col" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{ minHeight: "calc(100vh - 180px)" }}>
       {/* ── Sticky progress header (matches screen 4 reference) ── */}
       <div className="sticky top-16 z-30 bg-white/92 backdrop-blur-xl border-b border-black/[0.06] -mx-6 px-4 pt-2.5 pb-3 md:rounded-2xl md:mx-0 md:border md:border-outline-variant/20 md:bg-card md:backdrop-blur-none md:mb-4">
         <div className="flex items-center justify-between mb-2.5">
