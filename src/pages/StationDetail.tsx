@@ -640,9 +640,9 @@ function CompletionScreen({ filledCount, total, stationName, fotos, onReset, onB
         <span className="material-symbols-outlined fill text-primary-foreground text-[56px]">task_alt</span>
       </div>
 
-      <div className="text-[11px] font-extrabold uppercase tracking-[0.15em] text-muted-foreground mb-1">Aanvraag voltooid</div>
-      <h2 className="text-[36px] font-extrabold tracking-tight text-primary mb-2">Klaar!</h2>
-      <p className="text-[15px] text-muted-foreground text-center mb-6 max-w-[280px]">
+      <div className="text-[11px] font-display font-extrabold uppercase tracking-[0.18em] text-muted-foreground mb-1">Aanvraag voltooid</div>
+      <h2 className="font-display text-[40px] font-extrabold tracking-tight text-primary mb-2">Klaar!</h2>
+      <p className="text-[15px] text-muted-foreground text-center mb-6 max-w-[280px] leading-relaxed">
         Uw foto's en gegevens zijn succesvol verwerkt.
       </p>
 
