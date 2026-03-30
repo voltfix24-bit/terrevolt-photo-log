@@ -700,7 +700,7 @@ function CompletionScreen({ filledCount, total, stationName, fotos, onReset, onB
       {/* Brand footer */}
       <div className="mt-auto pt-12 text-center">
         <span className="font-display text-[13px] font-extrabold text-primary/20 tracking-tight">TerreVolt</span>
-        <div className="text-[9px] font-medium uppercase tracking-[0.18em] text-on-surface-variant/25 mt-0.5">Technische Oplevering</div>
+        <div className="text-[9px] font-medium uppercase tracking-[0.18em] text-text-faint/40 mt-0.5">Technische Oplevering</div>
       </div>
     </div>
   );
