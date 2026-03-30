@@ -35,7 +35,7 @@ export default function AppHeader() {
       </header>
 
       {/* Bottom nav (mobile) */}
-      <nav className="md:hidden fixed bottom-0 w-full z-50 bg-white/85 backdrop-blur-2xl shadow-[0_-8px_32px_rgba(0,0,0,0.06)] rounded-t-3xl">
+      <nav className={`md:hidden fixed bottom-0 w-full z-50 bg-white/85 backdrop-blur-2xl shadow-[0_-8px_32px_rgba(0,0,0,0.06)] rounded-t-3xl ${location.pathname.startsWith("/stations/") && location.pathname !== "/stations/new" ? "hidden" : ""}`}>
         <div className="flex justify-around items-center h-20 px-4">
           <button onClick={() => navigate("/")} className={`flex flex-col items-center gap-0.5 px-5 py-2 rounded-2xl transition-all ${isActive("/") && !isActive("/stations") ? "bg-primary-container/30 text-primary" : "text-muted-foreground"}`}>
             <span className={`material-symbols-outlined ${isActive("/") && !isActive("/stations") ? "fill" : ""} text-2xl`}>dashboard</span>
