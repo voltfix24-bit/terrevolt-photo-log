@@ -95,10 +95,10 @@ function DropZone({ onFiles, disabled, onClick, compact, children }: {
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`rounded-2xl p-6 text-center cursor-pointer border-2 transition-all mb-4 active:scale-[0.98] w-full ${
+      className={`rounded-[20px] py-8 px-5 text-center cursor-pointer border-2 transition-all mb-3 active:scale-[0.99] w-full ${
         dragging
-          ? "border-primary bg-primary/10 scale-[1.02] shadow-lg shadow-primary/10"
-          : "border-dashed border-outline-variant/40 bg-surface-low hover:border-primary/40 hover:bg-primary/5"
+          ? "border-primary bg-primary/10 scale-[1.01]"
+          : "border-dashed border-[#bccab9] bg-[#f9fbf9] hover:border-primary/50 hover:bg-primary/5"
       }`}
     >
       {children}
@@ -435,41 +435,73 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
   const isDaKast = category.id === 15;
   const notApplicable = (isVermogensveld && !station.vermogensveld) || (isDaKast && !station.da_kast);
   const hasPhotos = fotos.length > 0;
-  const progressPct = Math.round((step / total) * 100);
+  const progressPct = Math.round(((step + 1) / total) * 100);
+
+  // Show max 10 step dots, with a "+N" indicator
+  const maxDots = 10;
+  const dots = Array.from({ length: Math.min(maxDots, total) }, (_, i) => i);
 
   return (
-    <div className="max-w-lg mx-auto space-y-4">
-      {/* Progress */}
-      <div className="bg-card rounded-2xl p-4 shadow-sm border border-outline-variant/10">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-bold text-on-surface-variant">Stap {step + 1} van {total}</span>
-          <span className="text-xs font-black text-primary">{progressPct}% voltooid</span>
+    <div className="flex flex-col" style={{ minHeight: "calc(100vh - 180px)" }}>
+      {/* ── Sticky progress header (matches screen 4 reference) ── */}
+      <div className="sticky top-16 z-30 bg-white/92 backdrop-blur-xl border-b border-black/[0.06] -mx-6 px-4 pt-2.5 pb-3 md:rounded-2xl md:mx-0 md:border md:border-outline-variant/20 md:bg-card md:backdrop-blur-none md:mb-4">
+        <div className="flex items-center justify-between mb-2.5">
+          <button onClick={onPrev} disabled={step === 0} className="flex items-center gap-0.5 text-primary font-semibold text-sm disabled:opacity-30 active:scale-95 transition-transform min-h-[44px]">
+            <span className="material-symbols-outlined text-lg">arrow_back_ios</span>
+            <span className="hidden sm:inline">Overzicht</span>
+          </button>
+          <span className="text-xs font-extrabold text-primary">Stap {step + 1} van {total}</span>
+          <button onClick={onSkip} className="text-[13px] font-semibold text-muted-foreground active:bg-surface-low px-3 py-2 rounded-xl transition-colors min-h-[44px]">
+            Sla over
+          </button>
         </div>
-        <div className="h-2 bg-surface-high rounded-full overflow-hidden">
+
+        {/* Progress bar */}
+        <div className="h-[5px] bg-surface-container rounded-full overflow-hidden mb-2.5">
           <div className="h-full rounded-full bg-gradient-to-r from-primary to-primary-light transition-all duration-500" style={{ width: `${progressPct}%` }} />
+        </div>
+
+        {/* Step dots */}
+        <div className="flex gap-1 justify-center items-center">
+          {dots.map((i) => (
+            <div
+              key={i}
+              className={`h-1.5 rounded-full transition-all duration-200 ${
+                i < step ? "w-1.5 bg-primary-light" : i === step ? "w-5 bg-primary" : "w-1.5 bg-slate-200"
+              }`}
+            />
+          ))}
+          {total > maxDots && (
+            <span className="text-[10px] text-muted-foreground font-semibold ml-1">+{total - maxDots}</span>
+          )}
         </div>
       </div>
 
-      {/* Main step card */}
-      <div className="bg-card rounded-3xl p-5 shadow-sm border border-outline-variant/10">
-        <div className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/40 mb-1">Categorie {String(category.id).padStart(2, "0")} van {total}</div>
-        <h3 className="text-xl font-black tracking-tight mb-4 text-on-surface">{category.name}</h3>
+      {/* ── Scrollable content area ── */}
+      <div className="flex-1 py-4 space-y-3">
+        {/* Category heading */}
+        <div>
+          <div className="text-[11px] font-extrabold uppercase tracking-widest text-muted-foreground mb-1">
+            Categorie {String(category.id).padStart(2, "0")}
+          </div>
+          <h3 className="text-[22px] font-black tracking-tight leading-tight text-on-surface">{category.name}</h3>
+        </div>
 
-        {/* Instruction box */}
-        <div className="rounded-2xl p-4 mb-3 flex gap-3 items-start" style={{ background: "rgba(59,130,246,0.07)", border: "1px solid rgba(59,130,246,0.18)" }}>
-          <span className="material-symbols-outlined fill text-blue-400 flex-shrink-0 mt-0.5 text-xl">info</span>
-          <p className="text-sm leading-relaxed text-blue-500">{category.instruction}</p>
+        {/* Instruction card (blue) */}
+        <div className="rounded-2xl p-3.5 flex gap-2.5 items-start" style={{ background: "rgba(59,130,246,0.07)", border: "1px solid rgba(59,130,246,0.18)" }}>
+          <span className="material-symbols-outlined fill text-blue-400 flex-shrink-0 text-xl">info</span>
+          <p className="text-[13px] leading-relaxed text-blue-400">{category.instruction}</p>
         </div>
 
         {/* Conditional warnings */}
         {isVermogensveld && (
-          <div className="rounded-2xl p-3 mb-3 flex gap-2 text-xs" style={{ background: "rgba(234,179,8,0.07)", border: "1px solid rgba(234,179,8,0.2)", color: "#fbbf24" }}>
+          <div className="rounded-2xl p-3 flex gap-2 text-xs" style={{ background: "rgba(234,179,8,0.07)", border: "1px solid rgba(234,179,8,0.2)", color: "#fbbf24" }}>
             <span className="material-symbols-outlined fill text-yellow-400 text-base flex-shrink-0">warning</span>
             <span>Alleen fotograferen als <strong>vermogensveld aanwezig</strong> is bij dit station.</span>
           </div>
         )}
         {isDaKast && (
-          <div className="rounded-2xl p-3 mb-3 flex gap-2 text-xs" style={{ background: "rgba(234,179,8,0.07)", border: "1px solid rgba(234,179,8,0.2)", color: "#fbbf24" }}>
+          <div className="rounded-2xl p-3 flex gap-2 text-xs" style={{ background: "rgba(234,179,8,0.07)", border: "1px solid rgba(234,179,8,0.2)", color: "#fbbf24" }}>
             <span className="material-symbols-outlined fill text-yellow-400 text-base flex-shrink-0">warning</span>
             <span>Alleen fotograferen als <strong>DA-kast aanwezig</strong> is bij dit station.</span>
           </div>
@@ -478,87 +510,98 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
         {/* Tip toggle */}
         {category.tip && (
           <>
-            <button onClick={onToggleTip} className={`flex items-center gap-1.5 text-xs font-semibold mb-3 transition-colors ${tipOpen ? "text-yellow-500" : "text-on-surface-variant hover:text-yellow-500"}`}>
-              <span className={`material-symbols-outlined ${tipOpen ? "fill" : ""} text-base`}>lightbulb</span>
+            <button onClick={onToggleTip} className={`flex items-center gap-1.5 text-[13px] font-semibold transition-colors py-1.5 ${tipOpen ? "text-yellow-500" : "text-muted-foreground hover:text-yellow-500"}`}>
+              <span className={`material-symbols-outlined ${tipOpen ? "fill" : ""} text-lg`} style={{ color: "#eab308" }}>lightbulb</span>
               {tipOpen ? "Verberg tip" : "Toon tip"}
             </button>
             {tipOpen && (
-              <div className="rounded-2xl p-3 mb-3 text-xs leading-relaxed" style={{ background: "rgba(234,179,8,0.07)", border: "1px solid rgba(234,179,8,0.18)", color: "#fbbf24" }}>
+              <div className="rounded-2xl p-3 text-xs leading-relaxed" style={{ background: "rgba(234,179,8,0.07)", border: "1px solid rgba(234,179,8,0.18)", color: "#fbbf24" }}>
                 {category.tip}
               </div>
             )}
           </>
         )}
 
-        {/* Upload zone */}
+        {/* ── UPLOAD ZONE — LARGE & THUMB-FRIENDLY (matches reference) ── */}
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/heic,image/webp" multiple className="hidden"
           onChange={(e) => { if (e.target.files) onUpload(e.target.files); e.target.value = ""; }} />
 
         <DropZone onFiles={onUpload} disabled={isUploading} onClick={() => fileRef.current?.click()}>
-          <div className={`w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center ${
-            hasPhotos ? "bg-gradient-to-br from-primary to-primary-light shadow-lg shadow-primary/20" : "bg-surface-high"
+          <div className={`w-[60px] h-[60px] rounded-[18px] mx-auto mb-3 flex items-center justify-center ${
+            hasPhotos
+              ? "bg-gradient-to-br from-primary to-primary-light shadow-lg shadow-primary/30"
+              : "bg-surface-container"
           }`}>
-            <span className={`material-symbols-outlined fill text-2xl ${hasPhotos ? "text-primary-foreground" : "text-on-surface-variant"}`}>
-              {hasPhotos ? "check_circle" : "photo_camera"}
+            <span className={`material-symbols-outlined fill text-[28px] ${hasPhotos ? "text-primary-foreground" : "text-muted-foreground"}`}>
+              {hasPhotos ? "add_photo_alternate" : "photo_camera"}
             </span>
           </div>
-          <div className="text-sm font-bold mb-1 text-on-surface">{hasPhotos ? "Foto's geüpload — tik voor meer" : "Tik of sleep foto's hierheen"}</div>
-          <div className="text-xs text-on-surface-variant">JPG · PNG · HEIC · max <span className="font-bold text-primary">10MB</span></div>
+          <div className="text-base font-bold mb-1 text-on-surface">
+            {hasPhotos ? "Foto's geüpload ✓" : "Tik om foto's te maken"}
+          </div>
+          <div className="text-[13px] text-muted-foreground">
+            {hasPhotos ? "Tik voor meer foto's" : <>JPG · PNG · HEIC · max <strong className="text-primary">10MB</strong></>}
+          </div>
         </DropZone>
 
+        {/* Upload progress */}
         {isUploading && uploadProgress !== undefined && (
-          <div className="mb-4 h-2 overflow-hidden rounded-full bg-surface-high">
+          <div className="h-2 overflow-hidden rounded-full bg-surface-container">
             <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${uploadProgress}%` }} />
           </div>
         )}
 
-        {/* Uploaded photos */}
+        {/* Status badge */}
         {hasPhotos && (
-          <>
-            <div className="flex items-center gap-1.5 text-xs font-bold mb-3 text-primary">
-              <span className="material-symbols-outlined fill text-base">check_circle</span>
-              {fotos.length} foto{fotos.length > 1 ? "'s" : ""} geüpload
-            </div>
-            <div className="flex gap-2 flex-wrap mb-4">
-              {fotos.map((foto, i) => (
-                <div key={foto.id} className="w-16 h-16 rounded-xl bg-surface-low border border-outline-variant/20 overflow-hidden relative group">
-                  <button onClick={() => onClickThumb(i)} className="w-full h-full">
-                    <img src={foto.url} alt="" className="w-full h-full object-cover" />
-                  </button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <button className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 rounded-full text-primary-foreground text-xs hidden group-hover:flex items-center justify-center border-2 border-white active:scale-90">×</button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader><AlertDialogTitle>Foto verwijderen?</AlertDialogTitle><AlertDialogDescription>Deze actie kan niet ongedaan worden gemaakt.</AlertDialogDescription></AlertDialogHeader>
-                      <AlertDialogFooter><AlertDialogCancel>Annuleren</AlertDialogCancel><AlertDialogAction onClick={() => onDelete(foto.id, foto.storage_path)}>Verwijderen</AlertDialogAction></AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              ))}
-            </div>
-          </>
+          <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl" style={{ background: "rgba(28,176,80,0.08)", border: "1px solid rgba(28,176,80,0.2)" }}>
+            <span className="material-symbols-outlined fill text-xl" style={{ color: "#1cb050" }}>check_circle</span>
+            <span className="text-[13px] font-bold text-primary">{fotos.length} foto{fotos.length > 1 ? "'s" : ""} geüpload</span>
+          </div>
         )}
 
-        {/* Nav buttons */}
-        <div className="flex gap-2">
+        {/* Photo thumbnail grid — 3 columns (matches reference) */}
+        {hasPhotos && (
+          <div className="grid grid-cols-3 gap-1.5">
+            {fotos.map((foto, i) => (
+              <div key={foto.id} className="relative aspect-square rounded-xl bg-surface-container overflow-hidden">
+                <button onClick={() => onClickThumb(i)} className="w-full h-full">
+                  <img src={foto.url} alt="" className="w-full h-full object-cover" />
+                </button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <button className="absolute top-1 right-1 w-5 h-5 bg-red-500/90 rounded-full text-white text-[11px] flex items-center justify-center border-[1.5px] border-white active:scale-90 transition-transform">×</button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader><AlertDialogTitle>Foto verwijderen?</AlertDialogTitle><AlertDialogDescription>Deze actie kan niet ongedaan worden gemaakt.</AlertDialogDescription></AlertDialogHeader>
+                    <AlertDialogFooter><AlertDialogCancel>Annuleren</AlertDialogCancel><AlertDialogAction onClick={() => onDelete(foto.id, foto.storage_path)}>Verwijderen</AlertDialogAction></AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Spacer for bottom nav */}
+        <div className="h-20 md:hidden" />
+      </div>
+
+      {/* ── STICKY BOTTOM NAV — thumb zone (matches reference) ── */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 md:static md:mt-4 bg-white/95 backdrop-blur-xl border-t border-black/[0.06] p-3 pb-[max(16px,env(safe-area-inset-bottom))] md:bg-transparent md:border-none md:backdrop-blur-none md:p-0">
+        <div className="flex gap-2.5 max-w-lg mx-auto">
           <button
             onClick={onPrev}
             disabled={step === 0}
-            className="flex-1 py-3.5 bg-surface-low border border-outline-variant/20 rounded-xl text-sm font-semibold text-on-surface-variant active:scale-95 transition-transform disabled:opacity-30"
+            className="flex-1 min-h-[52px] bg-surface-container rounded-2xl text-[15px] font-bold text-on-surface-variant active:scale-[0.97] transition-transform disabled:opacity-30 flex items-center justify-center gap-2"
           >
-            ← Vorige
+            <span className="material-symbols-outlined text-xl">arrow_back</span>Vorige
           </button>
           <button
             onClick={onNext}
-            className="flex-[2] py-3.5 bg-gradient-to-r from-primary to-primary-light text-primary-foreground rounded-xl text-sm font-bold shadow-lg shadow-primary/20 active:scale-95 transition-transform"
+            className="flex-[2] min-h-[52px] bg-gradient-to-br from-primary to-primary-light text-primary-foreground rounded-2xl text-[15px] font-bold shadow-lg shadow-primary/30 active:scale-[0.97] transition-transform flex items-center justify-center gap-2"
           >
-            {step === total - 1 ? "✓ Afronden" : "Volgende →"}
+            {step === total - 1 ? "Afronden" : "Volgende"}<span className="material-symbols-outlined text-xl">arrow_forward</span>
           </button>
         </div>
-        <button onClick={onSkip} className="w-full mt-2 text-xs text-on-surface-variant/50 hover:text-on-surface-variant py-2 transition-colors">
-          Overslaan (niet van toepassing)
-        </button>
       </div>
     </div>
   );
@@ -568,22 +611,45 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
 
 function CompletionScreen({ filledCount, total, stationName, onReset, onBack, onPdf }: { filledCount: number; total: number; stationName: string; onReset: () => void; onBack: () => void; onPdf: () => void }) {
   return (
-    <div className="max-w-lg mx-auto">
-      <div className="bg-card rounded-3xl p-8 shadow-sm border border-outline-variant/10 text-center animate-pop">
-        <div className="w-20 h-20 bg-gradient-to-br from-primary to-primary-light rounded-3xl mx-auto mb-5 flex items-center justify-center shadow-xl shadow-primary/25">
-          <span className="material-symbols-outlined fill text-primary-foreground text-4xl">check_circle</span>
+    <div className="max-w-lg mx-auto flex flex-col items-center justify-center py-12 text-center animate-pop">
+      {/* Big icon */}
+      <div className="w-24 h-24 bg-gradient-to-br from-primary to-primary-light rounded-[28px] flex items-center justify-center mb-5 shadow-xl shadow-primary/35">
+        <span className="material-symbols-outlined fill text-primary-foreground text-5xl">check_circle</span>
+      </div>
+
+      <h2 className="text-[32px] font-black tracking-tight mb-2 text-on-surface">Klaar! 🎉</h2>
+      <p className="text-[15px] text-muted-foreground mb-1">
+        {filledCount === total ? "Alle" : `${filledCount} van ${total}`} categorieën ingevuld
+      </p>
+      <p className="text-[13px] text-muted-foreground font-mono mb-8">{stationName}</p>
+
+      {/* Stats grid */}
+      <div className="grid grid-cols-3 gap-2.5 mb-8 w-full">
+        <div className="bg-card rounded-2xl p-3 shadow-sm text-center">
+          <div className="text-[22px] font-black text-primary">{filledCount}</div>
+          <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Categorieën</div>
         </div>
-        <h2 className="text-2xl font-black mb-2 text-on-surface">Klaar! 🎉</h2>
-        <p className="text-on-surface-variant text-sm mb-6">
-          {filledCount === total ? "Alle" : `${filledCount} van ${total}`} categorieën ingevuld voor<br /><strong>{stationName}</strong>
-        </p>
-        <div className="flex flex-col gap-2">
-          <button onClick={onReset} className="w-full py-3 bg-surface-low border border-outline-variant/20 rounded-xl text-sm font-semibold text-on-surface-variant active:scale-95 transition-transform">↺ Opnieuw beginnen</button>
-          <button onClick={onBack} className="w-full py-3.5 bg-gradient-to-r from-primary to-primary-light text-primary-foreground rounded-xl text-sm font-bold shadow-lg shadow-primary/20 active:scale-95 transition-transform">Terug naar overzicht</button>
-          <button onClick={onPdf} className="w-full py-3 bg-surface-low border border-outline-variant/20 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 active:scale-95 transition-transform text-on-surface-variant">
-            <span className="material-symbols-outlined fill text-primary text-base">picture_as_pdf</span>PDF downloaden
-          </button>
+        <div className="bg-card rounded-2xl p-3 shadow-sm text-center">
+          <div className="text-[22px] font-black text-primary">{total}</div>
+          <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Totaal</div>
         </div>
+        <div className="bg-card rounded-2xl p-3 shadow-sm text-center">
+          <div className="text-[22px] font-black text-primary">{Math.round((filledCount / total) * 100)}%</div>
+          <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Compleet</div>
+        </div>
+      </div>
+
+      {/* Buttons — large, thumb-friendly */}
+      <div className="flex flex-col gap-2.5 w-full">
+        <button onClick={onPdf} className="w-full min-h-[56px] bg-gradient-to-br from-primary to-primary-light text-primary-foreground rounded-2xl text-base font-bold shadow-lg shadow-primary/30 active:scale-[0.97] transition-transform flex items-center justify-center gap-2">
+          <span className="material-symbols-outlined fill">picture_as_pdf</span>PDF downloaden
+        </button>
+        <button onClick={onBack} className="w-full min-h-[52px] bg-surface-container rounded-2xl text-[15px] font-semibold text-on-surface-variant active:scale-[0.97] transition-transform">
+          Terug naar overzicht
+        </button>
+        <button onClick={onReset} className="w-full py-3 text-[13px] text-muted-foreground font-semibold active:scale-[0.97] transition-transform">
+          ↺ Opnieuw beginnen
+        </button>
       </div>
     </div>
   );
