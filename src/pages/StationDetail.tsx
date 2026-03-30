@@ -432,7 +432,7 @@ export default function StationDetail() {
                     {isComplete ? (
                       <span className="material-symbols-rounded text-lg text-primary-foreground" style={{ fontVariationSettings: "'FILL' 1" }}>check</span>
                     ) : (
-                      <span className="text-sm font-black text-muted-foreground">{openCount}</span>
+                      <span className="text-sm font-extrabold text-on-surface">{openCount}</span>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
