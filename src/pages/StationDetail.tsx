@@ -611,22 +611,45 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
 
 function CompletionScreen({ filledCount, total, stationName, onReset, onBack, onPdf }: { filledCount: number; total: number; stationName: string; onReset: () => void; onBack: () => void; onPdf: () => void }) {
   return (
-    <div className="max-w-lg mx-auto">
-      <div className="bg-card rounded-3xl p-8 shadow-sm border border-outline-variant/10 text-center animate-pop">
-        <div className="w-20 h-20 bg-gradient-to-br from-primary to-primary-light rounded-3xl mx-auto mb-5 flex items-center justify-center shadow-xl shadow-primary/25">
-          <span className="material-symbols-outlined fill text-primary-foreground text-4xl">check_circle</span>
+    <div className="max-w-lg mx-auto flex flex-col items-center justify-center py-12 text-center animate-pop">
+      {/* Big icon */}
+      <div className="w-24 h-24 bg-gradient-to-br from-primary to-primary-light rounded-[28px] flex items-center justify-center mb-5 shadow-xl shadow-primary/35">
+        <span className="material-symbols-outlined fill text-primary-foreground text-5xl">check_circle</span>
+      </div>
+
+      <h2 className="text-[32px] font-black tracking-tight mb-2 text-on-surface">Klaar! 🎉</h2>
+      <p className="text-[15px] text-muted-foreground mb-1">
+        {filledCount === total ? "Alle" : `${filledCount} van ${total}`} categorieën ingevuld
+      </p>
+      <p className="text-[13px] text-muted-foreground font-mono mb-8">{stationName}</p>
+
+      {/* Stats grid */}
+      <div className="grid grid-cols-3 gap-2.5 mb-8 w-full">
+        <div className="bg-card rounded-2xl p-3 shadow-sm text-center">
+          <div className="text-[22px] font-black text-primary">{filledCount}</div>
+          <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Categorieën</div>
         </div>
-        <h2 className="text-2xl font-black mb-2 text-on-surface">Klaar! 🎉</h2>
-        <p className="text-on-surface-variant text-sm mb-6">
-          {filledCount === total ? "Alle" : `${filledCount} van ${total}`} categorieën ingevuld voor<br /><strong>{stationName}</strong>
-        </p>
-        <div className="flex flex-col gap-2">
-          <button onClick={onReset} className="w-full py-3 bg-surface-low border border-outline-variant/20 rounded-xl text-sm font-semibold text-on-surface-variant active:scale-95 transition-transform">↺ Opnieuw beginnen</button>
-          <button onClick={onBack} className="w-full py-3.5 bg-gradient-to-r from-primary to-primary-light text-primary-foreground rounded-xl text-sm font-bold shadow-lg shadow-primary/20 active:scale-95 transition-transform">Terug naar overzicht</button>
-          <button onClick={onPdf} className="w-full py-3 bg-surface-low border border-outline-variant/20 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 active:scale-95 transition-transform text-on-surface-variant">
-            <span className="material-symbols-outlined fill text-primary text-base">picture_as_pdf</span>PDF downloaden
-          </button>
+        <div className="bg-card rounded-2xl p-3 shadow-sm text-center">
+          <div className="text-[22px] font-black text-primary">{total}</div>
+          <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Totaal</div>
         </div>
+        <div className="bg-card rounded-2xl p-3 shadow-sm text-center">
+          <div className="text-[22px] font-black text-primary">{Math.round((filledCount / total) * 100)}%</div>
+          <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Compleet</div>
+        </div>
+      </div>
+
+      {/* Buttons — large, thumb-friendly */}
+      <div className="flex flex-col gap-2.5 w-full">
+        <button onClick={onPdf} className="w-full min-h-[56px] bg-gradient-to-br from-primary to-primary-light text-primary-foreground rounded-2xl text-base font-bold shadow-lg shadow-primary/30 active:scale-[0.97] transition-transform flex items-center justify-center gap-2">
+          <span className="material-symbols-outlined fill">picture_as_pdf</span>PDF downloaden
+        </button>
+        <button onClick={onBack} className="w-full min-h-[52px] bg-surface-container rounded-2xl text-[15px] font-semibold text-on-surface-variant active:scale-[0.97] transition-transform">
+          Terug naar overzicht
+        </button>
+        <button onClick={onReset} className="w-full py-3 text-[13px] text-muted-foreground font-semibold active:scale-[0.97] transition-transform">
+          ↺ Opnieuw beginnen
+        </button>
       </div>
     </div>
   );
