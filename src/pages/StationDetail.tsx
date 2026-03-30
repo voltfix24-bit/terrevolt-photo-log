@@ -80,7 +80,7 @@ function DropZone({ onFiles, disabled, onClick, compact, children }: {
         className={`w-full py-2 bg-card border rounded-xl text-xs font-semibold transition-all active:scale-95 flex items-center justify-center gap-1 ${
           dragging
             ? "border-primary bg-primary/5 text-primary scale-[1.02]"
-            : "border-outline-variant/20 text-on-surface-variant hover:text-primary hover:border-primary/30"
+            : "border-outline-variant/20 text-text-secondary hover:text-primary hover:border-primary/30 hover:bg-primary/[0.04]"
         }`}
       >
         {children}
@@ -99,7 +99,7 @@ function DropZone({ onFiles, disabled, onClick, compact, children }: {
       className={`rounded-3xl py-10 px-6 text-center cursor-pointer border-2 transition-all active:scale-[0.99] w-full ${
         dragging
           ? "border-primary bg-primary/8 scale-[1.01]"
-          : "border-dashed border-on-surface/10 bg-card/50 hover:border-primary/30 hover:bg-primary/4"
+          : "border-dashed border-outline-variant/20 bg-surface-low hover:border-primary/30 hover:bg-primary/[0.04]"
       }`}
     >
       {children}
@@ -302,10 +302,10 @@ export default function StationDetail() {
           <>
             {/* Back row */}
             <div className="flex items-center justify-between mb-6">
-              <button onClick={() => navigate("/")} className="flex items-center gap-1 text-sm text-text-secondary hover:text-primary transition-colors font-semibold">
+              <button onClick={() => navigate("/")} className="flex items-center gap-1 text-sm text-text-secondary hover:text-primary-hover transition-colors font-semibold">
                 <span className="material-symbols-rounded text-lg">arrow_back_ios</span> Alle stations
               </button>
-              <button onClick={() => setEditOpen(true)} className="p-2.5 bg-surface-white border border-outline-variant/30 rounded-xl shadow-sm hover:shadow-md transition-all active:scale-95 text-text-secondary">
+              <button onClick={() => setEditOpen(true)} className="p-2.5 bg-surface-white border border-outline-variant/30 rounded-xl shadow-sm hover:shadow-md hover:border-primary/20 transition-all active:scale-95 text-text-secondary hover:text-primary">
                 <span className="material-symbols-rounded text-lg">edit</span>
               </button>
             </div>
@@ -407,7 +407,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
       {/* ── Premium sticky header ── */}
       <div className="relative z-10 shrink-0 bg-surface -mx-4 px-6 pt-4 pb-3 border-b border-outline-variant/10">
         {/* Back affordance */}
-        <button onClick={onBackToList} className="flex items-center gap-1 text-text-muted text-[13px] font-medium mb-3 active:scale-95 transition-transform">
+        <button onClick={onBackToList} className="flex items-center gap-1 text-text-muted hover:text-primary-hover text-[13px] font-medium mb-3 active:scale-95 transition-all">
           <span className="material-symbols-rounded text-[18px]">arrow_back_ios</span>
           <span>Terug</span>
         </button>
@@ -486,7 +486,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
               className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-[12px] font-semibold transition-all active:scale-95 ${
                 showVoorbeeld
                   ? 'bg-primary/8 text-primary'
-                  : 'bg-on-surface/4 text-on-surface-variant/60 hover:text-on-surface-variant'
+                  : 'bg-surface-high text-text-muted hover:text-primary hover:bg-primary/[0.06]'
               }`}
             >
               <span className="material-symbols-rounded text-[16px]">{showVoorbeeld ? 'visibility_off' : 'visibility'}</span>
@@ -561,7 +561,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
               <button
                 onClick={() => fileRef.current?.click()}
                 disabled={isUploading}
-                className="aspect-square rounded-2xl border-2 border-dashed border-on-surface/10 bg-transparent flex flex-col items-center justify-center gap-1.5 text-on-surface-variant/40 hover:border-primary/30 hover:text-primary/60 active:scale-95 transition-all"
+                className="aspect-square rounded-2xl border-2 border-dashed border-outline-variant/20 bg-transparent flex flex-col items-center justify-center gap-1.5 text-text-faint hover:border-primary/30 hover:text-primary hover:bg-primary/[0.04] active:scale-95 transition-all"
               >
                 <span className="material-symbols-rounded text-[24px]">add</span>
                 <span className="text-[10px] font-semibold">Meer</span>
@@ -578,7 +578,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
           <button
             onClick={onPrev}
             disabled={step === 0}
-            className="min-h-[48px] px-4 flex items-center gap-1.5 font-display text-[14px] font-semibold text-text-muted active:scale-[0.97] transition-all disabled:opacity-20"
+            className="min-h-[48px] px-4 flex items-center gap-1.5 font-display text-[14px] font-semibold text-text-muted hover:text-primary-hover active:scale-[0.97] transition-all disabled:opacity-20"
           >
             <span className="material-symbols-rounded text-[18px]">chevron_left</span>
             Vorige
@@ -587,7 +587,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
           {/* NVT */}
           <button
             onClick={() => { onSkip(); toast("Overgeslagen"); }}
-            className="min-h-[48px] px-3 font-display text-[12px] font-semibold text-text-faint uppercase tracking-wider active:scale-[0.97] transition-all"
+            className="min-h-[48px] px-3 font-display text-[12px] font-semibold text-text-faint hover:text-text-muted uppercase tracking-wider active:scale-[0.97] transition-all"
           >
             NVT
           </button>
@@ -680,7 +680,7 @@ function CompletionScreen({ filledCount, total, stationName, fotos, onReset, onB
           <button
             onClick={handleZip}
             disabled={zipProgress !== null || fotos.length === 0}
-            className="w-full min-h-[48px] bg-surface-high rounded-2xl font-display text-[14px] font-semibold text-text-primary active:scale-[0.97] transition-all flex items-center justify-center gap-2.5 disabled:opacity-40"
+            className="w-full min-h-[48px] bg-surface-high hover:bg-surface-highest rounded-2xl font-display text-[14px] font-semibold text-text-primary active:scale-[0.97] transition-all flex items-center justify-center gap-2.5 disabled:opacity-40"
           >
             <span className="material-symbols-rounded text-[18px] text-text-muted">folder_zip</span>
             {zipProgress !== null ? `Downloaden… ${zipProgress}%` : "Foto's als ZIP"}
@@ -691,7 +691,7 @@ function CompletionScreen({ filledCount, total, stationName, fotos, onReset, onB
       {/* Back link */}
       <button
         onClick={onBack}
-        className="flex items-center justify-center gap-1.5 py-3 font-display text-[13px] font-semibold text-text-muted hover:text-primary active:scale-[0.97] transition-all mx-auto"
+        className="flex items-center justify-center gap-1.5 py-3 font-display text-[13px] font-semibold text-text-muted hover:text-primary-hover active:scale-[0.97] transition-all mx-auto"
       >
         <span className="material-symbols-rounded text-[16px]">chevron_left</span>
         Terug naar overzicht
