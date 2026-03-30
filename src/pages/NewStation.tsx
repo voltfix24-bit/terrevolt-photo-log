@@ -18,8 +18,8 @@ export default function NewStation() {
   });
 
   const [selectedMonteur, setSelectedMonteur] = useState('');
-  const [showAddNew, setShowAddNew] = useState(false);
-  const [newNaam, setNewNaam] = useState('');
+  const [monteurInput, setMonteurInput] = useState('');
+  const [monteurFocused, setMonteurFocused] = useState(false);
 
   const { data: monteurs } = useQuery({
     queryKey: ['monteurs'],
