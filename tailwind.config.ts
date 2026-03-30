@@ -27,7 +27,10 @@ export default {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
           light: "hsl(var(--primary-light))",
+          hover: "hsl(var(--primary-hover))",
           container: "hsl(var(--primary-container))",
+          soft: "hsl(var(--primary-soft))",
+          "soft-2": "hsl(var(--primary-soft-2))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -45,6 +48,9 @@ export default {
         accent: {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
+          gold: "hsl(var(--accent-gold))",
+          "gold-bright": "hsl(var(--accent-gold-bright))",
+          "gold-soft": "hsl(var(--accent-gold-soft))",
         },
         popover: {
           DEFAULT: "hsl(var(--popover))",
@@ -59,6 +65,8 @@ export default {
           low: "hsl(var(--surface-low))",
           container: "hsl(var(--surface-container))",
           high: "hsl(var(--surface-high))",
+          highest: "hsl(var(--surface-highest))",
+          white: "hsl(var(--surface-white))",
         },
         "on-surface": {
           DEFAULT: "hsl(var(--on-surface))",
@@ -67,8 +75,15 @@ export default {
         "outline-variant": "hsl(var(--outline-variant))",
         orange: "hsl(var(--orange))",
         purple: "hsl(var(--purple))",
-        tertiary: "hsl(var(--tertiary))",
+        tertiary: {
+          DEFAULT: "hsl(var(--tertiary))",
+          soft: "hsl(var(--tertiary-soft))",
+        },
         "on-primary-container": "hsl(var(--on-primary-container))",
+        "text-primary": "hsl(var(--text-primary))",
+        "text-secondary": "hsl(var(--text-secondary))",
+        "text-muted": "hsl(var(--text-muted))",
+        "text-faint": "hsl(var(--text-faint))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
