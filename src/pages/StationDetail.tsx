@@ -587,7 +587,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
           {/* NVT */}
           <button
             onClick={() => { onSkip(); toast("Overgeslagen"); }}
-            className="min-h-[48px] px-3 font-display text-[12px] font-semibold text-on-surface-variant/40 uppercase tracking-wider active:scale-[0.97] transition-all"
+            className="min-h-[48px] px-3 font-display text-[12px] font-semibold text-text-faint uppercase tracking-wider active:scale-[0.97] transition-all"
           >
             NVT
           </button>
