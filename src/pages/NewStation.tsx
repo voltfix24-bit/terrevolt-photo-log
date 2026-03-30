@@ -97,7 +97,7 @@ export default function NewStation() {
 
           {/* Ingevuld door */}
           <div>
-            <label className="block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Ingevuld door</label>
+            <label className="block text-[11px] font-bold uppercase tracking-widest text-accent-gold mb-2">Ingevuld door</label>
             <input
               type="text"
               placeholder="Naam monteur"
