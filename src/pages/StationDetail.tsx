@@ -102,6 +102,57 @@ function useSkippedCategories(stationId: string | undefined) {
   return { skipped, toggleSkip, isSkipped };
 }
 
+/* ==================== CATEGORY ROW ==================== */
+function CategoryRow({ cat, fotos, isLast, isSkipped, onOpen }: {
+  cat: Category; fotos: FotoRow[]; isLast?: boolean; isSkipped?: boolean; onOpen: () => void;
+}) {
+  const isDone = fotos.length > 0;
+  return (
+    <button
+      onClick={onOpen}
+      className={`w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-surface-low transition-colors ${
+        !isLast ? 'border-b border-outline-variant/[0.08]' : ''
+      }`}
+    >
+      <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
+        isDone
+          ? 'bg-primary'
+          : isSkipped
+          ? 'bg-surface-high'
+          : 'border-2 border-accent-gold/40 bg-accent-gold/5'
+      }`}>
+        <span className={`material-symbols-rounded text-sm ${
+          isDone ? 'text-primary-foreground' : isSkipped ? 'text-text-faint' : 'text-accent-gold'
+        }`} style={{ fontVariationSettings: "'FILL' 1" }}>
+          {isDone ? 'check' : isSkipped ? 'remove' : 'photo_camera'}
+        </span>
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className={`text-sm font-bold leading-tight ${isSkipped ? 'text-text-faint line-through' : 'text-on-surface'}`}>
+          {cat.name}
+        </div>
+        {isDone ? (
+          <div className="flex gap-1.5 mt-1.5">
+            {fotos.slice(0, 5).map(f => (
+              <img key={f.id} src={f.url} className="w-9 h-9 rounded-lg object-cover border border-outline-variant/20" alt="" />
+            ))}
+            {fotos.length > 5 && (
+              <div className="w-9 h-9 rounded-lg bg-surface-container flex items-center justify-center">
+                <span className="text-[10px] font-bold text-muted-foreground">+{fotos.length - 5}</span>
+              </div>
+            )}
+          </div>
+        ) : isSkipped ? (
+          <div className="text-xs text-text-faint mt-0.5">Overgeslagen (NVT)</div>
+        ) : (
+          <div className="text-xs text-accent-gold font-semibold mt-0.5">Nog geen foto's</div>
+        )}
+      </div>
+      <span className="material-symbols-rounded text-muted-foreground/30 text-lg flex-shrink-0">chevron_right</span>
+    </button>
+  );
+}
+
 /* ==================== MAIN COMPONENT ==================== */
 export default function StationDetail() {
   const { id } = useParams<{ id: string }>();
