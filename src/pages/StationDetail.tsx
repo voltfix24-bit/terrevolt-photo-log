@@ -579,7 +579,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
               <span className="material-symbols-outlined fill text-primary text-xl">description</span>
             </div>
             <div className="flex-1 text-left">
-              <div className="text-[14px] font-bold text-on-surface">Categorie details</div>
+              <div className="font-display text-[14px] font-bold text-foreground">Categorie details</div>
               <div className="text-[12px] text-muted-foreground">{fotos.length} foto{fotos.length > 1 ? "'s" : ""} · Categorie {String(category.id).padStart(2, "0")}</div>
             </div>
             <span className="material-symbols-outlined text-muted-foreground/40">chevron_right</span>
