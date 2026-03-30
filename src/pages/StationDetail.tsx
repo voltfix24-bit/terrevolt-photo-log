@@ -254,7 +254,7 @@ export default function StationDetail() {
   }
 
   if (!station) {
-    return <div className="flex min-h-screen items-center justify-center bg-background text-on-surface">Station niet gevonden</div>;
+    return <div className="flex min-h-screen items-center justify-center bg-app-background text-text-primary">Station niet gevonden</div>;
   }
 
   const isCS = station.type_ruimte === "Compact Station";
