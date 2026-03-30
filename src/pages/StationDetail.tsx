@@ -561,7 +561,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
               <button
                 onClick={() => fileRef.current?.click()}
                 disabled={isUploading}
-                className="aspect-square rounded-2xl border-2 border-dashed border-on-surface/10 bg-transparent flex flex-col items-center justify-center gap-1.5 text-on-surface-variant/40 hover:border-primary/30 hover:text-primary/60 active:scale-95 transition-all"
+                className="aspect-square rounded-2xl border-2 border-dashed border-outline-variant/20 bg-transparent flex flex-col items-center justify-center gap-1.5 text-text-faint hover:border-primary/30 hover:text-primary hover:bg-primary/[0.04] active:scale-95 transition-all"
               >
                 <span className="material-symbols-rounded text-[24px]">add</span>
                 <span className="text-[10px] font-semibold">Meer</span>
