@@ -103,16 +103,17 @@ function useSkippedCategories(stationId: string | undefined) {
 }
 
 /* ==================== CATEGORY ROW ==================== */
-function CategoryRow({ cat, fotos, isLast, isSkipped, onOpen }: {
-  cat: Category; fotos: FotoRow[]; isLast?: boolean; isSkipped?: boolean; onOpen: () => void;
+function CategoryRow({ cat, fotos, isLast, isSkipped, onOpen, highlight }: {
+  cat: Category; fotos: FotoRow[]; isLast?: boolean; isSkipped?: boolean; onOpen: () => void; highlight?: boolean;
 }) {
   const isDone = fotos.length > 0;
   return (
     <button
+      data-cat-id={cat.id}
       onClick={onOpen}
-      className={`w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-surface-low transition-colors ${
+      className={`w-full flex items-center gap-3 px-4 py-4 min-h-[56px] text-left active:bg-surface-low transition-colors duration-300 ${
         !isLast ? 'border-b border-outline-variant/[0.08]' : ''
-      }`}
+      } ${highlight ? 'bg-primary/10' : ''}`}
     >
       <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
         isDone
@@ -134,10 +135,10 @@ function CategoryRow({ cat, fotos, isLast, isSkipped, onOpen }: {
         {isDone ? (
           <div className="flex gap-1.5 mt-1.5">
             {fotos.slice(0, 5).map(f => (
-              <img key={f.id} src={f.url} className="w-9 h-9 rounded-lg object-cover border border-outline-variant/20" alt="" />
+              <img key={f.id} src={f.url} className="w-11 h-11 rounded-lg object-cover border border-outline-variant/20" alt="" />
             ))}
             {fotos.length > 5 && (
-              <div className="w-9 h-9 rounded-lg bg-surface-container flex items-center justify-center">
+              <div className="w-11 h-11 rounded-lg bg-surface-container flex items-center justify-center">
                 <span className="text-[10px] font-bold text-muted-foreground">+{fotos.length - 5}</span>
               </div>
             )}
@@ -167,6 +168,7 @@ export default function StationDetail() {
   const [openSections, setOpenSections] = useState<string[]>([]);
   const [openCategory, setOpenCategory] = useState<Category | null>(null);
   const [tipOpen, setTipOpen] = useState<Record<number, boolean>>({});
+  const [highlightCatId, setHighlightCatId] = useState<number | null>(null);
   const { data: voorbeelden } = useVoorbeelden();
   const { skipped, toggleSkip, isSkipped } = useSkippedCategories(id);
 
@@ -425,17 +427,12 @@ export default function StationDetail() {
                   <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${
                     isComplete
                       ? 'bg-primary shadow-sm shadow-primary/30'
-                      : 'bg-surface-container relative'
+                      : 'bg-surface-container'
                   }`}>
-                    <span className={`material-symbols-rounded text-lg ${
-                      isComplete ? 'text-primary-foreground' : 'text-muted-foreground'
-                    }`} style={{ fontVariationSettings: isComplete ? "'FILL' 1" : "'FILL' 0" }}>
-                      {isComplete ? 'check' : 'folder_open'}
-                    </span>
-                    {!isComplete && openCount > 0 && (
-                      <div className="absolute -top-1 -right-1 w-5 h-5 bg-accent-gold rounded-full flex items-center justify-center">
-                        <span className="text-[9px] font-black text-white">{openCount}</span>
-                      </div>
+                    {isComplete ? (
+                      <span className="material-symbols-rounded text-lg text-primary-foreground" style={{ fontVariationSettings: "'FILL' 1" }}>check</span>
+                    ) : (
+                      <span className="text-sm font-black text-muted-foreground">{openCount}</span>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -445,7 +442,7 @@ export default function StationDetail() {
                     <div className={`text-xs font-semibold mt-0.5 ${isComplete ? 'text-primary/60' : 'text-muted-foreground'}`}>
                       {doneCats.length} / {cats.length} klaar
                       {!isComplete && openCount > 0 && (
-                        <span className="text-accent-gold ml-2">· {openCount} open</span>
+                        <span className="text-orange font-bold ml-2">· {openCount} open</span>
                       )}
                       {isComplete && <span> · {totalFotosInSection} foto's</span>}
                     </div>
@@ -461,13 +458,14 @@ export default function StationDetail() {
                     {/* Open items first */}
                     {openCats.length > 0 && (
                       <>
-                        <div className="px-4 pt-3 pb-1.5">
-                          <span className="text-[10px] font-black uppercase tracking-wider text-accent-gold">
+                        <div className="px-4 pt-3 pb-1.5 flex items-center gap-1.5">
+                          <div className="w-1.5 h-1.5 rounded-full bg-orange flex-shrink-0" />
+                          <span className="text-[11px] font-black uppercase tracking-wider text-orange">
                             Nog te doen ({openCats.length})
                           </span>
                         </div>
                         {openCats.map((cat, idx) => (
-                          <CategoryRow key={cat.id} cat={cat} fotos={[]} isLast={idx === openCats.length - 1 && doneCats.length === 0 && skippedCats.length === 0} onOpen={() => setOpenCategory(cat)} />
+                          <CategoryRow key={cat.id} cat={cat} fotos={[]} isLast={idx === openCats.length - 1 && doneCats.length === 0 && skippedCats.length === 0} onOpen={() => setOpenCategory(cat)} highlight={highlightCatId === cat.id} />
                         ))}
                       </>
                     )}
@@ -480,13 +478,14 @@ export default function StationDetail() {
                     {/* Done items */}
                     {doneCats.length > 0 && (
                       <>
-                        <div className="px-4 pt-2 pb-1.5">
-                          <span className="text-[10px] font-black uppercase tracking-wider text-primary/60">
+                        <div className="px-4 pt-2 pb-1.5 flex items-center gap-1.5">
+                          <div className="w-1.5 h-1.5 rounded-full bg-primary/60 flex-shrink-0" />
+                          <span className="text-[11px] font-black uppercase tracking-wider text-primary/60">
                             Klaar ({doneCats.length})
                           </span>
                         </div>
                         {doneCats.map((cat, idx) => (
-                          <CategoryRow key={cat.id} cat={cat} fotos={fotosByCategorie(cat.name)} isLast={idx === doneCats.length - 1 && skippedCats.length === 0} onOpen={() => setOpenCategory(cat)} />
+                          <CategoryRow key={cat.id} cat={cat} fotos={fotosByCategorie(cat.name)} isLast={idx === doneCats.length - 1 && skippedCats.length === 0} onOpen={() => setOpenCategory(cat)} highlight={highlightCatId === cat.id} />
                         ))}
                       </>
                     )}
@@ -501,7 +500,7 @@ export default function StationDetail() {
                           </span>
                         </div>
                         {skippedCats.map((cat, idx) => (
-                          <CategoryRow key={cat.id} cat={cat} fotos={[]} isLast={idx === skippedCats.length - 1} isSkipped onOpen={() => setOpenCategory(cat)} />
+                          <CategoryRow key={cat.id} cat={cat} fotos={[]} isLast={idx === skippedCats.length - 1} isSkipped onOpen={() => setOpenCategory(cat)} highlight={highlightCatId === cat.id} />
                         ))}
                       </>
                     )}
@@ -519,7 +518,11 @@ export default function StationDetail() {
           <button
             onClick={() => {
               setOpenSections(prev => prev.includes(nextIncomplete.section) ? prev : [...prev, nextIncomplete.section]);
-              setOpenCategory(nextIncomplete);
+              setHighlightCatId(nextIncomplete.id);
+              setTimeout(() => {
+                setHighlightCatId(null);
+                setOpenCategory(nextIncomplete);
+              }, 300);
             }}
             className="w-full max-w-3xl mx-auto min-h-[52px] bg-gradient-to-r from-primary to-primary-light text-primary-foreground rounded-2xl font-display font-bold text-[15px] shadow-lg shadow-primary/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
           >
