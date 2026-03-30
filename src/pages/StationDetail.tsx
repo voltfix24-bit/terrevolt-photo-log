@@ -317,7 +317,7 @@ export default function StationDetail() {
                   style={isCS ? { background: "rgba(232,84,26,0.1)", color: "#E8541A" } : { background: "rgba(107,45,139,0.1)", color: "#6B2D8B" }}
                 >{station.type_ruimte}</span>
               </div>
-              <h2 className="text-2xl font-black tracking-tight mb-1 text-on-surface">{station.naam_msr}</h2>
+              <h2 className="font-display text-2xl font-extrabold tracking-tight mb-1 text-foreground">{station.naam_msr}</h2>
               <div className="mt-4">
                 <div className="flex justify-between items-center mb-1.5">
                   <span className="text-xs font-semibold text-on-surface-variant">Categorieën ingevuld</span>
@@ -406,39 +406,39 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
     <div className="flex flex-col" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{ minHeight: "calc(100dvh - 80px)" }}>
       {/* ── Sticky progress header — Saudia style ── */}
       <div className="sticky top-14 z-30 bg-primary-container/15 backdrop-blur-xl -mx-4 px-5 pt-3 pb-4 md:rounded-2xl md:mx-0 md:border md:border-outline-variant/20 md:bg-card md:backdrop-blur-none md:mb-4">
-        {/* Top row: back + station name + count */}
-        <div className="flex items-center justify-between mb-1">
+        {/* Top row: hamburger + station name + close */}
+        <div className="flex items-center justify-between mb-2">
           <button onClick={onBackToList} className="flex items-center gap-1 text-on-surface-variant font-semibold text-sm active:scale-95 transition-transform min-h-[44px]">
             <span className="material-symbols-outlined text-lg">menu</span>
           </button>
-          <span className="text-sm font-extrabold text-on-surface truncate max-w-[160px]">{station.naam_msr}</span>
+          <span className="font-display text-[15px] font-extrabold text-foreground truncate max-w-[160px]">{station.naam_msr}</span>
           <button onClick={onBackToList} className="w-9 h-9 rounded-full bg-on-surface/5 flex items-center justify-center active:scale-90 transition-transform">
             <span className="material-symbols-outlined text-lg text-on-surface-variant">close</span>
           </button>
         </div>
 
-        {/* Category label */}
-        <div className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-muted-foreground mb-0.5">
+        {/* Category label — uppercase tracked like "TRAVEL DOCUMENTATION" */}
+        <div className="text-[10px] font-display font-extrabold uppercase tracking-[0.18em] text-primary mb-1">
           Technische Oplevering
         </div>
 
-        {/* Category name + count — large like Saudia */}
-        <div className="flex items-end justify-between mb-2">
-          <h3 className="text-[22px] font-extrabold tracking-tight leading-tight text-primary">{category.name}</h3>
-          <div className="text-right">
-            <span className="text-[22px] font-extrabold text-on-surface">{filledCount}</span>
-            <span className="text-[14px] text-muted-foreground font-medium">/{totalCategories}</span>
+        {/* Category name + count — large bold like Saudia's "Overzicht binnenzijde 8/40" */}
+        <div className="flex items-end justify-between mb-3">
+          <h3 className="font-display text-[24px] font-extrabold tracking-tight leading-tight text-foreground">{category.name}</h3>
+          <div className="text-right flex items-baseline gap-0.5">
+            <span className="font-display text-[24px] font-extrabold text-foreground">{filledCount}</span>
+            <span className="font-display text-[16px] text-muted-foreground font-medium">/{totalCategories}</span>
           </div>
         </div>
 
-        {/* Progress bar with bolt icon */}
-        <div className="relative h-2 bg-primary-container/30 rounded-full overflow-visible mb-1">
+        {/* Progress bar with bolt icon — like Saudia's airplane bar */}
+        <div className="relative h-2.5 bg-surface-container rounded-full overflow-visible mb-1">
           <div className="h-full rounded-full bg-gradient-to-r from-primary to-primary-light transition-all duration-500" style={{ width: `${progressPct}%` }} />
           <div
-            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-5 h-5 bg-primary rounded-full flex items-center justify-center shadow-sm z-10"
-            style={{ left: `${Math.max(5, progressPct)}%` }}
+            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-6 h-6 bg-primary rounded-full flex items-center justify-center shadow-md z-10"
+            style={{ left: `${Math.max(6, progressPct)}%` }}
           >
-            <span className="material-symbols-outlined fill text-primary-foreground text-[10px]">bolt</span>
+            <span className="material-symbols-outlined fill text-primary-foreground text-[12px]">bolt</span>
           </div>
         </div>
       </div>
@@ -523,7 +523,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
             <div className="w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center bg-primary-container/30">
               <span className="material-symbols-outlined fill text-[32px] text-primary">add_a_photo</span>
             </div>
-            <div className="text-[16px] font-extrabold mb-1 text-on-surface">Tik om foto's te maken</div>
+            <div className="font-display text-[17px] font-extrabold mb-1 text-foreground">Tik om foto's te maken</div>
             <div className="text-[13px] text-muted-foreground">Hoge resolutie aanbevolen voor verificatie.</div>
           </DropZone>
         )}
@@ -579,7 +579,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
               <span className="material-symbols-outlined fill text-primary text-xl">description</span>
             </div>
             <div className="flex-1 text-left">
-              <div className="text-[14px] font-bold text-on-surface">Categorie details</div>
+              <div className="font-display text-[14px] font-bold text-foreground">Categorie details</div>
               <div className="text-[12px] text-muted-foreground">{fotos.length} foto{fotos.length > 1 ? "'s" : ""} · Categorie {String(category.id).padStart(2, "0")}</div>
             </div>
             <span className="material-symbols-outlined text-muted-foreground/40">chevron_right</span>
@@ -593,19 +593,19 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
           <button
             onClick={onPrev}
             disabled={step === 0}
-            className="flex items-center justify-center gap-1.5 min-h-[50px] px-5 rounded-2xl text-[14px] font-bold text-primary active:scale-[0.97] transition-transform disabled:opacity-30"
+            className="flex items-center justify-center gap-1.5 min-h-[50px] px-5 rounded-2xl font-display text-[15px] font-bold text-primary active:scale-[0.97] transition-transform disabled:opacity-30"
           >
             <span className="material-symbols-outlined text-lg">arrow_back</span>Vorige
           </button>
           <button
             onClick={() => { onSkip(); toast("Overgeslagen"); }}
-            className="min-h-[50px] px-4 text-[13px] font-semibold text-muted-foreground active:scale-[0.97] transition-transform"
+            className="min-h-[50px] px-4 font-display text-[13px] font-semibold text-muted-foreground active:scale-[0.97] transition-transform"
           >
             NVT
           </button>
           <button
             onClick={onNext}
-            className="flex-1 min-h-[50px] bg-gradient-to-r from-primary to-primary-light text-primary-foreground rounded-2xl text-[15px] font-bold shadow-lg shadow-primary/25 active:scale-[0.97] transition-transform flex items-center justify-center gap-1.5"
+            className="flex-1 min-h-[50px] bg-gradient-to-r from-primary to-primary-light text-primary-foreground rounded-2xl font-display text-[16px] font-bold shadow-lg shadow-primary/25 active:scale-[0.97] transition-transform flex items-center justify-center gap-1.5"
           >
             {step === total - 1 ? "Afronden" : "Volgende"}<span className="material-symbols-outlined text-lg">arrow_forward</span>
           </button>
@@ -640,19 +640,19 @@ function CompletionScreen({ filledCount, total, stationName, fotos, onReset, onB
         <span className="material-symbols-outlined fill text-primary-foreground text-[56px]">task_alt</span>
       </div>
 
-      <div className="text-[11px] font-extrabold uppercase tracking-[0.15em] text-muted-foreground mb-1">Aanvraag voltooid</div>
-      <h2 className="text-[36px] font-extrabold tracking-tight text-primary mb-2">Klaar!</h2>
-      <p className="text-[15px] text-muted-foreground text-center mb-6 max-w-[280px]">
+      <div className="text-[11px] font-display font-extrabold uppercase tracking-[0.18em] text-muted-foreground mb-1">Aanvraag voltooid</div>
+      <h2 className="font-display text-[40px] font-extrabold tracking-tight text-primary mb-2">Klaar!</h2>
+      <p className="text-[15px] text-muted-foreground text-center mb-6 max-w-[280px] leading-relaxed">
         Uw foto's en gegevens zijn succesvol verwerkt.
       </p>
 
       {/* Status overview card */}
       <div className="w-full bg-card rounded-3xl p-5 shadow-sm border border-outline-variant/10 mb-5">
-        <h3 className="text-lg font-extrabold text-on-surface mb-3">Status overzicht</h3>
+        <h3 className="font-display text-lg font-extrabold text-foreground mb-3">Status overzicht</h3>
 
         <div className="flex items-center justify-between mb-2">
           <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Voortgang</span>
-          <span className="text-[22px] font-extrabold text-primary">{pct}%</span>
+          <span className="font-display text-[24px] font-extrabold text-primary">{pct}%</span>
         </div>
 
         <div className="h-2 bg-primary-container/30 rounded-full overflow-hidden mb-3">
@@ -684,18 +684,18 @@ function CompletionScreen({ filledCount, total, stationName, fotos, onReset, onB
 
       {/* Action buttons */}
       <div className="flex flex-col gap-2.5 w-full">
-        <button onClick={onPdf} className="w-full min-h-[56px] bg-gradient-to-r from-primary to-primary-light text-primary-foreground rounded-2xl text-[15px] font-bold shadow-lg shadow-primary/25 active:scale-[0.97] transition-transform flex items-center justify-center gap-2.5">
+        <button onClick={onPdf} className="w-full min-h-[56px] bg-gradient-to-r from-primary to-primary-light text-primary-foreground rounded-2xl font-display text-[16px] font-bold shadow-lg shadow-primary/25 active:scale-[0.97] transition-transform flex items-center justify-center gap-2.5">
           <span className="material-symbols-outlined fill text-xl">picture_as_pdf</span>PDF downloaden
         </button>
         <button
           onClick={handleZip}
           disabled={zipProgress !== null || fotos.length === 0}
-          className="w-full min-h-[52px] bg-card border border-outline-variant/15 rounded-2xl text-[15px] font-bold text-on-surface shadow-sm active:scale-[0.97] transition-transform flex items-center justify-center gap-2.5 disabled:opacity-50"
+          className="w-full min-h-[52px] bg-card border border-outline-variant/15 rounded-2xl font-display text-[15px] font-bold text-foreground shadow-sm active:scale-[0.97] transition-transform flex items-center justify-center gap-2.5 disabled:opacity-50"
         >
           <span className="material-symbols-outlined text-xl">folder_zip</span>
           {zipProgress !== null ? `Downloaden… ${zipProgress}%` : "Foto's als ZIP"}
         </button>
-        <button onClick={onBack} className="w-full flex items-center justify-center gap-2 py-4 text-[13px] font-bold text-primary active:scale-[0.97] transition-transform">
+        <button onClick={onBack} className="w-full flex items-center justify-center gap-2 py-4 font-display text-[14px] font-bold text-primary active:scale-[0.97] transition-transform">
           <span className="material-symbols-outlined text-lg">arrow_back</span>Terug naar overzicht
         </button>
       </div>
@@ -703,7 +703,7 @@ function CompletionScreen({ filledCount, total, stationName, fotos, onReset, onB
       {/* Brand footer */}
       <div className="mt-auto pt-8 text-center">
         <div className="w-16 h-px bg-outline-variant/20 mx-auto mb-3"></div>
-        <span className="text-sm font-extrabold text-primary/30 tracking-tighter">TerreVolt</span>
+        <span className="font-display text-sm font-extrabold text-primary/30 tracking-tighter">TerreVolt</span>
         <div className="text-[9px] font-bold uppercase tracking-[0.15em] text-muted-foreground/40 mt-0.5">Technische Oplevering</div>
       </div>
     </div>
