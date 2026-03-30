@@ -648,7 +648,7 @@ function CompletionScreen({ filledCount, total, stationName, fotos, onReset, onB
 
       {/* Status overview card */}
       <div className="w-full bg-card rounded-3xl p-5 shadow-sm border border-outline-variant/10 mb-5">
-        <h3 className="text-lg font-extrabold text-on-surface mb-3">Status overzicht</h3>
+        <h3 className="font-display text-lg font-extrabold text-foreground mb-3">Status overzicht</h3>
 
         <div className="flex items-center justify-between mb-2">
           <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Voortgang</span>
