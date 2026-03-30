@@ -533,7 +533,7 @@ export default function StationDetail() {
                 setOpenCategory(nextIncomplete);
               }, 300);
             }}
-            className="w-full max-w-3xl mx-auto min-h-[52px] bg-gradient-to-r from-primary to-primary-light text-primary-foreground rounded-2xl font-display font-bold text-[15px] shadow-lg shadow-primary/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            className="w-full max-w-3xl mx-auto min-h-[52px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-2xl font-display font-bold text-[15px] shadow-[0_6px_20px_-4px_rgba(0,100,47,0.35)] active:scale-[0.97] transition-all flex items-center justify-center gap-2.5"
           >
             <span className="material-symbols-rounded text-[20px]">arrow_forward</span>
             Doorgaan: <span className="truncate max-w-[220px]">{nextIncomplete.name}</span>
