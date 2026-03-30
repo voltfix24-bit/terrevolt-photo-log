@@ -14,7 +14,83 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      fotos: {
+        Row: {
+          categorie: string
+          created_at: string | null
+          id: string
+          station_id: string
+          storage_path: string
+          url: string
+          volgorde: number | null
+        }
+        Insert: {
+          categorie: string
+          created_at?: string | null
+          id?: string
+          station_id: string
+          storage_path: string
+          url: string
+          volgorde?: number | null
+        }
+        Update: {
+          categorie?: string
+          created_at?: string | null
+          id?: string
+          station_id?: string
+          storage_path?: string
+          url?: string
+          volgorde?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fotos_station_id_fkey"
+            columns: ["station_id"]
+            isOneToOne: false
+            referencedRelation: "stations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stations: {
+        Row: {
+          behuizingsnummer: string | null
+          created_at: string | null
+          da_kast: boolean | null
+          datum: string | null
+          id: string
+          ingevuld_door: string | null
+          naam_msr: string
+          type_ruimte: string | null
+          updated_at: string | null
+          vermogensveld: boolean | null
+        }
+        Insert: {
+          behuizingsnummer?: string | null
+          created_at?: string | null
+          da_kast?: boolean | null
+          datum?: string | null
+          id?: string
+          ingevuld_door?: string | null
+          naam_msr: string
+          type_ruimte?: string | null
+          updated_at?: string | null
+          vermogensveld?: boolean | null
+        }
+        Update: {
+          behuizingsnummer?: string | null
+          created_at?: string | null
+          da_kast?: boolean | null
+          datum?: string | null
+          id?: string
+          ingevuld_door?: string | null
+          naam_msr?: string
+          type_ruimte?: string | null
+          updated_at?: string | null
+          vermogensveld?: boolean | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
