@@ -462,12 +462,6 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
                 </p>
               )}
             </div>
-          )}
-                  )}
-                </>
-              )}
-            </div>
-          </div>
         </div>
 
         {/* Conditional warnings */}
