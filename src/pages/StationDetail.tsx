@@ -684,7 +684,7 @@ function CompletionScreen({ filledCount, total, stationName, fotos, onReset, onB
 
       {/* Action buttons */}
       <div className="flex flex-col gap-2.5 w-full">
-        <button onClick={onPdf} className="w-full min-h-[56px] bg-gradient-to-r from-primary to-primary-light text-primary-foreground rounded-2xl text-[15px] font-bold shadow-lg shadow-primary/25 active:scale-[0.97] transition-transform flex items-center justify-center gap-2.5">
+        <button onClick={onPdf} className="w-full min-h-[56px] bg-gradient-to-r from-primary to-primary-light text-primary-foreground rounded-2xl font-display text-[16px] font-bold shadow-lg shadow-primary/25 active:scale-[0.97] transition-transform flex items-center justify-center gap-2.5">
           <span className="material-symbols-outlined fill text-xl">picture_as_pdf</span>PDF downloaden
         </button>
         <button
