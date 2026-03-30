@@ -14,7 +14,7 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["DM Sans", "sans-serif"],
+        sans: ["Inter", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -25,10 +25,13 @@ export default {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          light: "hsl(var(--primary-light))",
+          container: "hsl(var(--primary-container))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
           foreground: "hsl(var(--secondary-foreground))",
+          container: "hsl(var(--primary-container))",
         },
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
@@ -50,6 +53,21 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        surface: {
+          DEFAULT: "hsl(var(--surface))",
+          low: "hsl(var(--surface-low))",
+          container: "hsl(var(--surface-container))",
+          high: "hsl(var(--surface-high))",
+        },
+        "on-surface": {
+          DEFAULT: "hsl(var(--on-surface))",
+          variant: "hsl(var(--on-surface-variant))",
+        },
+        "outline-variant": "hsl(var(--outline-variant))",
+        orange: "hsl(var(--orange))",
+        purple: "hsl(var(--purple))",
+        tertiary: "hsl(var(--tertiary))",
+        "on-primary-container": "hsl(var(--on-primary-container))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
