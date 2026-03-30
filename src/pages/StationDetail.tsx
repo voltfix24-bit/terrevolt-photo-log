@@ -293,6 +293,7 @@ export default function StationDetail() {
             filledCount={filledCount}
             total={CATEGORIES.length}
             stationName={station.naam_msr}
+            fotos={(fotos ?? []).map(f => ({ id: f.id, categorie: f.categorie, url: f.url }))}
             onReset={() => { setCurrentStep(0); setCompleted(false); }}
             onBack={() => navigate("/")}
             onPdf={openPdf}

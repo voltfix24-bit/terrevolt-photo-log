@@ -5,6 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { FOTO_CATEGORIEEN } from "@/lib/categories";
 import { Skeleton } from "@/components/ui/skeleton";
 import { generatePdfHtml } from "@/lib/pdf-generator";
+import { downloadStationZip } from "@/lib/zip-download";
+import { toast } from "sonner";
 
 export default function Dashboard() {
   const navigate = useNavigate();
