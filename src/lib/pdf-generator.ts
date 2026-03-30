@@ -317,19 +317,19 @@ body {
    COVER PAGE
 ═══════════════════════════════════════ */
 .cover-page {
-  background: #003318;
+  background: ${coverBg};
   color: white;
 }
 .deco-arc {
   position: absolute;
   border-radius: 50%;
-  border: 3px solid rgba(28,176,80,0.25);
+  border: 3px solid ${arcColor};
 }
 .deco-arc-1 {
   width: 600px; height: 600px;
   top: -120px; right: -200px;
   border-width: 4px;
-  border-color: rgba(28,176,80,0.3);
+  border-color: ${arcColor1};
 }
 .deco-arc-2 {
   width: 500px; height: 500px;
