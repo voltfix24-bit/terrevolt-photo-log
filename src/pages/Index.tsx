@@ -39,9 +39,11 @@ export default function Dashboard() {
       s.behuizingsnummer?.toLowerCase().includes(search.toLowerCase())
   );
 
+  const { data: instellingenData } = useInstellingen();
+
   const openPdf = (station: any) => {
     const fotos = station.fotos ?? [];
-    const html = generatePdfHtml(station, fotos);
+    const html = generatePdfHtml(station, fotos, instellingenData ?? undefined);
     const w = window.open("", "_blank");
     if (w) { w.document.write(html); w.document.close(); }
   };
