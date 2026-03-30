@@ -33,6 +33,79 @@ const CATEGORY_ICONS: Record<number, string> = {
 
 type FotoRow = { id: string; url: string; storage_path: string; categorie: string };
 
+/* ==================== DROP ZONE COMPONENT ==================== */
+function DropZone({ onFiles, disabled, onClick, compact, children }: {
+  onFiles: (files: FileList) => void;
+  disabled?: boolean;
+  onClick?: (e: React.MouseEvent) => void;
+  compact?: boolean;
+  children: React.ReactNode;
+}) {
+  const [dragging, setDragging] = useState(false);
+  const dragCounter = useRef(0);
+
+  const handleDrag = useCallback((e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); }, []);
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    dragCounter.current++;
+    if (e.dataTransfer.items?.length) setDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    dragCounter.current--;
+    if (dragCounter.current === 0) setDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    setDragging(false);
+    dragCounter.current = 0;
+    if (disabled) return;
+    const files = e.dataTransfer.files;
+    if (files?.length) onFiles(files);
+  }, [disabled, onFiles]);
+
+  if (compact) {
+    return (
+      <button
+        onClick={onClick}
+        disabled={disabled}
+        onDragOver={handleDrag}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className={`w-full py-2 bg-card border rounded-xl text-xs font-semibold transition-all active:scale-95 flex items-center justify-center gap-1 ${
+          dragging
+            ? "border-primary bg-primary/5 text-primary scale-[1.02]"
+            : "border-outline-variant/20 text-on-surface-variant hover:text-primary hover:border-primary/30"
+        }`}
+      >
+        {children}
+      </button>
+    );
+  }
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      onDragOver={handleDrag}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={`rounded-2xl p-6 text-center cursor-pointer border-2 transition-all mb-4 active:scale-[0.98] w-full ${
+        dragging
+          ? "border-primary bg-primary/10 scale-[1.02] shadow-lg shadow-primary/10"
+          : "border-dashed border-outline-variant/40 bg-surface-low hover:border-primary/40 hover:bg-primary/5"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function StationDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -394,15 +467,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/heic,image/webp" multiple className="hidden"
           onChange={(e) => { if (e.target.files) onUpload(e.target.files); e.target.value = ""; }} />
 
-        <button
-          onClick={() => fileRef.current?.click()}
-          disabled={isUploading}
-          className={`rounded-2xl p-6 text-center cursor-pointer border-2 transition-all mb-4 active:scale-[0.98] w-full ${
-            hasPhotos
-              ? "border-green-300/40 bg-green-50/50"
-              : "border-dashed border-outline-variant/40 bg-surface-low hover:border-primary/40 hover:bg-primary/5"
-          }`}
-        >
+        <DropZone onFiles={onUpload} disabled={isUploading} onClick={() => fileRef.current?.click()}>
           <div className={`w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center ${
             hasPhotos ? "bg-gradient-to-br from-primary to-primary-light shadow-lg shadow-primary/20" : "bg-surface-high"
           }`}>
@@ -410,9 +475,9 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
               {hasPhotos ? "check_circle" : "photo_camera"}
             </span>
           </div>
-          <div className="text-sm font-bold mb-1 text-on-surface">{hasPhotos ? "Foto's geüpload — tik voor meer" : "Tik om foto's te selecteren"}</div>
+          <div className="text-sm font-bold mb-1 text-on-surface">{hasPhotos ? "Foto's geüpload — tik voor meer" : "Tik of sleep foto's hierheen"}</div>
           <div className="text-xs text-on-surface-variant">JPG · PNG · HEIC · max <span className="font-bold text-primary">10MB</span></div>
-        </button>
+        </DropZone>
 
         {isUploading && uploadProgress !== undefined && (
           <div className="mb-4 h-2 overflow-hidden rounded-full bg-surface-high">
@@ -563,14 +628,10 @@ function CategoryCard({ category, fotos, icon, isUploading, uploadProgress, onUp
       <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/heic,image/webp" multiple className="hidden"
         onChange={(e) => { if (e.target.files) onUpload(e.target.files); e.target.value = ""; }} />
 
-      <button
-        onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}
-        disabled={isUploading}
-        className="w-full py-2 bg-card border border-outline-variant/20 rounded-xl text-xs font-semibold text-on-surface-variant hover:text-primary hover:border-primary/30 transition-all active:scale-95 flex items-center justify-center gap-1"
-      >
+      <DropZone onFiles={onUpload} disabled={isUploading} onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }} compact>
         <span className="material-symbols-outlined text-sm">photo_camera</span>
         {isUploading ? "Uploaden..." : "Toevoegen"}
-      </button>
+      </DropZone>
     </div>
   );
 }
