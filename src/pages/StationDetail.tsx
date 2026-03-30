@@ -615,10 +615,11 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
   );
 }
 
-/* ==================== COMPLETION SCREEN ==================== */
+/* ==================== COMPLETION SCREEN — Saudia "Klaar!" style ==================== */
 
 function CompletionScreen({ filledCount, total, stationName, fotos, onReset, onBack, onPdf }: { filledCount: number; total: number; stationName: string; fotos: { id: string; categorie: string; url: string }[]; onReset: () => void; onBack: () => void; onPdf: () => void }) {
   const [zipProgress, setZipProgress] = useState<number | null>(null);
+  const pct = Math.round((filledCount / total) * 100);
 
   const handleZip = async () => {
     const { downloadStationZip } = await import("@/lib/zip-download");
@@ -633,50 +634,77 @@ function CompletionScreen({ filledCount, total, stationName, fotos, onReset, onB
   };
 
   return (
-    <div className="max-w-lg mx-auto flex flex-col items-center justify-center py-12 text-center animate-pop">
-      <div className="w-24 h-24 bg-gradient-to-br from-primary to-primary-light rounded-[28px] flex items-center justify-center mb-5 shadow-xl shadow-primary/35">
-        <span className="material-symbols-outlined fill text-primary-foreground text-5xl">check_circle</span>
+    <div className="max-w-lg mx-auto flex flex-col items-center py-6 animate-pop min-h-[calc(100dvh-120px)]">
+      {/* Big checkmark circle */}
+      <div className="w-28 h-28 bg-gradient-to-br from-primary to-primary-light rounded-full flex items-center justify-center mb-5 shadow-xl shadow-primary/30">
+        <span className="material-symbols-outlined fill text-primary-foreground text-[56px]">task_alt</span>
       </div>
 
-      <h2 className="text-[32px] font-black tracking-tight mb-2 text-on-surface">Klaar! 🎉</h2>
-      <p className="text-[15px] text-muted-foreground mb-1">
-        {filledCount === total ? "Alle" : `${filledCount} van ${total}`} categorieën ingevuld
+      <div className="text-[11px] font-extrabold uppercase tracking-[0.15em] text-muted-foreground mb-1">Aanvraag voltooid</div>
+      <h2 className="text-[36px] font-extrabold tracking-tight text-primary mb-2">Klaar!</h2>
+      <p className="text-[15px] text-muted-foreground text-center mb-6 max-w-[280px]">
+        Uw foto's en gegevens zijn succesvol verwerkt.
       </p>
-      <p className="text-[13px] text-muted-foreground font-mono mb-8">{stationName}</p>
 
-      <div className="grid grid-cols-3 gap-2.5 mb-8 w-full">
-        <div className="bg-card rounded-2xl p-3 shadow-sm text-center">
-          <div className="text-[22px] font-black text-primary">{filledCount}</div>
-          <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Categorieën</div>
+      {/* Status overview card */}
+      <div className="w-full bg-card rounded-3xl p-5 shadow-sm border border-outline-variant/10 mb-5">
+        <h3 className="text-lg font-extrabold text-on-surface mb-3">Status overzicht</h3>
+
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Voortgang</span>
+          <span className="text-[22px] font-extrabold text-primary">{pct}%</span>
         </div>
-        <div className="bg-card rounded-2xl p-3 shadow-sm text-center">
-          <div className="text-[22px] font-black text-primary">{total}</div>
-          <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Totaal</div>
+
+        <div className="h-2 bg-primary-container/30 rounded-full overflow-hidden mb-3">
+          <div className="h-full bg-gradient-to-r from-primary to-primary-light rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
         </div>
-        <div className="bg-card rounded-2xl p-3 shadow-sm text-center">
-          <div className="text-[22px] font-black text-primary">{Math.round((filledCount / total) * 100)}%</div>
-          <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Compleet</div>
+
+        <p className="text-[13px] text-muted-foreground italic">
+          {filledCount} van de {total} categorieën succesvol gevalideerd.
+        </p>
+      </div>
+
+      {/* Generated files card */}
+      <div className="w-full bg-card rounded-3xl p-5 shadow-sm border border-outline-variant/10 mb-5">
+        <div className="flex items-center justify-center gap-3 mb-3">
+          <div className="w-12 h-12 rounded-2xl bg-yellow-100 flex items-center justify-center">
+            <span className="material-symbols-outlined fill text-yellow-600 text-2xl">description</span>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-primary-container/40 flex items-center justify-center">
+            <span className="material-symbols-outlined fill text-primary text-2xl">photo_library</span>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-surface-container flex items-center justify-center">
+            <span className="material-symbols-outlined fill text-muted-foreground text-2xl">verified</span>
+          </div>
+        </div>
+        <div className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground text-center">
+          Bestanden gegenereerd
         </div>
       </div>
 
+      {/* Action buttons */}
       <div className="flex flex-col gap-2.5 w-full">
-        <button onClick={onPdf} className="w-full min-h-[56px] bg-gradient-to-br from-primary to-primary-light text-primary-foreground rounded-2xl text-base font-bold shadow-lg shadow-primary/30 active:scale-[0.97] transition-transform flex items-center justify-center gap-2">
-          <span className="material-symbols-outlined fill">picture_as_pdf</span>PDF downloaden
+        <button onClick={onPdf} className="w-full min-h-[56px] bg-gradient-to-r from-primary to-primary-light text-primary-foreground rounded-2xl text-[15px] font-bold shadow-lg shadow-primary/25 active:scale-[0.97] transition-transform flex items-center justify-center gap-2.5">
+          <span className="material-symbols-outlined fill text-xl">picture_as_pdf</span>PDF downloaden
         </button>
         <button
           onClick={handleZip}
           disabled={zipProgress !== null || fotos.length === 0}
-          className="w-full min-h-[52px] bg-card border border-outline-variant/20 rounded-2xl text-[15px] font-bold text-on-surface shadow-sm active:scale-[0.97] transition-transform flex items-center justify-center gap-2 disabled:opacity-50"
+          className="w-full min-h-[52px] bg-card border border-outline-variant/15 rounded-2xl text-[15px] font-bold text-on-surface shadow-sm active:scale-[0.97] transition-transform flex items-center justify-center gap-2.5 disabled:opacity-50"
         >
-          <span className="material-symbols-outlined">folder_zip</span>
+          <span className="material-symbols-outlined text-xl">folder_zip</span>
           {zipProgress !== null ? `Downloaden… ${zipProgress}%` : "Foto's als ZIP"}
         </button>
-        <button onClick={onBack} className="w-full min-h-[52px] bg-surface-container rounded-2xl text-[15px] font-semibold text-on-surface-variant active:scale-[0.97] transition-transform">
-          Terug naar overzicht
+        <button onClick={onBack} className="w-full flex items-center justify-center gap-2 py-4 text-[13px] font-bold text-primary active:scale-[0.97] transition-transform">
+          <span className="material-symbols-outlined text-lg">arrow_back</span>Terug naar overzicht
         </button>
-        <button onClick={onReset} className="w-full py-3 text-[13px] text-muted-foreground font-semibold active:scale-[0.97] transition-transform">
-          ↺ Opnieuw beginnen
-        </button>
+      </div>
+
+      {/* Brand footer */}
+      <div className="mt-auto pt-8 text-center">
+        <div className="w-16 h-px bg-outline-variant/20 mx-auto mb-3"></div>
+        <span className="text-sm font-extrabold text-primary/30 tracking-tighter">TerreVolt</span>
+        <div className="text-[9px] font-bold uppercase tracking-[0.15em] text-muted-foreground/40 mt-0.5">Technische Oplevering</div>
       </div>
     </div>
   );
