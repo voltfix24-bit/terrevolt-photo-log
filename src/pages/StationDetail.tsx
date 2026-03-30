@@ -445,7 +445,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
         {/* Instruction card — lightbulb style */}
         <div className="bg-primary-container/10 rounded-2xl p-4 border border-primary/8">
           <div className="flex gap-3 items-start">
-            <span className="text-xl flex-shrink-0 mt-0.5">💡</span>
+            <span className="material-symbols-rounded text-xl text-primary flex-shrink-0 mt-0.5">info</span>
             <p className="text-[13px] leading-relaxed text-on-surface-variant">{category.instruction}</p>
           </div>
         </div>
