@@ -457,8 +457,9 @@ export default function StationDetail() {
                     {/* Open items first */}
                     {openCats.length > 0 && (
                       <>
-                        <div className="px-4 pt-3 pb-1.5">
-                          <span className="text-[10px] font-black uppercase tracking-wider text-accent-gold">
+                        <div className="px-4 pt-3 pb-1.5 flex items-center gap-1.5">
+                          <div className="w-1.5 h-1.5 rounded-full bg-orange flex-shrink-0" />
+                          <span className="text-[11px] font-black uppercase tracking-wider text-orange">
                             Nog te doen ({openCats.length})
                           </span>
                         </div>
