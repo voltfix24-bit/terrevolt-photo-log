@@ -368,10 +368,9 @@ interface StepByStepViewProps {
   filledCount: number;
   totalCategories: number;
   voorbeelden: { id: string; url: string }[];
-  onOpenSettings: () => void;
 }
 
-function StepByStepView({ station, category, step, total, fotos, tipOpen, onToggleTip, isUploading, uploadProgress, onUpload, onDelete, onNext, onPrev, onSkip, onClickThumb, onBackToList, filledCount, totalCategories, voorbeelden, onOpenSettings }: StepByStepViewProps) {
+function StepByStepView({ station, category, step, total, fotos, tipOpen, onToggleTip, isUploading, uploadProgress, onUpload, onDelete, onNext, onPrev, onSkip, onClickThumb, onBackToList, filledCount, totalCategories, voorbeelden }: StepByStepViewProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const isVermogensveld = category.id === 14;
   const isDaKast = category.id === 15;
