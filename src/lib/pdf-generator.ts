@@ -353,10 +353,10 @@ body {
 }
 .logo-icon {
   width: 44px; height: 44px;
-  background: linear-gradient(135deg, #006e2d, #1cb050);
+  background: linear-gradient(135deg, ${primaryCss}, ${primaryLightCss});
   border-radius: 12px;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 4px 16px rgba(28,176,80,0.4);
+  box-shadow: 0 4px 16px ${arcColor1};
 }
 .logo-text {
   font-size: 22px;
@@ -441,7 +441,7 @@ body {
   color: rgba(255,255,255,0.85);
 }
 .detail-highlight {
-  color: #1cb050;
+  color: ${primaryLightCss};
 }
 .cover-progress {
   display: flex;
@@ -457,13 +457,13 @@ body {
 }
 .cover-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #006e2d, #1cb050);
+  background: linear-gradient(90deg, ${primaryCss}, ${primaryLightCss});
   border-radius: 3px;
 }
 .cover-progress-pct {
   font-size: 13px;
   font-weight: 900;
-  color: #1cb050;
+  color: ${primaryLightCss};
 }
 .cover-footer-line {
   position: absolute;
@@ -487,7 +487,7 @@ body {
 ═══════════════════════════════════════ */
 .toc-page { background: #ffffff; }
 .toc-banner {
-  background: #003318;
+  background: ${coverBg};
   padding: 32px 48px 28px;
   border-radius: 0 0 24px 0;
 }
@@ -543,7 +543,7 @@ body {
 .toc-item-num {
   font-size: 10px;
   font-weight: 800;
-  color: #006e2d;
+  color: ${primaryCss};
   font-family: 'Courier New', monospace;
   min-width: 20px;
 }
@@ -588,7 +588,7 @@ body {
 .toc-footer-right {
   font-size: 9px;
   font-weight: 800;
-  color: #006e2d;
+  color: ${primaryCss};
 }
 
 /* ═══════════════════════════════════════
@@ -750,7 +750,7 @@ body {
 .footer-dot {
   width: 5px; height: 5px;
   border-radius: 50%;
-  background: #1cb050;
+  background: ${primaryLightCss};
   flex-shrink: 0;
 }
 .pf-center {
@@ -769,7 +769,7 @@ body {
 }
 .pf-page {
   font-weight: 800;
-  color: #006e2d;
+  color: ${primaryCss};
   font-size: 9px;
 }
 
@@ -778,7 +778,7 @@ body {
   position: fixed;
   top: 20px; right: 20px;
   z-index: 9999;
-  background: linear-gradient(135deg, #006e2d, #1cb050);
+  background: linear-gradient(135deg, ${primaryCss}, ${primaryLightCss});
   color: white;
   border: none;
   padding: 14px 28px;
@@ -787,13 +787,13 @@ body {
   font-family: 'Inter', sans-serif;
   font-weight: 700;
   font-size: 14px;
-  box-shadow: 0 8px 28px rgba(0,110,45,0.4);
+  box-shadow: 0 8px 28px ${arcColor1};
   display: flex;
   align-items: center;
   gap: 8px;
   transition: all 0.15s;
 }
-.print-btn:hover { transform: translateY(-1px); box-shadow: 0 12px 32px rgba(0,110,45,0.45); }
+.print-btn:hover { transform: translateY(-1px); box-shadow: 0 12px 32px ${arcColor1}; }
 .print-btn:active { transform: scale(0.97); }
 
 @media print {
