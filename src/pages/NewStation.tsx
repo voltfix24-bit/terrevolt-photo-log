@@ -62,7 +62,7 @@ export default function NewStation() {
         <div className="space-y-6">
           {/* Naam MSR */}
           <div>
-            <label className="block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Naam MSR</label>
+            <label className="block text-[11px] font-bold uppercase tracking-widest text-accent-gold mb-2">Naam MSR</label>
             <input
               type="text"
               placeholder="bv. Sint Martinusstraat 49NB"
