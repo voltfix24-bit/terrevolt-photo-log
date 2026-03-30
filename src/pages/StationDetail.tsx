@@ -438,36 +438,31 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
         </div>
       </div>
 
-      {/* ── Content area ── */}
-      <div className="flex-1 px-2 pt-5 pb-[100px] space-y-5">
+      {/* ── Content area — no scroll, fills viewport ── */}
+      <div className="flex-1 flex flex-col px-2 pt-4 pb-[100px] gap-4 overflow-hidden">
 
-        {/* Instruction card — premium guidance */}
-        <div className="bg-primary-container/8 rounded-3xl px-6 py-5 border border-primary/5">
-          <div className="flex gap-4 items-start">
-            <div className="w-9 h-9 rounded-2xl bg-primary/8 flex items-center justify-center flex-shrink-0 mt-0.5">
-              <span className="material-symbols-rounded text-primary text-[20px]">info</span>
+        {/* Instruction — collapsed by default, expandable */}
+        <div className="bg-primary-container/8 rounded-3xl border border-primary/5">
+          <button
+            onClick={onToggleTip}
+            className="w-full flex items-center gap-3 px-5 py-4 text-left active:scale-[0.99] transition-transform"
+          >
+            <div className="w-8 h-8 rounded-xl bg-primary/8 flex items-center justify-center flex-shrink-0">
+              <span className="material-symbols-rounded text-primary text-[18px]">info</span>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[14px] leading-[1.7] text-on-surface-variant">{category.instruction}</p>
-              {/* Integrated tip */}
+            <span className="text-[13px] font-semibold text-on-surface-variant/70 flex-1">Instructie bekijken</span>
+            <span className="material-symbols-rounded text-[18px] text-on-surface-variant/40">{tipOpen ? 'expand_less' : 'expand_more'}</span>
+          </button>
+          {tipOpen && (
+            <div className="px-5 pb-4 pt-0">
+              <p className="text-[13px] leading-[1.7] text-on-surface-variant">{category.instruction}</p>
               {category.tip && (
-                <>
-                  <button
-                    onClick={onToggleTip}
-                    className="mt-3 text-[12px] font-semibold text-primary/60 hover:text-primary transition-colors flex items-center gap-1"
-                  >
-                    <span className="material-symbols-rounded text-[14px]">{tipOpen ? 'expand_less' : 'expand_more'}</span>
-                    {tipOpen ? 'Verberg tip' : 'Bekijk tip'}
-                  </button>
-                  {tipOpen && (
-                    <p className="mt-2 text-[13px] leading-[1.65] text-on-surface-variant/70 border-t border-primary/5 pt-3">
-                      {category.tip}
-                    </p>
-                  )}
-                </>
+                <p className="mt-3 text-[12px] leading-[1.6] text-on-surface-variant/50 border-t border-primary/5 pt-3">
+                  {category.tip}
+                </p>
               )}
             </div>
-          </div>
+          )}
         </div>
 
         {/* Conditional warnings */}
