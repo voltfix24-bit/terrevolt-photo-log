@@ -5,11 +5,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { FOTO_CATEGORIEEN } from "@/lib/categories";
 import { Skeleton } from "@/components/ui/skeleton";
 import { generatePdfHtml } from "@/lib/pdf-generator";
+import { downloadStationZip } from "@/lib/zip-download";
+import { toast } from "sonner";
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [zipProgress, setZipProgress] = useState<number | null>(null);
 
   const { data: stations, isLoading } = useQuery({
     queryKey: ["stations"],
@@ -164,7 +167,24 @@ export default function Dashboard() {
                           className="flex-1 flex items-center justify-center gap-2 min-h-[48px] bg-card border border-outline-variant/20 text-on-surface rounded-2xl text-sm font-bold shadow-sm active:scale-[0.97] transition-transform"
                         >
                           <span className="material-symbols-outlined text-lg">picture_as_pdf</span>
-                          PDF rapport
+                          PDF
+                        </button>
+                        <button
+                          onClick={async () => {
+                            const stationFotos = (station.fotos ?? []).map((f: any) => ({ id: f.id, categorie: f.categorie, url: f.url }));
+                            if (stationFotos.length === 0) { toast("Geen foto's om te downloaden"); return; }
+                            setZipProgress(0);
+                            try {
+                              await downloadStationZip(station.naam_msr, stationFotos, (pct) => setZipProgress(pct));
+                              toast.success("ZIP gedownload ✓");
+                            } catch { toast.error("ZIP downloaden mislukt"); }
+                            setZipProgress(null);
+                          }}
+                          disabled={zipProgress !== null}
+                          className="flex-1 flex items-center justify-center gap-2 min-h-[48px] bg-card border border-outline-variant/20 text-on-surface rounded-2xl text-sm font-bold shadow-sm active:scale-[0.97] transition-transform disabled:opacity-50"
+                        >
+                          <span className="material-symbols-outlined text-lg">folder_zip</span>
+                          {zipProgress !== null ? `${zipProgress}%` : "ZIP"}
                         </button>
                       </div>
                     )}
