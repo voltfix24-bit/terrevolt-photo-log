@@ -555,14 +555,10 @@ function CategoryCard({ category, fotos, icon, isUploading, uploadProgress, onUp
       <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/heic,image/webp" multiple className="hidden"
         onChange={(e) => { if (e.target.files) onUpload(e.target.files); e.target.value = ""; }} />
 
-      <button
-        onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}
-        disabled={isUploading}
-        className="w-full py-2 bg-card border border-outline-variant/20 rounded-xl text-xs font-semibold text-on-surface-variant hover:text-primary hover:border-primary/30 transition-all active:scale-95 flex items-center justify-center gap-1"
-      >
+      <DropZone onFiles={onUpload} disabled={isUploading} onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }} compact>
         <span className="material-symbols-outlined text-sm">photo_camera</span>
         {isUploading ? "Uploaden..." : "Toevoegen"}
-      </button>
+      </DropZone>
     </div>
   );
 }
