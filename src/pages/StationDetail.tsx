@@ -142,8 +142,8 @@ function CategoryRow({ cat, fotos, isSkipped, sectionComplete, onOpen }: {
         data-cat-id={cat.id}
         onClick={onOpen}
         className="flex items-center justify-between w-full p-4 rounded-xl
-                   bg-surface-high/50 border border-dashed border-outline-variant/50
-                   hover:bg-surface-high transition-colors text-left
+                   bg-card shadow-sm border border-outline-variant/15
+                   hover:bg-surface-low transition-colors text-left
                    active:scale-[0.98] group"
       >
         <div className="flex items-center gap-4">
