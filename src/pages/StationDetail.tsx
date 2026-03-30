@@ -275,35 +275,69 @@ export default function StationDetail() {
       )}
 
       <main className="pt-20 pb-0 px-4 max-w-3xl mx-auto animate-fade-up">
-        {/* ── 1. STICKY HEADER ── */}
-        <div className="flex items-center gap-3 mb-5">
-          <button onClick={() => navigate("/")} className="flex items-center gap-1 text-sm text-text-secondary hover:text-primary-hover transition-colors font-semibold flex-shrink-0">
-            <span className="material-symbols-rounded text-lg">arrow_back_ios</span>
-          </button>
-          <div className="flex-1 min-w-0">
-            <h1 className="font-display text-xl font-extrabold tracking-tight text-text-primary truncate">{station.naam_msr}</h1>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-accent-gold/[0.08] text-accent-gold">{station.type_ruimte}</span>
-              <span className="text-[11px] font-bold text-text-faint">{filledCount}/{CATEGORIES.length}</span>
+        {/* ── 1. HERO CARD ── */}
+        <div className="bg-card rounded-3xl p-5 shadow-sm border border-outline-variant/10 mb-4">
+          {/* Top row: station name + type badge + actions */}
+          <div className="flex items-start justify-between gap-3 mb-4">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1.5">
+                <button onClick={() => navigate("/")} className="flex items-center text-text-secondary hover:text-primary-hover transition-colors flex-shrink-0">
+                  <span className="material-symbols-rounded text-lg">arrow_back_ios</span>
+                </button>
+                {station.type_ruimte && (
+                  <span
+                    className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full"
+                    style={station.type_ruimte?.toLowerCase().includes('cs')
+                      ? { background: "rgba(232,84,26,0.1)", color: "#E8541A" }
+                      : { background: "rgba(107,45,139,0.1)", color: "#6B2D8B" }
+                    }
+                  >
+                    {station.type_ruimte}
+                  </span>
+                )}
+                {station.behuizingsnummer && (
+                  <span className="text-xs text-muted-foreground font-mono">
+                    {station.behuizingsnummer}
+                  </span>
+                )}
+              </div>
+              <h2 className="font-display text-[22px] font-extrabold tracking-tight text-on-surface leading-tight">
+                {station.naam_msr}
+              </h2>
+              <p className="text-xs text-muted-foreground mt-1">
+                {station.datum} · {station.ingevuld_door}
+              </p>
+            </div>
+            {/* Actions */}
+            <div className="flex gap-1.5 flex-shrink-0">
+              <button onClick={openPdf} className="p-2.5 bg-surface-white border border-outline-variant/20 rounded-xl shadow-sm hover:shadow-md hover:border-primary/20 transition-all active:scale-95 text-text-secondary hover:text-primary">
+                <span className="material-symbols-rounded text-lg">picture_as_pdf</span>
+              </button>
+              <button onClick={() => setEditOpen(true)} className="p-2.5 bg-surface-white border border-outline-variant/20 rounded-xl shadow-sm hover:shadow-md hover:border-primary/20 transition-all active:scale-95 text-text-secondary hover:text-primary">
+                <span className="material-symbols-rounded text-lg">edit</span>
+              </button>
             </div>
           </div>
-          {/* Progress ring */}
-          <div className="relative w-11 h-11 flex-shrink-0">
-            <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
-              <circle cx="18" cy="18" r="15.5" fill="none" className="stroke-surface-high" strokeWidth="3" />
-              <circle cx="18" cy="18" r="15.5" fill="none" className="stroke-primary" strokeWidth="3" strokeLinecap="round"
-                strokeDasharray={`${pct * 0.975} 100`} />
-            </svg>
-            <span className="absolute inset-0 flex items-center justify-center font-display text-[11px] font-extrabold text-text-primary">{pct}%</span>
-          </div>
-          {/* Actions */}
-          <div className="flex gap-1.5 flex-shrink-0">
-            <button onClick={openPdf} className="p-2.5 bg-surface-white border border-outline-variant/20 rounded-xl shadow-sm hover:shadow-md hover:border-primary/20 transition-all active:scale-95 text-text-secondary hover:text-primary">
-              <span className="material-symbols-rounded text-lg">picture_as_pdf</span>
-            </button>
-            <button onClick={() => setEditOpen(true)} className="p-2.5 bg-surface-white border border-outline-variant/20 rounded-xl shadow-sm hover:shadow-md hover:border-primary/20 transition-all active:scale-95 text-text-secondary hover:text-primary">
-              <span className="material-symbols-rounded text-lg">edit</span>
-            </button>
+          {/* Progress bar */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs font-semibold text-muted-foreground">Voortgang</span>
+              <span className="text-xs font-extrabold text-primary font-mono">{filledCount} / {CATEGORIES.length}</span>
+            </div>
+            <div className="h-2 bg-surface-container rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-primary to-primary-light transition-all duration-700 ease-out"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <div className="flex justify-between mt-1.5">
+              <span className="text-[11px] text-muted-foreground">
+                {pct === 100 ? "✓ Volledig afgerond" : `${pct}% compleet`}
+              </span>
+              <span className="text-[11px] text-muted-foreground">
+                {fotos?.length ?? 0} foto's
+              </span>
+            </div>
           </div>
         </div>
 

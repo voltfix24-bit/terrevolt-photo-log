@@ -174,17 +174,16 @@ export default function Dashboard() {
                         <p className="font-display text-[13px] text-text-muted font-medium mb-5">{station.behuizingsnummer}</p>
                       )}
 
-                      {/* Progress — refined composition */}
-                      <div className="flex items-center gap-4 mt-2">
-                        <div className="flex-1 h-[5px] bg-primary/[0.06] rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-gradient-to-r from-primary to-primary-light rounded-full transition-all duration-700 ease-out"
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                        <div className="flex items-baseline gap-0.5 flex-shrink-0">
-                          <span className="font-display text-[20px] font-extrabold text-text-primary leading-none">{pct}</span>
-                          <span className="font-display text-[11px] font-medium text-text-faint">%</span>
+                      {/* Progress bar */}
+                      <div className="mt-2">
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 h-2 bg-primary/[0.06] rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-primary to-primary-light rounded-full transition-all duration-700 ease-out"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          <span className="font-display text-xs font-extrabold text-text-primary flex-shrink-0">{pct}%</span>
                         </div>
                       </div>
                     </div>
