@@ -464,7 +464,7 @@ export default function StationDetail() {
                           </span>
                         </div>
                         {openCats.map((cat, idx) => (
-                          <CategoryRow key={cat.id} cat={cat} fotos={[]} isLast={idx === openCats.length - 1 && doneCats.length === 0 && skippedCats.length === 0} onOpen={() => setOpenCategory(cat)} />
+                          <CategoryRow key={cat.id} cat={cat} fotos={[]} isLast={idx === openCats.length - 1 && doneCats.length === 0 && skippedCats.length === 0} onOpen={() => setOpenCategory(cat)} highlight={highlightCatId === cat.id} />
                         ))}
                       </>
                     )}
