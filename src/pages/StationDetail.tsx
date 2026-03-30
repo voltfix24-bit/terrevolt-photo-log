@@ -665,14 +665,14 @@ function CompletionScreen({ filledCount, total, stationName, fotos, onReset, onB
       </div>
 
       {/* Downloads card */}
-      <div className="bg-primary-container/8 rounded-3xl px-6 py-5 border border-primary/5 mb-8">
-        <div className="text-[11px] font-bold uppercase tracking-[0.15em] text-on-surface-variant/50 mb-4">
+      <div className="bg-surface-low rounded-3xl px-6 py-5 border border-outline-variant/10 mb-8">
+        <div className="text-[11px] font-bold uppercase tracking-[0.15em] text-accent-gold mb-4">
           Bestanden downloaden
         </div>
         <div className="flex flex-col gap-2.5">
           <button
             onClick={onPdf}
-            className="w-full min-h-[48px] bg-primary text-primary-foreground rounded-2xl font-display text-[14px] font-bold active:scale-[0.97] transition-all flex items-center justify-center gap-2.5"
+            className="w-full min-h-[48px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-2xl font-display text-[14px] font-bold active:scale-[0.97] transition-all flex items-center justify-center gap-2.5"
           >
             <span className="material-symbols-rounded text-[18px]">description</span>
             PDF rapport
@@ -680,9 +680,9 @@ function CompletionScreen({ filledCount, total, stationName, fotos, onReset, onB
           <button
             onClick={handleZip}
             disabled={zipProgress !== null || fotos.length === 0}
-            className="w-full min-h-[48px] bg-on-surface/4 rounded-2xl font-display text-[14px] font-semibold text-on-surface active:scale-[0.97] transition-all flex items-center justify-center gap-2.5 disabled:opacity-40"
+            className="w-full min-h-[48px] bg-surface-high rounded-2xl font-display text-[14px] font-semibold text-text-primary active:scale-[0.97] transition-all flex items-center justify-center gap-2.5 disabled:opacity-40"
           >
-            <span className="material-symbols-rounded text-[18px] text-on-surface-variant/60">folder_zip</span>
+            <span className="material-symbols-rounded text-[18px] text-text-muted">folder_zip</span>
             {zipProgress !== null ? `Downloaden… ${zipProgress}%` : "Foto's als ZIP"}
           </button>
         </div>
