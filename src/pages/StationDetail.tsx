@@ -103,16 +103,17 @@ function useSkippedCategories(stationId: string | undefined) {
 }
 
 /* ==================== CATEGORY ROW ==================== */
-function CategoryRow({ cat, fotos, isLast, isSkipped, onOpen }: {
-  cat: Category; fotos: FotoRow[]; isLast?: boolean; isSkipped?: boolean; onOpen: () => void;
+function CategoryRow({ cat, fotos, isLast, isSkipped, onOpen, highlight }: {
+  cat: Category; fotos: FotoRow[]; isLast?: boolean; isSkipped?: boolean; onOpen: () => void; highlight?: boolean;
 }) {
   const isDone = fotos.length > 0;
   return (
     <button
+      data-cat-id={cat.id}
       onClick={onOpen}
-      className={`w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-surface-low transition-colors ${
+      className={`w-full flex items-center gap-3 px-4 py-4 min-h-[56px] text-left active:bg-surface-low transition-colors duration-300 ${
         !isLast ? 'border-b border-outline-variant/[0.08]' : ''
-      }`}
+      } ${highlight ? 'bg-primary/10' : ''}`}
     >
       <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
         isDone
@@ -134,10 +135,10 @@ function CategoryRow({ cat, fotos, isLast, isSkipped, onOpen }: {
         {isDone ? (
           <div className="flex gap-1.5 mt-1.5">
             {fotos.slice(0, 5).map(f => (
-              <img key={f.id} src={f.url} className="w-9 h-9 rounded-lg object-cover border border-outline-variant/20" alt="" />
+              <img key={f.id} src={f.url} className="w-11 h-11 rounded-lg object-cover border border-outline-variant/20" alt="" />
             ))}
             {fotos.length > 5 && (
-              <div className="w-9 h-9 rounded-lg bg-surface-container flex items-center justify-center">
+              <div className="w-11 h-11 rounded-lg bg-surface-container flex items-center justify-center">
                 <span className="text-[10px] font-bold text-muted-foreground">+{fotos.length - 5}</span>
               </div>
             )}
