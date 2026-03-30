@@ -40,6 +40,8 @@ const COLOR_PRESETS = [
   },
 ];
 
+const ACCESS_CODE = '24491';
+
 export default function Instellingen() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -49,9 +51,72 @@ export default function Instellingen() {
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingProfiel, setUploadingProfiel] = useState(false);
+  const [unlocked, setUnlocked] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState(false);
 
   const [form, setForm] = useState<Partial<AppInstellingen>>({});
   const current = { ...instellingen, ...form } as AppInstellingen;
+
+  const handlePinSubmit = () => {
+    if (pinInput === ACCESS_CODE) {
+      setUnlocked(true);
+      setPinError(false);
+    } else {
+      setPinError(true);
+      setPinInput('');
+    }
+  };
+
+  if (!unlocked) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-6">
+        <div className="w-full max-w-sm">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-primary font-semibold transition-colors mb-8"
+          >
+            <span className="material-symbols-rounded text-lg">arrow_back_ios</span>
+            Terug
+          </button>
+          <div className="bg-card rounded-3xl shadow-lg border border-outline-variant/10 p-8 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <span className="material-symbols-rounded text-primary text-[28px]">lock</span>
+            </div>
+            <h2 className="font-display text-xl font-extrabold text-on-surface mb-1">Instellingen</h2>
+            <p className="text-sm text-muted-foreground mb-6">Voer de toegangscode in om verder te gaan</p>
+            <form onSubmit={(e) => { e.preventDefault(); handlePinSubmit(); }}>
+              <input
+                type="password"
+                inputMode="numeric"
+                value={pinInput}
+                onChange={(e) => { setPinInput(e.target.value); setPinError(false); }}
+                placeholder="Toegangscode"
+                autoFocus
+                className={`w-full px-4 py-3.5 bg-surface-low border rounded-xl text-center text-lg font-bold
+                           tracking-[0.3em] focus:outline-none focus:ring-2 transition ${
+                  pinError
+                    ? 'border-orange ring-orange/25 animate-shake'
+                    : 'border-outline-variant/30 focus:ring-primary/25'
+                }`}
+              />
+              {pinError && (
+                <p className="text-sm text-orange font-semibold mt-2">Onjuiste code</p>
+              )}
+              <button
+                type="submit"
+                className="w-full mt-4 min-h-[48px] bg-primary hover:bg-primary-hover text-primary-foreground
+                           rounded-xl font-display font-bold text-[15px] shadow-md shadow-primary/20
+                           active:scale-[0.97] transition-all"
+              >
+                Ontgrendelen
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const updateField = (key: keyof AppInstellingen, value: string) => {
     const updated = { ...form, [key]: value };
