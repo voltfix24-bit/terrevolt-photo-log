@@ -16,7 +16,7 @@ export default function AppHeader() {
       <header className="fixed top-0 w-full z-50 bg-surface-white/80 backdrop-blur-md border-b border-outline-variant/8">
         <div className="flex justify-between items-center px-5 h-14 max-w-7xl mx-auto">
           <div className="flex items-center gap-3">
-            <button className="w-9 h-9 flex items-center justify-center text-on-surface-variant md:hidden">
+            <button className="w-9 h-9 flex items-center justify-center text-text-secondary hover:text-primary-hover transition-colors md:hidden">
               <span className="material-symbols-rounded text-2xl">menu</span>
             </button>
             <button onClick={() => navigate("/")} className="flex items-center gap-2.5 active:scale-95 transition-transform">
