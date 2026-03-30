@@ -459,7 +459,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
         )}
         {isDaKast && (
           <div className="bg-card rounded-2xl p-3 flex gap-2.5 items-start border border-outline-variant/10">
-            <span className="material-symbols-rounded text-yellow-500 text-lg flex-shrink-0">warning</span>
+            <span className="material-symbols-rounded text-amber-500 text-lg flex-shrink-0">warning</span>
             <span className="text-[12px] text-on-surface-variant leading-relaxed">Alleen fotograferen als <strong>DA-kast aanwezig</strong> is bij dit station.</span>
           </div>
         )}
