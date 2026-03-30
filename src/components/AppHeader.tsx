@@ -40,10 +40,6 @@ export default function AppHeader() {
             <span className={`material-symbols-rounded ${isActive("/") && !isActive("/stations") ? "fill" : ""} text-[24px]`}>dashboard</span>
             <span className="font-display text-[9px] font-extrabold uppercase tracking-[0.12em]">Dashboard</span>
           </button>
-          <button onClick={() => navigate("/stations/new")} className={`flex flex-col items-center gap-0.5 px-5 py-2 rounded-2xl transition-all min-w-[72px] ${isActive("/stations/new") ? "bg-primary text-primary-foreground rounded-xl px-5 py-2.5" : "text-text-muted hover:text-primary-hover"}`}>
-            <span className={`material-symbols-rounded ${isActive("/stations/new") ? "fill" : ""} text-[24px]`}>add_circle</span>
-            <span className="font-display text-[9px] font-extrabold uppercase tracking-[0.12em]">Nieuw</span>
-          </button>
         </div>
       </nav>
 
