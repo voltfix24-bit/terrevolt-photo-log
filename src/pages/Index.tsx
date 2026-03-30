@@ -60,16 +60,9 @@ export default function Dashboard() {
         </section>
 
 
-        {/* Station list */}
         <section>
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-xl font-bold text-on-surface">Stations</h2>
-            <button
-              onClick={() => navigate("/stations/new")}
-              className="flex items-center gap-1.5 bg-primary text-primary-foreground text-sm font-bold px-4 py-2.5 rounded-xl shadow-md shadow-primary/30 hover:scale-[1.02] active:scale-95 transition-transform"
-            >
-              <span className="material-symbols-outlined text-base">add</span> Nieuw station
-            </button>
           </div>
 
           {isLoading ? (
@@ -164,13 +157,6 @@ export default function Dashboard() {
         </section>
       </main>
 
-      {/* FAB (mobile) */}
-      <button
-        onClick={() => navigate("/stations/new")}
-        className="md:hidden fixed bottom-24 right-5 z-40 flex items-center gap-2 bg-primary text-primary-foreground px-5 py-3.5 rounded-2xl shadow-[0_12px_40px_rgba(0,110,45,0.4)] active:scale-95 transition-transform font-bold text-sm"
-      >
-        <span className="material-symbols-outlined text-xl">add</span> Nieuw station
-      </button>
     </div>
   );
 }
