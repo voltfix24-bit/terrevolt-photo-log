@@ -523,7 +523,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
             <div className="w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center bg-primary-container/30">
               <span className="material-symbols-outlined fill text-[32px] text-primary">add_a_photo</span>
             </div>
-            <div className="text-[16px] font-extrabold mb-1 text-on-surface">Tik om foto's te maken</div>
+            <div className="font-display text-[17px] font-extrabold mb-1 text-foreground">Tik om foto's te maken</div>
             <div className="text-[13px] text-muted-foreground">Hoge resolutie aanbevolen voor verificatie.</div>
           </DropZone>
         )}
