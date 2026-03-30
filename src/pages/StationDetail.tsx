@@ -287,7 +287,6 @@ export default function StationDetail() {
             filledCount={filledCount}
             totalCategories={FOTO_CATEGORIEEN.length}
             voorbeelden={voorbeelden?.filter(v => v.categorie === CATEGORIES[currentStep].name) ?? []}
-            onOpenSettings={() => setSettingsOpen(true)}
           />
         ) : completed ? (
           <CompletionScreen
