@@ -593,19 +593,19 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
           <button
             onClick={onPrev}
             disabled={step === 0}
-            className="flex items-center justify-center gap-1.5 min-h-[50px] px-5 rounded-2xl text-[14px] font-bold text-primary active:scale-[0.97] transition-transform disabled:opacity-30"
+            className="flex items-center justify-center gap-1.5 min-h-[50px] px-5 rounded-2xl font-display text-[15px] font-bold text-primary active:scale-[0.97] transition-transform disabled:opacity-30"
           >
             <span className="material-symbols-outlined text-lg">arrow_back</span>Vorige
           </button>
           <button
             onClick={() => { onSkip(); toast("Overgeslagen"); }}
-            className="min-h-[50px] px-4 text-[13px] font-semibold text-muted-foreground active:scale-[0.97] transition-transform"
+            className="min-h-[50px] px-4 font-display text-[13px] font-semibold text-muted-foreground active:scale-[0.97] transition-transform"
           >
             NVT
           </button>
           <button
             onClick={onNext}
-            className="flex-1 min-h-[50px] bg-gradient-to-r from-primary to-primary-light text-primary-foreground rounded-2xl text-[15px] font-bold shadow-lg shadow-primary/25 active:scale-[0.97] transition-transform flex items-center justify-center gap-1.5"
+            className="flex-1 min-h-[50px] bg-gradient-to-r from-primary to-primary-light text-primary-foreground rounded-2xl font-display text-[16px] font-bold shadow-lg shadow-primary/25 active:scale-[0.97] transition-transform flex items-center justify-center gap-1.5"
           >
             {step === total - 1 ? "Afronden" : "Volgende"}<span className="material-symbols-outlined text-lg">arrow_forward</span>
           </button>
