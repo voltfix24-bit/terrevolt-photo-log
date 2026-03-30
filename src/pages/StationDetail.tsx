@@ -372,6 +372,8 @@ interface StepByStepViewProps {
 
 function StepByStepView({ station, category, step, total, fotos, tipOpen, onToggleTip, isUploading, uploadProgress, onUpload, onDelete, onNext, onPrev, onSkip, onClickThumb, onBackToList, filledCount, totalCategories, voorbeelden }: StepByStepViewProps) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [showVoorbeeld, setShowVoorbeeld] = useState(false);
+  const [voorbeeldLightbox, setVoorbeeldLightbox] = useState<number | null>(null);
   const isVermogensveld = category.id === 14;
   const isDaKast = category.id === 15;
   const notApplicable = (isVermogensveld && !station.vermogensveld) || (isDaKast && !station.da_kast);
