@@ -154,9 +154,9 @@ export default function Dashboard() {
                     <div className="relative px-7 py-7">
                       {/* Top row: type label + completion badge */}
                       <div className="flex items-center justify-between mb-4">
-                        <div className="inline-flex items-center gap-1.5 bg-accent-gold/[0.07] rounded-full px-3.5 py-1.5">
-                          <span className="material-symbols-rounded text-accent-gold text-[13px]">person</span>
-                          <span className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-accent-gold font-display">
+                        <div className="inline-flex items-center gap-1.5 bg-primary/[0.06] rounded-full px-3 py-1">
+                          <span className="material-symbols-rounded text-primary text-[12px]">person</span>
+                          <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-primary/80 font-display">
                             {station.ingevuld_door || "Monteur"}
                           </span>
                         </div>
