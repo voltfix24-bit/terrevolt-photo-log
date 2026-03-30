@@ -421,8 +421,8 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
         <div className="flex items-end justify-between mb-3">
           <h3 className="font-display text-[26px] font-extrabold tracking-tight leading-[1.1] text-primary max-w-[65%]">{category.name}</h3>
           <div className="text-right flex items-baseline gap-0.5">
-            <span className="font-display text-[28px] font-extrabold text-on-surface">{filledCount}</span>
-            <span className="font-display text-[16px] text-on-surface-variant font-medium">/{totalCategories}</span>
+            <span className="font-display text-[28px] font-extrabold text-on-surface">{step + 1}</span>
+            <span className="font-display text-[16px] text-on-surface-variant font-medium">/{total}</span>
           </div>
         </div>
 
