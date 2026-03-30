@@ -152,63 +152,54 @@ export default function Dashboard() {
                       </div>
                     </button>
 
-                    {/* Action panel — Apple × Samsung premium */}
+                    {/* Action panel */}
                     {isExpanded && (
-                      <div className="rounded-b-[2rem] animate-fade-up overflow-hidden">
-                        <div className="bg-gradient-to-b from-surface-low to-card/80 backdrop-blur-xl px-4 pt-1 pb-4">
-                          <div className="flex justify-center mb-3">
-                            <div className="w-8 h-[3px] rounded-full bg-outline-variant/30" />
-                          </div>
+                      <div className="bg-surface-low rounded-b-[2rem] animate-fade-up overflow-hidden border-t border-outline-variant/10">
+                        <div className="px-3 py-2.5 flex gap-2">
+                          {/* Primary: Invullen */}
+                          <button
+                            onClick={() => navigate(`/stations/${station.id}`)}
+                            className="flex-1 flex items-center justify-center gap-2.5 h-12 bg-gradient-to-r from-primary to-primary-light text-primary-foreground rounded-2xl text-[13px] font-bold shadow-md shadow-primary/20 active:scale-[0.97] transition-transform"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">edit_note</span>
+                            Invullen
+                          </button>
 
-                          <div className="grid grid-cols-3 gap-2">
-                            <button
-                              onClick={() => navigate(`/stations/${station.id}`)}
-                              className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-2xl bg-primary/[0.08] hover:bg-primary/[0.14] active:scale-[0.95] transition-all duration-200"
-                            >
-                              <div className="w-12 h-12 rounded-[14px] bg-gradient-to-br from-primary to-primary-light flex items-center justify-center shadow-lg shadow-primary/20">
-                                <span className="material-symbols-outlined text-primary-foreground text-[22px]">edit_note</span>
-                              </div>
-                              <span className="text-[11px] font-semibold text-on-surface tracking-tight">Invullen</span>
-                            </button>
+                          {/* Secondary: PDF */}
+                          <button
+                            onClick={() => openPdf(station)}
+                            className="h-12 w-12 flex items-center justify-center rounded-2xl bg-card border border-outline-variant/20 shadow-sm active:scale-[0.95] transition-transform flex-shrink-0"
+                            title="Rapport downloaden"
+                          >
+                            <span className="material-symbols-outlined text-destructive/80 text-[20px]">picture_as_pdf</span>
+                          </button>
 
-                            <button
-                              onClick={() => openPdf(station)}
-                              className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-2xl hover:bg-accent/60 active:scale-[0.95] transition-all duration-200"
-                            >
-                              <div className="w-12 h-12 rounded-[14px] bg-card border border-outline-variant/20 flex items-center justify-center shadow-sm">
-                                <span className="material-symbols-outlined text-destructive text-[22px]">picture_as_pdf</span>
-                              </div>
-                              <span className="text-[11px] font-semibold text-on-surface tracking-tight">Rapport</span>
-                            </button>
-
-                            <button
-                              onClick={async () => {
-                                const stationFotos = (station.fotos ?? []).map((f: any) => ({ id: f.id, categorie: f.categorie, url: f.url }));
-                                if (stationFotos.length === 0) { toast("Geen foto's om te downloaden"); return; }
-                                setZipProgress(0);
-                                try {
-                                  await downloadStationZip(station.naam_msr, stationFotos, (pct) => setZipProgress(pct));
-                                  toast.success("ZIP gedownload ✓");
-                                } catch { toast.error("ZIP downloaden mislukt"); }
-                                setZipProgress(null);
-                              }}
-                              disabled={zipProgress !== null}
-                              className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-2xl hover:bg-accent/60 active:scale-[0.95] transition-all duration-200 disabled:opacity-50"
-                            >
-                              <div className="relative w-12 h-12 rounded-[14px] bg-card border border-outline-variant/20 flex items-center justify-center shadow-sm overflow-hidden">
-                                {zipProgress !== null && (
-                                  <div
-                                    className="absolute bottom-0 left-0 right-0 bg-primary/15 transition-all duration-300"
-                                    style={{ height: `${zipProgress}%` }}
-                                  />
-                                )}
-                                <span className="material-symbols-outlined text-tertiary text-[22px] relative z-10">folder_zip</span>
-                              </div>
-                              <span className="text-[11px] font-semibold text-on-surface tracking-tight">
-                                {zipProgress !== null ? `${zipProgress}%` : "Foto's"}
-                              </span>
-                            </button>
-                          </div>
+                          {/* Secondary: ZIP */}
+                          <button
+                            onClick={async () => {
+                              const stationFotos = (station.fotos ?? []).map((f: any) => ({ id: f.id, categorie: f.categorie, url: f.url }));
+                              if (stationFotos.length === 0) { toast("Geen foto's om te downloaden"); return; }
+                              setZipProgress(0);
+                              try {
+                                await downloadStationZip(station.naam_msr, stationFotos, (pct) => setZipProgress(pct));
+                                toast.success("ZIP gedownload ✓");
+                              } catch { toast.error("ZIP downloaden mislukt"); }
+                              setZipProgress(null);
+                            }}
+                            disabled={zipProgress !== null}
+                            className="relative h-12 w-12 flex items-center justify-center rounded-2xl bg-card border border-outline-variant/20 shadow-sm active:scale-[0.95] transition-transform flex-shrink-0 disabled:opacity-60 overflow-hidden"
+                            title="Foto's als ZIP downloaden"
+                          >
+                            {zipProgress !== null && (
+                              <div
+                                className="absolute bottom-0 left-0 right-0 bg-primary/10 transition-all duration-300 rounded-b-2xl"
+                                style={{ height: `${zipProgress}%` }}
+                              />
+                            )}
+                            <span className="material-symbols-outlined text-tertiary text-[20px] relative z-10">
+                              {zipProgress !== null ? "downloading" : "folder_zip"}
+                            </span>
+                          </button>
                         </div>
                       </div>
                     )}
