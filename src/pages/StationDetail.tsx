@@ -213,11 +213,6 @@ export default function StationDetail() {
     if (w) { w.document.write(html); w.document.close(); }
   };
 
-  // Find the active section's categories
-  const activeSectionData = useMemo(() => {
-    return sectionGroups.find(g => g.section.id === activeSection) ?? sectionGroups[0];
-  }, [sectionGroups, activeSection]);
-
   // Find next incomplete category across ALL sections
   const nextIncomplete = useMemo(() => {
     for (const cat of CATEGORIES) {
@@ -230,14 +225,17 @@ export default function StationDetail() {
 
   const allDone = !nextIncomplete;
 
-  // Scroll active tab into view
+  // Auto-expand first incomplete section on load
   useEffect(() => {
-    if (!tabsRef.current) return;
-    const activeBtn = tabsRef.current.querySelector(`[data-section="${activeSection}"]`) as HTMLElement;
-    if (activeBtn) {
-      activeBtn.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    if (!fotos) return;
+    const firstIncomplete = SECTIONS.find(s => {
+      const cats = CATEGORIES.filter(c => c.section === s.id);
+      return cats.some(c => fotosByCategorie(c.name).length === 0 && !isSkipped(c.name));
+    });
+    if (firstIncomplete && openSections.length === 0) {
+      setOpenSections([firstIncomplete.id]);
     }
-  }, [activeSection]);
+  }, [fotos]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (isLoading) {
     return (
