@@ -394,15 +394,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/heic,image/webp" multiple className="hidden"
           onChange={(e) => { if (e.target.files) onUpload(e.target.files); e.target.value = ""; }} />
 
-        <button
-          onClick={() => fileRef.current?.click()}
-          disabled={isUploading}
-          className={`rounded-2xl p-6 text-center cursor-pointer border-2 transition-all mb-4 active:scale-[0.98] w-full ${
-            hasPhotos
-              ? "border-green-300/40 bg-green-50/50"
-              : "border-dashed border-outline-variant/40 bg-surface-low hover:border-primary/40 hover:bg-primary/5"
-          }`}
-        >
+        <DropZone onFiles={onUpload} disabled={isUploading} onClick={() => fileRef.current?.click()}>
           <div className={`w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center ${
             hasPhotos ? "bg-gradient-to-br from-primary to-primary-light shadow-lg shadow-primary/20" : "bg-surface-high"
           }`}>
@@ -410,9 +402,9 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
               {hasPhotos ? "check_circle" : "photo_camera"}
             </span>
           </div>
-          <div className="text-sm font-bold mb-1 text-on-surface">{hasPhotos ? "Foto's geüpload — tik voor meer" : "Tik om foto's te selecteren"}</div>
+          <div className="text-sm font-bold mb-1 text-on-surface">{hasPhotos ? "Foto's geüpload — tik voor meer" : "Tik of sleep foto's hierheen"}</div>
           <div className="text-xs text-on-surface-variant">JPG · PNG · HEIC · max <span className="font-bold text-primary">10MB</span></div>
-        </button>
+        </DropZone>
 
         {isUploading && uploadProgress !== undefined && (
           <div className="mb-4 h-2 overflow-hidden rounded-full bg-surface-high">
