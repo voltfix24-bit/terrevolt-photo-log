@@ -595,7 +595,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
           {/* Volgende — primary CTA */}
           <button
             onClick={onNext}
-            className="flex-1 min-h-[48px] bg-primary text-primary-foreground rounded-2xl font-display text-[15px] font-bold active:scale-[0.97] transition-all flex items-center justify-center gap-1.5"
+            className="flex-1 min-h-[48px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-2xl font-display text-[15px] font-bold active:scale-[0.97] transition-all flex items-center justify-center gap-1.5"
           >
             {step === total - 1 ? "Afronden" : "Volgende"}
             <span className="material-symbols-rounded text-[18px]">chevron_right</span>
