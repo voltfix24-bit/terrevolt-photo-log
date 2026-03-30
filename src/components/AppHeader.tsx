@@ -27,9 +27,9 @@ export default function AppHeader() {
             </button>
           </nav>
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-primary-container bg-gradient-to-br from-primary to-primary-light flex items-center justify-center text-primary-foreground text-sm font-bold">
+            <button onClick={() => navigate("/instellingen")} className="w-9 h-9 rounded-full overflow-hidden border-2 border-primary-container bg-gradient-to-br from-primary to-primary-light flex items-center justify-center text-primary-foreground text-sm font-bold active:scale-90 transition-transform">
               TV
-            </div>
+            </button>
           </div>
         </div>
       </header>

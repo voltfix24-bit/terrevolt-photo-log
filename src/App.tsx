@@ -6,6 +6,7 @@ import AppHeader from "@/components/AppHeader";
 import Index from "./pages/Index";
 import NewStation from "./pages/NewStation";
 import StationDetail from "./pages/StationDetail";
+import Instellingen from "./pages/Instellingen";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -20,6 +21,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/stations/new" element={<NewStation />} />
           <Route path="/stations/:id" element={<StationDetail />} />
+          <Route path="/instellingen" element={<Instellingen />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
