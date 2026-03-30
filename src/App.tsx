@@ -5,7 +5,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index";
 import NewStation from "./pages/NewStation";
 import StationDetail from "./pages/StationDetail";
-import StationPdf from "./pages/StationPdf";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
