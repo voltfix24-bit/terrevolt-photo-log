@@ -317,7 +317,7 @@ export default function StationDetail() {
                   style={isCS ? { background: "rgba(232,84,26,0.1)", color: "#E8541A" } : { background: "rgba(107,45,139,0.1)", color: "#6B2D8B" }}
                 >{station.type_ruimte}</span>
               </div>
-              <h2 className="text-2xl font-black tracking-tight mb-1 text-on-surface">{station.naam_msr}</h2>
+              <h2 className="font-display text-2xl font-extrabold tracking-tight mb-1 text-foreground">{station.naam_msr}</h2>
               <div className="mt-4">
                 <div className="flex justify-between items-center mb-1.5">
                   <span className="text-xs font-semibold text-on-surface-variant">Categorieën ingevuld</span>
