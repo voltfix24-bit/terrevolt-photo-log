@@ -406,26 +406,26 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
     <div className="flex flex-col" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{ minHeight: "calc(100dvh - 56px)" }}>
 
       {/* ── Premium sticky header ── */}
-      <div className="sticky top-14 z-30 bg-surface -mx-4 px-6 pt-5 pb-5">
+      <div className="sticky top-14 z-30 bg-surface -mx-4 px-6 pt-4 pb-4">
         {/* Back affordance */}
-        <button onClick={onBackToList} className="flex items-center gap-1 text-on-surface-variant/60 text-[13px] font-medium mb-5 active:scale-95 transition-transform">
+        <button onClick={onBackToList} className="flex items-center gap-1 text-on-surface-variant/60 text-[13px] font-medium mb-3 active:scale-95 transition-transform">
           <span className="material-symbols-rounded text-[18px]">arrow_back_ios</span>
           <span>Terug</span>
         </button>
 
         {/* Section label */}
-        <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/50 mb-2">
+        <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/50 mb-1">
           Technische oplevering
         </div>
 
         {/* Title + counter row */}
-        <div className="flex items-end justify-between mb-5">
-          <h2 className="font-display text-[30px] font-extrabold tracking-tight leading-[1.05] text-primary max-w-[68%]">
+        <div className="flex items-end justify-between gap-3 mb-4">
+          <h2 className="font-display text-[26px] font-extrabold tracking-tight leading-[1.1] text-primary min-w-0 truncate flex-1">
             {category.name}
           </h2>
-          <div className="flex items-baseline gap-0.5 pb-0.5">
-            <span className="font-display text-[32px] font-extrabold text-on-surface leading-none">{step + 1}</span>
-            <span className="font-display text-[16px] font-medium text-on-surface-variant/40">/{total}</span>
+          <div className="flex items-baseline gap-0.5 pb-0.5 flex-shrink-0">
+            <span className="font-display text-[28px] font-extrabold text-on-surface leading-none">{step + 1}</span>
+            <span className="font-display text-[14px] font-medium text-on-surface-variant/40">/{total}</span>
           </div>
         </div>
 
