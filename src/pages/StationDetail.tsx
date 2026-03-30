@@ -302,7 +302,7 @@ export default function StationDetail() {
           <>
             {/* Back row */}
             <div className="flex items-center justify-between mb-6">
-              <button onClick={() => navigate("/")} className="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary transition-colors font-semibold">
+              <button onClick={() => navigate("/")} className="flex items-center gap-1 text-sm text-text-secondary hover:text-primary transition-colors font-semibold">
                 <span className="material-symbols-rounded text-lg">arrow_back_ios</span> Alle stations
               </button>
               <button onClick={() => setEditOpen(true)} className="p-2.5 bg-card border border-outline-variant/30 rounded-xl shadow-sm hover:shadow-md transition-all active:scale-95 text-on-surface-variant">
