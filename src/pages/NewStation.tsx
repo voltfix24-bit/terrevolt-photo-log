@@ -154,7 +154,7 @@ export default function NewStation() {
 
           {/* Extra opties */}
           <div>
-            <label className="block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant mb-3">Extra opties</label>
+            <label className="block text-[11px] font-bold uppercase tracking-widest text-accent-gold mb-3">Extra opties</label>
             <div className="space-y-3">
               <div className="flex items-center justify-between px-5 py-4 bg-primary-container/15 rounded-2xl">
                 <div className="flex items-center gap-3">
