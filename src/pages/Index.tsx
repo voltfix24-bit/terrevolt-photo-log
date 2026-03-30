@@ -69,14 +69,6 @@ export default function Dashboard() {
             Beheer en monitor alle technische opleveringen op één plek.
           </p>
 
-          {/* Count badge */}
-          {!isLoading && (
-            <div className="mt-5 inline-flex items-center gap-2 bg-card/80 backdrop-blur-md rounded-full px-4 py-2 border border-outline-variant/10 shadow-sm">
-              <span className="material-symbols-rounded text-primary text-[16px]">bolt</span>
-              <span className="text-[13px] font-bold text-on-surface font-display">{stationCount}</span>
-              <span className="text-[12px] text-on-surface-variant/50">station{stationCount !== 1 ? 's' : ''}</span>
-            </div>
-          )}
         </div>
       </div>
 
