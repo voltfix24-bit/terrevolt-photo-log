@@ -2,19 +2,14 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { CATEGORIES, FOTO_CATEGORIEEN, slugify } from "@/lib/categories";
-import { ArrowLeft, FileDown, Check, Trash2, Camera, Pencil, ChevronLeft, ChevronRight, SkipForward, Info, Lightbulb, CheckCircle2, X, LayoutGrid, ListChecks } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useRef, useState, useCallback } from "react";
 import imageCompression from "browser-image-compression";
@@ -24,6 +19,17 @@ import { generatePdfHtml } from "@/lib/pdf-generator";
 
 const MAX_SIZE = 10 * 1024 * 1024;
 const ACCEPTED = ["image/jpeg", "image/png", "image/heic", "image/webp"];
+
+const CATEGORY_ICONS: Record<number, string> = {
+  1: "label", 2: "home", 3: "door_front", 4: "lock", 5: "width_full",
+  6: "stairs", 7: "cable", 8: "electrical_services", 9: "view_column", 10: "power",
+  11: "description", 12: "format_list_numbered", 13: "bolt", 14: "transform", 15: "grid_3x3",
+  16: "commit", 17: "hub", 18: "label_important", 19: "precision_manufacturing", 20: "vertical_align_top",
+  21: "tune", 22: "link", 23: "signpost", 24: "view_agenda", 25: "label",
+  26: "electric_meter", 27: "bolt", 28: "numbers", 29: "cable", 30: "electrical_services",
+  31: "transform", 32: "view_in_ar", 33: "security", 34: "router", 35: "wifi",
+  36: "light", 37: "bolt", 38: "circle", 39: "fence", 40: "door_sliding",
+};
 
 type FotoRow = { id: string; url: string; storage_path: string; categorie: string };
 
@@ -37,9 +43,9 @@ export default function StationDetail() {
   const [lightboxSlides, setLightboxSlides] = useState<{ src: string }[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [editOpen, setEditOpen] = useState(false);
-  const [mode, setMode] = useState<"overzicht" | "invullen">("overzicht");
+  const [viewMode, setViewMode] = useState<"overzicht" | "invullen">("overzicht");
   const [currentStep, setCurrentStep] = useState(0);
-  const [showTip, setShowTip] = useState(false);
+  const [tipOpen, setTipOpen] = useState<Record<number, boolean>>({});
   const [completed, setCompleted] = useState(false);
 
   const { data: station, isLoading } = useQuery({
@@ -66,6 +72,7 @@ export default function StationDetail() {
   );
 
   const filledCount = new Set(fotos?.map((f) => f.categorie)).size;
+  const pct = Math.round((filledCount / FOTO_CATEGORIEEN.length) * 100);
 
   const compressImage = async (file: File): Promise<File> => {
     if (file.type === "image/heic") return file;
@@ -126,100 +133,182 @@ export default function StationDetail() {
   };
 
   const goNext = () => {
-    if (currentStep < CATEGORIES.length - 1) { setCurrentStep(currentStep + 1); setShowTip(false); }
+    if (currentStep < CATEGORIES.length - 1) { setCurrentStep(currentStep + 1); }
     else { setCompleted(true); }
   };
-  const goPrev = () => { if (currentStep > 0) { setCurrentStep(currentStep - 1); setShowTip(false); } };
+  const goPrev = () => { if (currentStep > 0) setCurrentStep(currentStep - 1); };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <header className="border-b border-border px-4 py-4 sm:px-6">
-          <div className="container mx-auto flex items-center gap-3">
-            <Skeleton className="h-9 w-9 rounded-lg" />
-            <div><Skeleton className="mb-1 h-5 w-40" /><Skeleton className="h-3 w-24" /></div>
-          </div>
-        </header>
-        <main className="container mx-auto px-4 py-4 sm:px-6">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="rounded-xl border border-border bg-card p-4"><Skeleton className="mb-2 h-4 w-3/4" /><Skeleton className="mb-2 h-16 w-full" /><Skeleton className="h-8 w-full" /></div>
-            ))}
-          </div>
-        </main>
+      <div className="min-h-screen bg-background pt-24 px-6 max-w-7xl mx-auto">
+        <Skeleton className="h-40 w-full rounded-3xl mb-6" />
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={i} className="h-48 rounded-[1.5rem]" />
+          ))}
+        </div>
       </div>
     );
   }
 
   if (!station) {
-    return <div className="flex min-h-screen items-center justify-center bg-background text-foreground">Station niet gevonden</div>;
+    return <div className="flex min-h-screen items-center justify-center bg-background text-on-surface">Station niet gevonden</div>;
   }
 
+  const isCS = station.type_ruimte === "Compact Station";
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-28 md:pb-8">
       <Lightbox open={lightboxOpen} close={() => setLightboxOpen(false)} slides={lightboxSlides} index={lightboxIndex} />
       <EditStationDialog station={station} open={editOpen} onOpenChange={setEditOpen} onSaved={() => { queryClient.invalidateQueries({ queryKey: ["station", id] }); queryClient.invalidateQueries({ queryKey: ["stations"] }); }} />
 
-      <header className="border-b border-border px-4 py-4 sm:px-6">
-        <div className="container mx-auto">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-lg font-bold text-foreground">{station.naam_msr}</h1>
-                  <button onClick={() => setEditOpen(true)} className="text-muted-foreground hover:text-foreground"><Pencil className="h-3.5 w-3.5" /></button>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  {station.behuizingsnummer && <span className="font-mono">{station.behuizingsnummer}</span>}
-                  <Badge variant={station.type_ruimte === "Compact Station" ? "default" : "secondary"} className={station.type_ruimte === "Compact Station" ? "bg-primary/15 text-primary border-primary/30 text-[10px]" : "bg-secondary/15 text-secondary-foreground border-secondary/30 text-[10px]"}>{station.type_ruimte}</Badge>
-                  {station.datum && <span>{station.datum}</span>}
-                </div>
+      <main className="pt-24 pb-8 px-6 max-w-7xl mx-auto animate-fade-up">
+        {/* Back row */}
+        <div className="flex items-center justify-between mb-6">
+          <button onClick={() => navigate("/")} className="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary transition-colors font-semibold">
+            <span className="material-symbols-outlined text-lg">arrow_back_ios</span> Alle stations
+          </button>
+          <div className="flex gap-2">
+            <button onClick={() => setEditOpen(true)} className="p-2.5 bg-card border border-outline-variant/30 rounded-xl shadow-sm hover:shadow-md transition-all active:scale-95 text-on-surface-variant">
+              <span className="material-symbols-outlined text-lg">edit</span>
+            </button>
+            <button onClick={openPdf} className="flex items-center gap-2 bg-gradient-to-r from-primary to-primary-light text-primary-foreground text-sm font-bold px-5 py-2.5 rounded-xl shadow-lg shadow-primary/30 active:scale-95 transition-transform">
+              <span className="material-symbols-outlined fill text-base">picture_as_pdf</span> PDF downloaden
+            </button>
+          </div>
+        </div>
+
+        {/* Hero card */}
+        <div className="bg-card rounded-3xl p-6 shadow-sm border border-outline-variant/10 mb-6 flex items-center justify-between gap-6">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2">
+              <span
+                className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full"
+                style={isCS
+                  ? { background: "rgba(232,84,26,0.1)", color: "#E8541A" }
+                  : { background: "rgba(107,45,139,0.1)", color: "#6B2D8B" }
+                }
+              >
+                {station.type_ruimte}
+              </span>
+              {station.behuizingsnummer && (
+                <span className="text-xs text-on-surface-variant font-mono">{station.behuizingsnummer}</span>
+              )}
+            </div>
+            <h2 className="text-2xl font-black tracking-tight mb-1 text-on-surface">{station.naam_msr}</h2>
+            <p className="text-sm text-muted-foreground font-medium">
+              {station.datum} {station.ingevuld_door && `· ${station.ingevuld_door}`}
+            </p>
+            {/* Progress bar */}
+            <div className="mt-4">
+              <div className="flex justify-between items-center mb-1.5">
+                <span className="text-xs font-semibold text-on-surface-variant">Categorieën ingevuld</span>
+                <span className="text-xs font-black text-primary">{filledCount} / {FOTO_CATEGORIEEN.length}</span>
+              </div>
+              <div className="h-2 bg-surface-high rounded-full overflow-hidden">
+                <div className="h-full rounded-full bg-gradient-to-r from-primary to-primary-light transition-all duration-800" style={{ width: `${pct}%` }} />
               </div>
             </div>
-            <Button onClick={openPdf} size="sm"><FileDown className="mr-1.5 h-4 w-4" />PDF downloaden</Button>
           </div>
-          <div className="mt-3 flex items-center gap-3">
-            <span className="shrink-0 text-xs text-muted-foreground">{filledCount} van {FOTO_CATEGORIEEN.length} categorieën ingevuld</span>
-            <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-              <div className="h-full rounded-full bg-gradient-to-r from-primary to-secondary transition-all" style={{ width: `${(filledCount / FOTO_CATEGORIEEN.length) * 100}%` }} />
+          {/* Progress ring */}
+          <div className="relative w-24 h-24 flex-shrink-0 hidden sm:block">
+            <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+              <path className="stroke-slate-200" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" strokeWidth="2.5" />
+              <path className="stroke-primary-light" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" strokeDasharray={`${pct},100`} strokeLinecap="round" strokeWidth="2.5" style={{ transition: "stroke-dasharray 1s ease" }} />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-sm font-black text-on-surface">{pct}%</span>
+              <span className="text-[10px] text-muted-foreground font-semibold">{pct === 100 ? "volledig" : "voortgang"}</span>
             </div>
           </div>
         </div>
-      </header>
 
-      <main className="container mx-auto px-4 py-4 sm:px-6">
-        <Tabs value={mode} onValueChange={(v) => { setMode(v as "overzicht" | "invullen"); setCompleted(false); }} className="mb-4">
-          <TabsList className="w-full sm:w-auto">
-            <TabsTrigger value="overzicht" className="flex-1 sm:flex-none gap-1.5"><LayoutGrid className="h-4 w-4" />Overzicht</TabsTrigger>
-            <TabsTrigger value="invullen" className="flex-1 sm:flex-none gap-1.5"><ListChecks className="h-4 w-4" />Invullen</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        {/* Continue CTA */}
+        {filledCount < FOTO_CATEGORIEEN.length && (
+          <div className="glass rounded-2xl p-4 shadow-sm border border-white/50 flex items-center justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <div className="w-11 h-11 rounded-2xl bg-amber-100 flex items-center justify-center text-amber-700">
+                <span className="material-symbols-outlined fill">photo_camera</span>
+              </div>
+              <div>
+                <div className="font-bold text-sm text-on-surface">Foto's invullen</div>
+                <div className="text-xs text-on-surface-variant">{FOTO_CATEGORIEEN.length - filledCount} categorieën resterend</div>
+              </div>
+            </div>
+            <button
+              onClick={() => { setViewMode("invullen"); setCompleted(false); }}
+              className="w-11 h-11 rounded-full bg-gradient-to-br from-primary to-primary-light flex items-center justify-center text-primary-foreground shadow-lg shadow-primary/30 active:scale-90 transition-transform"
+            >
+              <span className="material-symbols-outlined fill text-lg">arrow_forward_ios</span>
+            </button>
+          </div>
+        )}
 
-        {mode === "overzicht" ? (
-          <div className="grid gap-3 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {CATEGORIES.map((cat, i) => {
+        {/* Mode tabs */}
+        <div className="flex gap-1 bg-surface-container rounded-2xl p-1 border border-outline-variant/20 mb-5 shadow-sm">
+          <button
+            onClick={() => { setViewMode("overzicht"); setCompleted(false); }}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-1 ${
+              viewMode === "overzicht" ? "bg-card shadow-sm text-on-surface" : "text-on-surface-variant hover:text-on-surface"
+            }`}
+          >
+            <span className="material-symbols-outlined text-base">grid_view</span>Overzicht
+          </button>
+          <button
+            onClick={() => { setViewMode("invullen"); setCompleted(false); }}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-1 ${
+              viewMode === "invullen" ? "bg-card shadow-sm text-on-surface" : "text-on-surface-variant hover:text-on-surface"
+            }`}
+          >
+            <span className="material-symbols-outlined text-base">photo_camera</span>Invullen
+          </button>
+        </div>
+
+        {viewMode === "overzicht" ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {CATEGORIES.map((cat) => {
               const catFotos = fotosByCategorie(cat.name);
               return (
-                <CategoryCard key={cat.id} index={i} categorie={cat.name} fotos={catFotos} hasFotos={catFotos.length > 0}
-                  isUploading={uploadingCat === cat.name} uploadProgress={uploadProgress[cat.name]}
-                  onUpload={(files) => handleUpload(cat.name, files)} onDelete={handleDelete}
-                  onClickThumb={(idx) => openLightbox(cat.name, idx)} />
+                <CategoryCard
+                  key={cat.id}
+                  category={cat}
+                  fotos={catFotos}
+                  icon={CATEGORY_ICONS[cat.id] || "photo_camera"}
+                  isUploading={uploadingCat === cat.name}
+                  uploadProgress={uploadProgress[cat.name]}
+                  onUpload={(files) => handleUpload(cat.name, files)}
+                  onDelete={handleDelete}
+                  onClickThumb={(idx) => openLightbox(cat.name, idx)}
+                />
               );
             })}
           </div>
-        ) : completed ? (
-          <CompletionScreen filledCount={filledCount} total={CATEGORIES.length} onBack={() => { setMode("overzicht"); setCompleted(false); }} onPdf={openPdf} />
-        ) : (
+        ) : viewMode === "invullen" && !completed ? (
           <StepByStepView
-            station={station} category={CATEGORIES[currentStep]} step={currentStep} total={CATEGORIES.length}
-            fotos={fotosByCategorie(CATEGORIES[currentStep].name)} showTip={showTip} onToggleTip={() => setShowTip(!showTip)}
-            isUploading={uploadingCat === CATEGORIES[currentStep].name} uploadProgress={uploadProgress[CATEGORIES[currentStep].name]}
-            onUpload={(files) => handleUpload(CATEGORIES[currentStep].name, files)} onDelete={handleDelete}
-            onNext={goNext} onPrev={goPrev} onSkip={goNext}
+            station={station}
+            category={CATEGORIES[currentStep]}
+            step={currentStep}
+            total={CATEGORIES.length}
+            fotos={fotosByCategorie(CATEGORIES[currentStep].name)}
+            tipOpen={!!tipOpen[CATEGORIES[currentStep].id]}
+            onToggleTip={() => setTipOpen(prev => ({ ...prev, [CATEGORIES[currentStep].id]: !prev[CATEGORIES[currentStep].id] }))}
+            isUploading={uploadingCat === CATEGORIES[currentStep].name}
+            uploadProgress={uploadProgress[CATEGORIES[currentStep].name]}
+            onUpload={(files) => handleUpload(CATEGORIES[currentStep].name, files)}
+            onDelete={handleDelete}
+            onNext={goNext}
+            onPrev={goPrev}
+            onSkip={goNext}
             onClickThumb={(idx) => openLightbox(CATEGORIES[currentStep].name, idx)}
+          />
+        ) : (
+          <CompletionScreen
+            filledCount={filledCount}
+            total={CATEGORIES.length}
+            stationName={station.naam_msr}
+            onReset={() => { setCurrentStep(0); setCompleted(false); }}
+            onBack={() => { setViewMode("overzicht"); setCompleted(false); }}
+            onPdf={openPdf}
           />
         )}
       </main>
@@ -230,134 +319,154 @@ export default function StationDetail() {
 /* ==================== STEP-BY-STEP VIEW ==================== */
 
 interface StepByStepViewProps {
-  station: { vermogensveld: boolean | null; da_kast: boolean | null };
+  station: { vermogensveld: boolean | null; da_kast: boolean | null; naam_msr: string };
   category: { id: number; name: string; instruction: string; tip?: string };
   step: number; total: number;
-  fotos: FotoRow[]; showTip: boolean; onToggleTip: () => void;
+  fotos: FotoRow[]; tipOpen: boolean; onToggleTip: () => void;
   isUploading: boolean; uploadProgress?: number;
   onUpload: (files: FileList) => void; onDelete: (id: string, path: string) => void;
   onNext: () => void; onPrev: () => void; onSkip: () => void;
   onClickThumb: (idx: number) => void;
 }
 
-function StepByStepView({ station, category, step, total, fotos, showTip, onToggleTip, isUploading, uploadProgress, onUpload, onDelete, onNext, onPrev, onSkip, onClickThumb }: StepByStepViewProps) {
+function StepByStepView({ station, category, step, total, fotos, tipOpen, onToggleTip, isUploading, uploadProgress, onUpload, onDelete, onNext, onPrev, onSkip, onClickThumb }: StepByStepViewProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const isVermogensveld = category.id === 14;
   const isDaKast = category.id === 15;
   const notApplicable = (isVermogensveld && !station.vermogensveld) || (isDaKast && !station.da_kast);
+  const hasPhotos = fotos.length > 0;
+  const progressPct = Math.round((step / total) * 100);
 
   return (
-    <div className="mx-auto max-w-2xl">
-      {/* Progress header */}
-      <div className="mb-4 flex items-center gap-3">
-        <span className="shrink-0 text-sm font-medium text-muted-foreground">Stap {step + 1} / {total}</span>
-        <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-          <div className="h-full rounded-full bg-gradient-to-r from-primary to-secondary transition-all" style={{ width: `${((step + 1) / total) * 100}%` }} />
+    <div className="max-w-lg mx-auto space-y-4">
+      {/* Progress */}
+      <div className="bg-card rounded-2xl p-4 shadow-sm border border-outline-variant/10">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-bold text-on-surface-variant">Stap {step + 1} van {total}</span>
+          <span className="text-xs font-black text-primary">{progressPct}% voltooid</span>
+        </div>
+        <div className="h-2 bg-surface-high rounded-full overflow-hidden">
+          <div className="h-full rounded-full bg-gradient-to-r from-primary to-primary-light transition-all duration-500" style={{ width: `${progressPct}%` }} />
         </div>
       </div>
 
-      {/* Category heading */}
-      <div className="mb-4 flex items-center gap-3">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">{category.id}</span>
-        <h2 className="text-xl font-bold text-foreground">{category.name}</h2>
-      </div>
+      {/* Main step card */}
+      <div className="bg-card rounded-3xl p-5 shadow-sm border border-outline-variant/10">
+        <div className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/40 mb-1">Categorie {String(category.id).padStart(2, "0")} van {total}</div>
+        <h3 className="text-xl font-black tracking-tight mb-4 text-on-surface">{category.name}</h3>
 
-      {/* Instruction box */}
-      <div className="mb-3 rounded-xl border border-blue-500/30 bg-blue-500/10 p-4">
-        <div className="flex items-start gap-3">
-          <Info className="mt-0.5 h-5 w-5 shrink-0 text-blue-400" />
-          <p className="text-sm text-blue-200">{category.instruction}</p>
+        {/* Instruction box */}
+        <div className="rounded-2xl p-4 mb-3 flex gap-3 items-start" style={{ background: "rgba(59,130,246,0.07)", border: "1px solid rgba(59,130,246,0.18)" }}>
+          <span className="material-symbols-outlined fill text-blue-400 flex-shrink-0 mt-0.5 text-xl">info</span>
+          <p className="text-sm leading-relaxed text-blue-500">{category.instruction}</p>
         </div>
-      </div>
 
-      {/* Tip box */}
-      {category.tip && (
-        <div className="mb-4">
-          <button onClick={onToggleTip} className="mb-1 flex items-center gap-1.5 text-xs text-yellow-400 hover:text-yellow-300">
-            <Lightbulb className="h-3.5 w-3.5" />
-            {showTip ? "Verberg tip" : "Toon tip"}
-          </button>
-          {showTip && (
-            <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4">
-              <p className="text-sm text-yellow-200">{category.tip}</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Not applicable warning */}
-      {notApplicable && (
-        <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive/10 p-4">
-          <p className="text-sm text-destructive">
-            {isVermogensveld ? "Vermogensveld is niet aanwezig bij dit station." : "DA-kast is niet aanwezig bij dit station."}
-          </p>
-          <Button variant="outline" size="sm" className="mt-3" onClick={onSkip}>
-            <SkipForward className="mr-1.5 h-4 w-4" />Niet van toepassing — overslaan
-          </Button>
-        </div>
-      )}
-
-      {/* Upload zone */}
-      <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/heic,image/webp" multiple className="hidden"
-        onChange={(e) => { if (e.target.files) onUpload(e.target.files); e.target.value = ""; }} />
-
-      <button
-        onClick={() => fileRef.current?.click()}
-        disabled={isUploading}
-        className="mb-4 flex w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border bg-accent/50 p-8 transition-colors hover:border-primary disabled:opacity-50 sm:p-12"
-      >
-        <Camera className="h-10 w-10 text-muted-foreground" />
-        <span className="text-sm text-muted-foreground sm:hidden">Tik om foto's te selecteren</span>
-        <span className="text-sm text-muted-foreground hidden sm:block">Klik of sleep foto's hierheen</span>
-      </button>
-
-      {isUploading && uploadProgress !== undefined && (
-        <div className="mb-4 h-2 overflow-hidden rounded-full bg-muted">
-          <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${uploadProgress}%` }} />
-        </div>
-      )}
-
-      {/* Uploaded photos */}
-      {fotos.length > 0 && (
-        <div className="mb-4">
-          <p className="mb-2 flex items-center gap-1.5 text-sm font-medium text-green-400">
-            <CheckCircle2 className="h-4 w-4" />
-            {fotos.length} foto{fotos.length !== 1 ? "'s" : ""} geüpload
-          </p>
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-            {fotos.map((foto, fi) => (
-              <div key={foto.id} className="group relative aspect-square overflow-hidden rounded-lg">
-                <button className="h-full w-full" onClick={() => onClickThumb(fi)}>
-                  <img src={foto.url} alt="" className="h-full w-full object-cover" />
-                </button>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <button className="absolute right-1 top-1 rounded-full bg-background/80 p-1.5 opacity-0 transition-opacity group-hover:opacity-100">
-                      <X className="h-3.5 w-3.5 text-destructive" />
-                    </button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader><AlertDialogTitle>Foto verwijderen?</AlertDialogTitle><AlertDialogDescription>Deze actie kan niet ongedaan worden gemaakt.</AlertDialogDescription></AlertDialogHeader>
-                    <AlertDialogFooter><AlertDialogCancel>Annuleren</AlertDialogCancel><AlertDialogAction onClick={() => onDelete(foto.id, foto.storage_path)}>Verwijderen</AlertDialogAction></AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-            ))}
+        {/* Conditional warnings */}
+        {isVermogensveld && (
+          <div className="rounded-2xl p-3 mb-3 flex gap-2 text-xs" style={{ background: "rgba(234,179,8,0.07)", border: "1px solid rgba(234,179,8,0.2)", color: "#fbbf24" }}>
+            <span className="material-symbols-outlined fill text-yellow-400 text-base flex-shrink-0">warning</span>
+            <span>Alleen fotograferen als <strong>vermogensveld aanwezig</strong> is bij dit station.</span>
           </div>
-        </div>
-      )}
+        )}
+        {isDaKast && (
+          <div className="rounded-2xl p-3 mb-3 flex gap-2 text-xs" style={{ background: "rgba(234,179,8,0.07)", border: "1px solid rgba(234,179,8,0.2)", color: "#fbbf24" }}>
+            <span className="material-symbols-outlined fill text-yellow-400 text-base flex-shrink-0">warning</span>
+            <span>Alleen fotograferen als <strong>DA-kast aanwezig</strong> is bij dit station.</span>
+          </div>
+        )}
 
-      {/* Navigation */}
-      <div className="flex items-center justify-between gap-3 pt-2">
-        <Button variant="outline" size="lg" onClick={onPrev} disabled={step === 0} className="flex-1">
-          <ChevronLeft className="mr-1 h-5 w-5" />Vorige
-        </Button>
-        <Button variant="ghost" size="sm" onClick={onSkip} className="text-xs text-muted-foreground shrink-0">
-          <SkipForward className="mr-1 h-3.5 w-3.5" />Overslaan
-        </Button>
-        <Button size="lg" onClick={onNext} className="flex-1">
-          {step === total - 1 ? "Afronden" : "Volgende"}<ChevronRight className="ml-1 h-5 w-5" />
-        </Button>
+        {/* Tip toggle */}
+        {category.tip && (
+          <>
+            <button onClick={onToggleTip} className={`flex items-center gap-1.5 text-xs font-semibold mb-3 transition-colors ${tipOpen ? "text-yellow-500" : "text-on-surface-variant hover:text-yellow-500"}`}>
+              <span className={`material-symbols-outlined ${tipOpen ? "fill" : ""} text-base`}>lightbulb</span>
+              {tipOpen ? "Verberg tip" : "Toon tip"}
+            </button>
+            {tipOpen && (
+              <div className="rounded-2xl p-3 mb-3 text-xs leading-relaxed" style={{ background: "rgba(234,179,8,0.07)", border: "1px solid rgba(234,179,8,0.18)", color: "#fbbf24" }}>
+                {category.tip}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Upload zone */}
+        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/heic,image/webp" multiple className="hidden"
+          onChange={(e) => { if (e.target.files) onUpload(e.target.files); e.target.value = ""; }} />
+
+        <button
+          onClick={() => fileRef.current?.click()}
+          disabled={isUploading}
+          className={`rounded-2xl p-6 text-center cursor-pointer border-2 transition-all mb-4 active:scale-[0.98] w-full ${
+            hasPhotos
+              ? "border-green-300/40 bg-green-50/50"
+              : "border-dashed border-outline-variant/40 bg-surface-low hover:border-primary/40 hover:bg-primary/5"
+          }`}
+        >
+          <div className={`w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center ${
+            hasPhotos ? "bg-gradient-to-br from-primary to-primary-light shadow-lg shadow-primary/20" : "bg-surface-high"
+          }`}>
+            <span className={`material-symbols-outlined fill text-2xl ${hasPhotos ? "text-primary-foreground" : "text-on-surface-variant"}`}>
+              {hasPhotos ? "check_circle" : "photo_camera"}
+            </span>
+          </div>
+          <div className="text-sm font-bold mb-1 text-on-surface">{hasPhotos ? "Foto's geüpload — tik voor meer" : "Tik om foto's te selecteren"}</div>
+          <div className="text-xs text-on-surface-variant">JPG · PNG · HEIC · max <span className="font-bold text-primary">10MB</span></div>
+        </button>
+
+        {isUploading && uploadProgress !== undefined && (
+          <div className="mb-4 h-2 overflow-hidden rounded-full bg-surface-high">
+            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${uploadProgress}%` }} />
+          </div>
+        )}
+
+        {/* Uploaded photos */}
+        {hasPhotos && (
+          <>
+            <div className="flex items-center gap-1.5 text-xs font-bold mb-3 text-primary">
+              <span className="material-symbols-outlined fill text-base">check_circle</span>
+              {fotos.length} foto{fotos.length > 1 ? "'s" : ""} geüpload
+            </div>
+            <div className="flex gap-2 flex-wrap mb-4">
+              {fotos.map((foto, i) => (
+                <div key={foto.id} className="w-16 h-16 rounded-xl bg-surface-low border border-outline-variant/20 overflow-hidden relative group">
+                  <button onClick={() => onClickThumb(i)} className="w-full h-full">
+                    <img src={foto.url} alt="" className="w-full h-full object-cover" />
+                  </button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <button className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 rounded-full text-primary-foreground text-xs hidden group-hover:flex items-center justify-center border-2 border-white active:scale-90">×</button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader><AlertDialogTitle>Foto verwijderen?</AlertDialogTitle><AlertDialogDescription>Deze actie kan niet ongedaan worden gemaakt.</AlertDialogDescription></AlertDialogHeader>
+                      <AlertDialogFooter><AlertDialogCancel>Annuleren</AlertDialogCancel><AlertDialogAction onClick={() => onDelete(foto.id, foto.storage_path)}>Verwijderen</AlertDialogAction></AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Nav buttons */}
+        <div className="flex gap-2">
+          <button
+            onClick={onPrev}
+            disabled={step === 0}
+            className="flex-1 py-3.5 bg-surface-low border border-outline-variant/20 rounded-xl text-sm font-semibold text-on-surface-variant active:scale-95 transition-transform disabled:opacity-30"
+          >
+            ← Vorige
+          </button>
+          <button
+            onClick={onNext}
+            className="flex-[2] py-3.5 bg-gradient-to-r from-primary to-primary-light text-primary-foreground rounded-xl text-sm font-bold shadow-lg shadow-primary/20 active:scale-95 transition-transform"
+          >
+            {step === total - 1 ? "✓ Afronden" : "Volgende →"}
+          </button>
+        </div>
+        <button onClick={onSkip} className="w-full mt-2 text-xs text-on-surface-variant/50 hover:text-on-surface-variant py-2 transition-colors">
+          Overslaan (niet van toepassing)
+        </button>
       </div>
     </div>
   );
@@ -365,22 +474,24 @@ function StepByStepView({ station, category, step, total, fotos, showTip, onTogg
 
 /* ==================== COMPLETION SCREEN ==================== */
 
-function CompletionScreen({ filledCount, total, onBack, onPdf }: { filledCount: number; total: number; onBack: () => void; onPdf: () => void }) {
-  const allDone = filledCount === total;
+function CompletionScreen({ filledCount, total, stationName, onReset, onBack, onPdf }: { filledCount: number; total: number; stationName: string; onReset: () => void; onBack: () => void; onPdf: () => void }) {
   return (
-    <div className="mx-auto flex max-w-md flex-col items-center py-16 text-center">
-      <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-green-500/20">
-        <CheckCircle2 className="h-10 w-10 text-green-400" />
-      </div>
-      <h2 className="mb-2 text-2xl font-bold text-foreground">
-        {allDone ? "Alle categorieën ingevuld!" : `${filledCount} van ${total} categorieën ingevuld`}
-      </h2>
-      <p className="mb-8 text-sm text-muted-foreground">
-        {allDone ? "Het fotorapport is compleet." : "Je kunt ontbrekende categorieën later nog invullen."}
-      </p>
-      <div className="flex gap-3">
-        <Button variant="outline" onClick={onBack}><LayoutGrid className="mr-1.5 h-4 w-4" />Terug naar overzicht</Button>
-        <Button onClick={onPdf}><FileDown className="mr-1.5 h-4 w-4" />PDF downloaden</Button>
+    <div className="max-w-lg mx-auto">
+      <div className="bg-card rounded-3xl p-8 shadow-sm border border-outline-variant/10 text-center animate-pop">
+        <div className="w-20 h-20 bg-gradient-to-br from-primary to-primary-light rounded-3xl mx-auto mb-5 flex items-center justify-center shadow-xl shadow-primary/25">
+          <span className="material-symbols-outlined fill text-primary-foreground text-4xl">check_circle</span>
+        </div>
+        <h2 className="text-2xl font-black mb-2 text-on-surface">Klaar! 🎉</h2>
+        <p className="text-on-surface-variant text-sm mb-6">
+          {filledCount === total ? "Alle" : `${filledCount} van ${total}`} categorieën ingevuld voor<br /><strong>{stationName}</strong>
+        </p>
+        <div className="flex flex-col gap-2">
+          <button onClick={onReset} className="w-full py-3 bg-surface-low border border-outline-variant/20 rounded-xl text-sm font-semibold text-on-surface-variant active:scale-95 transition-transform">↺ Opnieuw beginnen</button>
+          <button onClick={onBack} className="w-full py-3.5 bg-gradient-to-r from-primary to-primary-light text-primary-foreground rounded-xl text-sm font-bold shadow-lg shadow-primary/20 active:scale-95 transition-transform">Terug naar overzicht</button>
+          <button onClick={onPdf} className="w-full py-3 bg-surface-low border border-outline-variant/20 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 active:scale-95 transition-transform text-on-surface-variant">
+            <span className="material-symbols-outlined fill text-primary text-base">picture_as_pdf</span>PDF downloaden
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -389,68 +500,77 @@ function CompletionScreen({ filledCount, total, onBack, onPdf }: { filledCount: 
 /* ==================== CATEGORY CARD (OVERZICHT MODE) ==================== */
 
 interface CategoryCardProps {
-  index: number; categorie: string;
-  fotos: FotoRow[]; hasFotos: boolean;
-  isUploading: boolean; uploadProgress?: number;
+  category: { id: number; name: string };
+  fotos: FotoRow[];
+  icon: string;
+  isUploading: boolean;
+  uploadProgress?: number;
   onUpload: (files: FileList) => void;
   onDelete: (id: string, storagePath: string) => void;
   onClickThumb: (index: number) => void;
 }
 
-function CategoryCard({ index, categorie, fotos, hasFotos, isUploading, uploadProgress, onUpload, onDelete, onClickThumb }: CategoryCardProps) {
+function CategoryCard({ category, fotos, icon, isUploading, uploadProgress, onUpload, onDelete, onClickThumb }: CategoryCardProps) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const visibleFotos = fotos.slice(0, 4);
-  const extra = fotos.length - 4;
+  const filled = fotos.length > 0;
 
   return (
-    <div className="rounded-xl border border-border bg-card p-3">
-      <div className="mb-2 flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted text-[10px] font-bold text-muted-foreground">{index + 1}</span>
-          <h3 className="text-xs font-medium text-foreground leading-tight sm:text-sm">{categorie}</h3>
-        </div>
-        {hasFotos ? (
-          <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green-500/20"><Check className="h-3 w-3 text-green-400" /></div>
+    <div className="group bg-surface-low hover:bg-card transition-all duration-200 rounded-[1.5rem] p-3 border border-transparent hover:border-outline-variant/20 hover:shadow-md space-y-2 relative overflow-hidden cursor-pointer active:scale-[0.98]">
+      <div className={`relative aspect-square rounded-xl flex items-center justify-center overflow-hidden ${
+        filled ? "bg-primary-container/40" : "bg-surface-high border-2 border-dashed border-outline-variant/40"
+      }`}>
+        {filled ? (
+          <>
+            <span className="material-symbols-outlined fill text-primary text-3xl">{icon}</span>
+            <div className="absolute top-1.5 right-1.5 w-6 h-6 bg-gradient-to-br from-primary to-primary-light rounded-full flex items-center justify-center shadow-sm">
+              <span className="material-symbols-outlined fill text-primary-foreground text-xs">check</span>
+            </div>
+          </>
         ) : (
-          <div className="h-2 w-2 shrink-0 rounded-full bg-muted-foreground/30" />
+          <span className="material-symbols-outlined text-on-surface-variant/30 text-3xl">photo_camera</span>
+        )}
+
+        {/* Thumbnail overlay on hover for filled cards */}
+        {filled && fotos.length > 0 && (
+          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+            {fotos.slice(0, 2).map((foto, i) => (
+              <button key={foto.id} onClick={(e) => { e.stopPropagation(); onClickThumb(i); }} className="w-10 h-10 rounded-lg overflow-hidden">
+                <img src={foto.url} alt="" className="w-full h-full object-cover" />
+              </button>
+            ))}
+            {fotos.length > 2 && <span className="text-primary-foreground text-xs font-bold">+{fotos.length - 2}</span>}
+          </div>
         )}
       </div>
 
-      {fotos.length > 0 && (
-        <div className="mb-2 grid grid-cols-2 gap-1">
-          {visibleFotos.map((foto, fi) => (
-            <div key={foto.id} className="group relative aspect-square overflow-hidden rounded-lg">
-              <button className="h-full w-full" onClick={() => onClickThumb(fi)}>
-                <img src={foto.url} alt="" className="h-full w-full object-cover" />
-              </button>
-              {fi === 3 && extra > 0 && (
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/60 text-sm font-semibold text-foreground">+{extra} meer</div>
-              )}
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <button className="absolute right-1 top-1 rounded-md bg-background/80 p-1 opacity-0 transition-opacity group-hover:opacity-100"><Trash2 className="h-3.5 w-3.5 text-destructive" /></button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader><AlertDialogTitle>Foto verwijderen?</AlertDialogTitle><AlertDialogDescription>Deze actie kan niet ongedaan worden gemaakt.</AlertDialogDescription></AlertDialogHeader>
-                  <AlertDialogFooter><AlertDialogCancel>Annuleren</AlertDialogCancel><AlertDialogAction onClick={() => onDelete(foto.id, foto.storage_path)}>Verwijderen</AlertDialogAction></AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-          ))}
+      <div className="px-0.5">
+        <div className="text-[9px] font-black text-on-surface-variant/40 uppercase tracking-wider">#{String(category.id).padStart(2, "0")}</div>
+        <div className="text-xs font-bold leading-tight text-on-surface">{category.name}</div>
+        <div className="flex items-center gap-1 mt-1">
+          <span className={`w-1.5 h-1.5 rounded-full ${filled ? "bg-primary" : "bg-slate-300"}`} />
+          <span className={`text-[9px] font-black uppercase tracking-wide ${filled ? "text-primary" : "text-on-surface-variant/40"}`}>
+            {filled ? `${fotos.length} FOTO${fotos.length > 1 ? "'S" : ""}` : "ONTBREEKT"}
+          </span>
         </div>
-      )}
+      </div>
 
       {isUploading && uploadProgress !== undefined && (
-        <div className="mb-2 h-1.5 overflow-hidden rounded-full bg-muted">
+        <div className="h-1.5 overflow-hidden rounded-full bg-surface-high">
           <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${uploadProgress}%` }} />
         </div>
       )}
 
       <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/heic,image/webp" multiple className="hidden"
         onChange={(e) => { if (e.target.files) onUpload(e.target.files); e.target.value = ""; }} />
-      <Button variant="outline" size="sm" className="w-full text-xs" disabled={isUploading} onClick={() => fileRef.current?.click()}>
-        <Camera className="mr-1.5 h-3 w-3" />{isUploading ? "Uploaden..." : "Foto's toevoegen"}
-      </Button>
+
+      <button
+        onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}
+        disabled={isUploading}
+        className="w-full py-2 bg-card border border-outline-variant/20 rounded-xl text-xs font-semibold text-on-surface-variant hover:text-primary hover:border-primary/30 transition-all active:scale-95 flex items-center justify-center gap-1"
+      >
+        <span className="material-symbols-outlined text-sm">photo_camera</span>
+        {isUploading ? "Uploaden..." : "Toevoegen"}
+      </button>
     </div>
   );
 }
@@ -478,12 +598,14 @@ function EditStationDialog({ station, open, onOpenChange, onSaved }: EditStation
       <DialogContent>
         <DialogHeader><DialogTitle>Station bewerken</DialogTitle></DialogHeader>
         <div className="space-y-3">
-          <div><Label>Naam MSR</Label><Input value={form.naam_msr} onChange={(e) => setForm({ ...form, naam_msr: e.target.value })} /></div>
-          <div><Label>Behuizingsnummer</Label><Input value={form.behuizingsnummer} onChange={(e) => setForm({ ...form, behuizingsnummer: e.target.value })} /></div>
+          <div><Label>Naam MSR</Label><input value={form.naam_msr} onChange={(e) => setForm({ ...form, naam_msr: e.target.value })} className="w-full px-4 py-3 bg-surface-low border border-outline-variant/30 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/25 transition" /></div>
+          <div><Label>Behuizingsnummer</Label><input value={form.behuizingsnummer} onChange={(e) => setForm({ ...form, behuizingsnummer: e.target.value })} className="w-full px-4 py-3 bg-surface-low border border-outline-variant/30 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/25 transition" /></div>
           <div><Label>Type ruimte</Label><Select value={form.type_ruimte} onValueChange={(v) => setForm({ ...form, type_ruimte: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Compact Station">Compact Station</SelectItem><SelectItem value="Betreedbaar station">Betreedbaar station</SelectItem></SelectContent></Select></div>
-          <div><Label>Ingevuld door</Label><Input value={form.ingevuld_door} onChange={(e) => setForm({ ...form, ingevuld_door: e.target.value })} /></div>
-          <div><Label>Datum</Label><Input type="date" value={form.datum} onChange={(e) => setForm({ ...form, datum: e.target.value })} /></div>
-          <Button onClick={handleSave} className="w-full" disabled={saving}>{saving ? "Opslaan..." : "Opslaan"}</Button>
+          <div><Label>Ingevuld door</Label><input value={form.ingevuld_door} onChange={(e) => setForm({ ...form, ingevuld_door: e.target.value })} className="w-full px-4 py-3 bg-surface-low border border-outline-variant/30 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/25 transition" /></div>
+          <div><Label>Datum</Label><input type="date" value={form.datum} onChange={(e) => setForm({ ...form, datum: e.target.value })} className="w-full px-4 py-3 bg-surface-low border border-outline-variant/30 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/25 transition" /></div>
+          <button onClick={handleSave} disabled={saving} className="w-full bg-gradient-to-r from-primary to-primary-light text-primary-foreground font-bold py-3 rounded-xl shadow-lg shadow-primary/25 active:scale-[0.98] transition-transform disabled:opacity-50">
+            {saving ? "Opslaan..." : "Opslaan"}
+          </button>
         </div>
       </DialogContent>
     </Dialog>
