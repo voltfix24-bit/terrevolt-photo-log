@@ -110,70 +110,156 @@ function useSkippedCategories(stationId: string | undefined) {
   return { skipped, addSkip, removeSkip, toggleSkip, isSkipped };
 }
 
+/* ==================== SECTION ICONS ==================== */
+function getSectionIcon(sectionId: string): string {
+  const icons: Record<string, string> = {
+    'algemeen': 'home_work',
+    'ms-deel': 'electrical_services',
+    'kabels-ms': 'cable',
+    'trafo': 'transform',
+    'ls-deel': 'electric_meter',
+    'meting': 'analytics',
+    'ovl-deel': 'light',
+    'gebouw': 'apartment',
+  };
+  return icons[sectionId] || 'folder';
+}
+
 /* ==================== CATEGORY ROW ==================== */
-function CategoryRow({ cat, fotos, isSkipped, onOpen }: {
-  cat: Category; fotos: FotoRow[]; isSkipped?: boolean; onOpen: () => void;
+function CategoryRow({ cat, fotos, isSkipped, sectionComplete, onOpen }: {
+  cat: Category; fotos: FotoRow[]; isSkipped?: boolean; sectionComplete?: boolean; onOpen: () => void;
 }) {
-  const isDone = fotos.length > 0;
+  const hasPhotos = fotos.length > 0;
+  // "In progress" = has photos but section not yet complete
+  const isInProgress = hasPhotos && !sectionComplete;
+  // "Voltooid" = has photos and entire section is complete
+  const isDone = hasPhotos && sectionComplete;
+
+  // OPEN — dashed border, camera icon
+  if (!hasPhotos && !isSkipped) {
+    return (
+      <button
+        data-cat-id={cat.id}
+        onClick={onOpen}
+        className="flex items-center justify-between w-full p-4 rounded-xl
+                   bg-surface-high/50 border border-dashed border-outline-variant/50
+                   hover:bg-surface-high transition-colors text-left
+                   active:scale-[0.98] group"
+      >
+        <div className="flex items-center gap-4">
+          <div className="w-9 h-9 rounded-full border border-outline-variant flex items-center
+                          justify-center text-muted-foreground group-hover:border-primary
+                          group-hover:text-primary transition-colors flex-shrink-0">
+            <span className="material-symbols-rounded text-base">photo_camera</span>
+          </div>
+          <div>
+            <h4 className="font-display font-semibold text-on-surface text-sm">{cat.name}</h4>
+            <span className="text-[10px] uppercase tracking-wider text-orange font-bold">Open</span>
+          </div>
+        </div>
+        <span className="material-symbols-rounded text-muted-foreground/40 group-hover:text-primary transition-colors">
+          chevron_right
+        </span>
+      </button>
+    );
+  }
+
+  // NVT / SKIPPED
+  if (isSkipped && !hasPhotos) {
+    return (
+      <button
+        data-cat-id={cat.id}
+        onClick={onOpen}
+        className="flex items-center justify-between w-full p-4 rounded-xl
+                   bg-surface/30 border border-outline-variant/20 text-left
+                   active:scale-[0.98] group"
+      >
+        <div className="flex items-center gap-4">
+          <div className="w-9 h-9 rounded-full border border-outline-variant flex items-center
+                          justify-center text-outline-variant flex-shrink-0">
+            <span className="material-symbols-rounded text-base">remove</span>
+          </div>
+          <div>
+            <h4 className="font-display font-semibold text-on-surface-variant line-through text-sm">{cat.name}</h4>
+            <span className="text-[10px] uppercase tracking-wider text-on-surface-variant/60 font-bold">NVT</span>
+          </div>
+        </div>
+        <span className="text-xs text-primary font-semibold">Alsnog invullen →</span>
+      </button>
+    );
+  }
+
+  // IN PROGRESS — has photos, section not complete → orange accent bar
+  if (isInProgress) {
+    return (
+      <button
+        data-cat-id={cat.id}
+        onClick={onOpen}
+        className="flex items-center justify-between w-full p-4 rounded-xl
+                   bg-card shadow-sm ring-1 ring-outline-variant/20
+                   relative overflow-hidden text-left active:scale-[0.98] group"
+      >
+        <div className="absolute left-0 top-0 bottom-0 w-1 bg-orange" />
+        <div className="flex items-center gap-4 ml-2">
+          <div className="w-9 h-9 rounded-full bg-orange/10 flex items-center
+                          justify-center text-orange flex-shrink-0">
+            <span className="material-symbols-rounded text-base" style={{ fontVariationSettings: "'FILL' 1" }}>photo_camera</span>
+          </div>
+          <div>
+            <h4 className="font-display font-bold text-on-surface text-sm">{cat.name}</h4>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-[10px] uppercase tracking-wider text-orange font-bold">
+                {fotos.length} foto{fotos.length > 1 ? "'s" : ""}
+              </span>
+              <span className="w-1 h-1 rounded-full bg-outline-variant" />
+              <span className="text-[11px] text-on-surface-variant">Tik voor meer</span>
+            </div>
+          </div>
+        </div>
+        <span className="material-symbols-rounded text-orange group-hover:translate-x-1 transition-transform">
+          arrow_forward
+        </span>
+      </button>
+    );
+  }
+
+  // VOLTOOID — section complete, strikethrough
   return (
     <button
       data-cat-id={cat.id}
       onClick={onOpen}
-      className={`w-full flex items-center gap-4 px-4 py-4 text-left transition-all border-b border-outline-variant/[0.08] last:border-b-0 ${
-        isDone ? 'bg-card hover:bg-surface-low' : isSkipped ? 'bg-card' : 'bg-orange/[0.03] hover:bg-orange/[0.06]'
-      }`}
+      className="flex items-center justify-between w-full p-4 rounded-xl
+                 bg-surface/50 opacity-80 hover:opacity-100 transition-opacity
+                 text-left active:scale-[0.98]"
     >
-      {/* Icon */}
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-        isDone ? 'bg-primary/10' : isSkipped ? 'bg-surface-container' : 'bg-orange/10'
-      }`}>
-        <span className={`material-symbols-rounded text-lg ${
-          isDone ? 'text-primary' : isSkipped ? 'text-muted-foreground' : 'text-orange'
-        }`} style={isDone ? { fontVariationSettings: "'FILL' 1" } : undefined}>
-          {isDone ? 'check_circle' : isSkipped ? 'remove' : 'photo_camera'}
-        </span>
-      </div>
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        <div className={`font-bold text-[14px] leading-tight ${
-          isDone ? 'text-on-surface' : isSkipped ? 'text-muted-foreground line-through decoration-muted-foreground/40' : 'text-on-surface'
-        }`}>
-          {cat.name}
+      <div className="flex items-center gap-4">
+        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center
+                        justify-center text-primary flex-shrink-0">
+          <span className="material-symbols-rounded text-base" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
         </div>
-        <div className="text-[11px] text-muted-foreground mt-0.5">
-          {isDone
-            ? `${fotos.length} foto${fotos.length > 1 ? "'s" : ""} geüpload`
-            : isSkipped
-            ? 'Overgeslagen (NVT)'
-            : cat.instruction.substring(0, 55) + (cat.instruction.length > 55 ? '...' : '')
-          }
-        </div>
-        {isDone && fotos.length > 0 && (
-          <div className="flex gap-1.5 mt-2">
-            {fotos.slice(0, 4).map(f => (
-              <img key={f.id} src={f.url} className="w-8 h-8 rounded-lg object-cover border border-outline-variant/20" alt="" />
-            ))}
-            {fotos.length > 4 && (
-              <div className="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center text-[10px] font-bold text-muted-foreground">
-                +{fotos.length - 4}
-              </div>
+        <div>
+          <h4 className="font-display font-semibold text-on-surface/60 line-through text-sm">{cat.name}</h4>
+          <div className="flex items-center gap-2 mt-0.5">
+            <span className="text-[10px] uppercase tracking-wider text-primary font-bold">Voltooid</span>
+            {fotos.length > 0 && (
+              <>
+                <span className="w-1 h-1 rounded-full bg-outline-variant" />
+                <div className="flex gap-1">
+                  {fotos.slice(0, 3).map(f => (
+                    <img key={f.id} src={f.url} className="w-6 h-6 rounded-md object-cover border border-outline-variant/20" alt="" />
+                  ))}
+                  {fotos.length > 3 && (
+                    <div className="w-6 h-6 rounded-md bg-surface-container flex items-center justify-center text-[9px] font-bold text-muted-foreground">
+                      +{fotos.length - 3}
+                    </div>
+                  )}
+                </div>
+              </>
             )}
           </div>
-        )}
+        </div>
       </div>
-      {/* Status badge */}
-      <div className="flex-shrink-0">
-        {isDone ? (
-          <span className="text-[9px] font-black uppercase tracking-wide text-primary">KLAAR</span>
-        ) : isSkipped ? (
-          <span className="text-[9px] font-black uppercase tracking-wide text-muted-foreground">NVT</span>
-        ) : (
-          <div className="flex items-center gap-1.5">
-            <span className="text-[9px] font-black uppercase tracking-wide px-2 py-1 rounded-full bg-orange/10 text-orange">OPEN</span>
-            <span className="material-symbols-rounded text-orange text-base">arrow_forward</span>
-          </div>
-        )}
-      </div>
+      <span className="material-symbols-rounded text-muted-foreground/40">chevron_right</span>
     </button>
   );
 }
