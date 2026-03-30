@@ -403,7 +403,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
   }, [onNext, onPrev, step]);
 
   return (
-    <div className="flex flex-col" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{ minHeight: "calc(100dvh - 56px)" }}>
+    <div className="flex flex-col h-[calc(100dvh-56px)] overflow-hidden" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
 
       {/* ── Premium sticky header ── */}
       <div className="sticky top-14 z-30 bg-surface -mx-4 px-6 pt-4 pb-4">
