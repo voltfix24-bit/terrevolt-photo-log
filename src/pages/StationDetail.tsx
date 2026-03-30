@@ -119,33 +119,33 @@ function CategoryRow({ cat, fotos, isSkipped, onOpen }: {
     <button
       data-cat-id={cat.id}
       onClick={onOpen}
-      className={`w-full flex items-center gap-4 px-4 py-4 text-left transition-colors border-b border-outline-variant/10 last:border-b-0 ${
-        isDone ? 'bg-card hover:bg-surface-low' : isSkipped ? 'bg-card hover:bg-surface-low' : 'bg-card hover:bg-primary/[0.03]'
+      className={`w-full flex items-center gap-4 px-4 py-4 text-left transition-all border-b border-outline-variant/[0.08] last:border-b-0 ${
+        isDone ? 'bg-card hover:bg-surface-low' : isSkipped ? 'bg-card' : 'bg-orange/[0.03] hover:bg-orange/[0.06]'
       }`}
     >
-      {/* Icon box */}
-      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 ${
-        isDone ? 'bg-primary/10' : 'bg-surface-container'
+      {/* Icon */}
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+        isDone ? 'bg-primary/10' : isSkipped ? 'bg-surface-container' : 'bg-orange/10'
       }`}>
-        <span className={`material-symbols-rounded text-xl ${
-          isDone ? 'text-primary' : 'text-muted-foreground'
+        <span className={`material-symbols-rounded text-lg ${
+          isDone ? 'text-primary' : isSkipped ? 'text-muted-foreground' : 'text-orange'
         }`} style={isDone ? { fontVariationSettings: "'FILL' 1" } : undefined}>
-          {isDone ? 'check_circle' : isSkipped ? 'remove_circle' : 'photo_camera'}
+          {isDone ? 'check_circle' : isSkipped ? 'remove' : 'photo_camera'}
         </span>
       </div>
-      {/* Text content */}
+      {/* Content */}
       <div className="flex-1 min-w-0">
-        <div className={`font-bold text-[14px] leading-tight mb-0.5 ${isSkipped ? 'text-muted-foreground line-through' : 'text-on-surface'}`}>
+        <div className={`font-bold text-[14px] leading-tight ${
+          isDone ? 'text-on-surface' : isSkipped ? 'text-muted-foreground line-through decoration-muted-foreground/40' : 'text-on-surface'
+        }`}>
           {cat.name}
         </div>
-        <div className="text-[12px] text-muted-foreground leading-snug truncate">
+        <div className="text-[11px] text-muted-foreground mt-0.5">
           {isDone
             ? `${fotos.length} foto${fotos.length > 1 ? "'s" : ""} geüpload`
             : isSkipped
             ? 'Overgeslagen (NVT)'
-            : cat.instruction.length > 50
-              ? cat.instruction.substring(0, 50) + '...'
-              : cat.instruction
+            : cat.instruction.substring(0, 55) + (cat.instruction.length > 55 ? '...' : '')
           }
         </div>
         {isDone && fotos.length > 0 && (
@@ -162,15 +162,17 @@ function CategoryRow({ cat, fotos, isSkipped, onOpen }: {
         )}
       </div>
       {/* Status badge */}
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="flex-shrink-0">
         {isDone ? (
-          <span className="text-[10px] font-black uppercase tracking-wide px-2.5 py-1.5 rounded-full bg-primary/10 text-primary">Klaar</span>
+          <span className="text-[9px] font-black uppercase tracking-wide text-primary">KLAAR</span>
         ) : isSkipped ? (
-          <span className="text-[10px] font-black uppercase tracking-wide px-2.5 py-1.5 rounded-full bg-surface-container text-muted-foreground">NVT</span>
+          <span className="text-[9px] font-black uppercase tracking-wide text-muted-foreground">NVT</span>
         ) : (
-          <span className="text-[10px] font-black uppercase tracking-wide px-2.5 py-1.5 rounded-full bg-orange/10 text-orange">Open</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[9px] font-black uppercase tracking-wide px-2 py-1 rounded-full bg-orange/10 text-orange">OPEN</span>
+            <span className="material-symbols-rounded text-orange text-base">arrow_forward</span>
+          </div>
         )}
-        <span className="material-symbols-rounded text-muted-foreground/30 text-lg">chevron_right</span>
       </div>
     </button>
   );
@@ -697,33 +699,29 @@ export default function StationDetail() {
       )}
 
       <main className="pt-20 pb-0 px-4 max-w-3xl mx-auto animate-fade-up">
-        {/* ── 1. HERO CARD ── */}
-        <div className="bg-card rounded-3xl p-5 shadow-sm border border-outline-variant/10 mb-4">
+        {/* ── 1. HERO ── */}
+        <div className="px-5 pt-4 pb-5">
+          {/* Eyebrow */}
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-1.5 h-1.5 rounded-full bg-accent-gold-bright" />
+            <span className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-accent-gold font-display">
+              Technische Oplevering
+            </span>
+          </div>
+          {/* Station name */}
           <div className="flex items-start justify-between gap-3 mb-4">
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1.5">
-                <button onClick={() => navigate("/")} className="flex items-center text-text-secondary hover:text-primary-hover transition-colors flex-shrink-0">
-                  <span className="material-symbols-rounded text-lg">arrow_back_ios</span>
-                </button>
-                {station.type_ruimte && (
-                  <span
-                    className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full"
-                    style={station.type_ruimte?.toLowerCase().includes('cs')
-                      ? { background: "rgba(232,84,26,0.1)", color: "#E8541A" }
-                      : { background: "rgba(107,45,139,0.1)", color: "#6B2D8B" }
-                    }
-                  >
-                    {station.type_ruimte}
-                  </span>
-                )}
-                {station.behuizingsnummer && (
-                  <span className="text-xs text-muted-foreground font-mono">{station.behuizingsnummer}</span>
-                )}
-              </div>
-              <h2 className="font-display text-[22px] font-extrabold tracking-tight text-on-surface leading-tight">{station.naam_msr}</h2>
-              <p className="text-xs text-muted-foreground mt-1">{station.datum} · {station.ingevuld_door}</p>
+              <h1 className="font-display text-[28px] font-extrabold tracking-tight text-on-surface leading-tight mb-1">
+                {station.naam_msr}
+              </h1>
+              <p className="text-sm text-muted-foreground font-medium">
+                {[station.type_ruimte, station.behuizingsnummer].filter(Boolean).join(' · ')}
+              </p>
             </div>
-            <div className="flex gap-1.5 flex-shrink-0">
+            <div className="flex gap-1.5 flex-shrink-0 pt-1">
+              <button onClick={() => navigate("/")} className="p-2.5 bg-surface-white border border-outline-variant/20 rounded-xl shadow-sm hover:shadow-md hover:border-primary/20 transition-all active:scale-95 text-text-secondary hover:text-primary">
+                <span className="material-symbols-rounded text-lg">arrow_back</span>
+              </button>
               <button onClick={openPdf} className="p-2.5 bg-surface-white border border-outline-variant/20 rounded-xl shadow-sm hover:shadow-md hover:border-primary/20 transition-all active:scale-95 text-text-secondary hover:text-primary">
                 <span className="material-symbols-rounded text-lg">picture_as_pdf</span>
               </button>
@@ -732,23 +730,28 @@ export default function StationDetail() {
               </button>
             </div>
           </div>
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs font-semibold text-muted-foreground">Voortgang</span>
-              <span className="text-xs font-extrabold text-primary font-mono">{filledCount} / {CATEGORIES.length}</span>
+          {/* Progress row */}
+          <div className="flex items-end justify-between mb-2">
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Overall Progress</div>
+              <div className="font-display text-[42px] font-black leading-none text-on-surface">
+                {pct}<span className="text-[20px] text-muted-foreground">%</span>
+              </div>
             </div>
-            <div className="h-2 bg-surface-container rounded-full overflow-hidden">
-              <div className="h-full rounded-full bg-gradient-to-r from-primary to-primary-light transition-all duration-700 ease-out" style={{ width: `${pct}%` }} />
+            <div className="text-right pb-1">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Categorieën</div>
+              <div className="font-display text-[20px] font-extrabold text-primary">{filledCount} / {CATEGORIES.length}</div>
+              <div className="text-xs text-muted-foreground">{fotos?.length ?? 0} foto's</div>
             </div>
-            <div className="flex justify-between mt-1.5">
-              <span className="text-[11px] text-muted-foreground">{pct === 100 ? "✓ Volledig afgerond" : `${pct}% compleet`}</span>
-              <span className="text-[11px] text-muted-foreground">{fotos?.length ?? 0} foto's</span>
-            </div>
+          </div>
+          {/* Progress bar */}
+          <div className="h-2 bg-surface-container rounded-full overflow-hidden">
+            <div className="h-full rounded-full bg-gradient-to-r from-primary to-primary-light transition-all duration-700" style={{ width: `${pct}%` }} />
           </div>
         </div>
 
         {/* ── 2. SECTION ACCORDION ── */}
-        <div className="space-y-6 mb-8">
+        <div className="space-y-3 mb-8">
           {sectionGroups.map(({ section, categories: cats }) => {
             const doneCats = cats.filter(c => fotosByCategorie(c.name).length > 0);
             const openCats = cats.filter(c => fotosByCategorie(c.name).length === 0 && !isSkipped(c.name));
@@ -756,64 +759,70 @@ export default function StationDetail() {
             const isComplete = openCats.length === 0 && skippedCats.length === 0;
             const isSectionOpen = openSections.includes(section.id);
 
+            // Sort: open first, then done, then skipped
+            const sortedCats = [...openCats, ...doneCats, ...skippedCats];
+
             return (
-              <div ref={el => { sectionRefs.current[section.id] = el; }} key={section.id}>
-                {/* Section header — flat, no card */}
-                <button onClick={() => toggleSection(section.id)} className="w-full flex items-center justify-between mb-3 px-1 text-left">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-1 h-6 rounded-full flex-shrink-0 ${isComplete ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
-                    <h3 className="font-display font-extrabold text-[17px] text-on-surface">{section.label}</h3>
+              <div ref={el => { sectionRefs.current[section.id] = el; }} key={section.id}
+                className={`rounded-2xl overflow-hidden shadow-sm ${
+                  isComplete
+                    ? 'bg-primary/[0.06] border border-primary/20'
+                    : isSectionOpen
+                    ? 'bg-card border border-outline-variant/15 shadow-md'
+                    : 'bg-card border border-outline-variant/10'
+                }`}
+              >
+                <button onClick={() => toggleSection(section.id)} className="w-full flex items-center gap-4 px-4 py-4 text-left">
+                  {/* Icon box */}
+                  <div className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+                    isComplete ? 'bg-primary shadow-sm shadow-primary/30' : 'bg-surface-container'
+                  }`}>
+                    <span className={`material-symbols-rounded text-xl ${
+                      isComplete ? 'text-primary-foreground' : 'text-muted-foreground'
+                    }`} style={isComplete ? { fontVariationSettings: "'FILL' 1" } : undefined}>
+                      {isComplete ? 'check' : 'folder_open'}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                      isComplete ? 'bg-primary/10 text-primary' : 'bg-surface-container text-muted-foreground'
+                  {/* Text */}
+                  <div className="flex-1 min-w-0">
+                    <div className={`font-display font-extrabold text-[16px] leading-tight ${
+                      isComplete ? 'text-primary' : 'text-on-surface'
                     }`}>
-                      {doneCats.length}/{cats.length}
-                    </span>
-                    <span className="material-symbols-rounded text-muted-foreground/40 text-xl">
-                      {isSectionOpen ? 'expand_less' : 'expand_more'}
-                    </span>
+                      {section.label}
+                    </div>
+                    <div className="text-[12px] text-muted-foreground mt-0.5 flex items-center gap-1.5">
+                      <span>{cats.length} taken</span>
+                      {openCats.length > 0 && (
+                        <>
+                          <span>·</span>
+                          <span className="text-orange font-semibold">{openCats.length} open</span>
+                        </>
+                      )}
+                      {isComplete && (
+                        <>
+                          <span>·</span>
+                          <span className="text-primary font-semibold">Voltooid</span>
+                        </>
+                      )}
+                    </div>
                   </div>
+                  <span className="material-symbols-rounded text-muted-foreground/40 text-xl">
+                    {isSectionOpen ? 'expand_less' : 'expand_more'}
+                  </span>
                 </button>
 
-                {/* Category list card */}
+                {/* Expanded content */}
                 {isSectionOpen && (
-                  <div className="bg-card rounded-2xl overflow-hidden border border-outline-variant/10 shadow-sm mb-2">
-                    {openCats.length > 0 && (
-                      <>
-                        <div className="px-4 pt-3 pb-2 bg-orange/[0.04] border-b border-orange/10">
-                          <span className="text-[10px] font-black uppercase tracking-wider text-orange">● Nog te doen ({openCats.length})</span>
-                        </div>
-                        {openCats.map(cat => (
-                          <CategoryRow key={cat.id} cat={cat} fotos={[]} onOpen={() => openWizardAt(cat)} />
-                        ))}
-                      </>
-                    )}
-
-                    {openCats.length > 0 && doneCats.length > 0 && (
-                      <div className="px-4 pt-3 pb-2 bg-primary/[0.03] border-t border-outline-variant/10 border-b border-outline-variant/10">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-primary/60">● Klaar ({doneCats.length})</span>
-                      </div>
-                    )}
-                    {openCats.length === 0 && doneCats.length > 0 && (
-                      <div className="px-4 pt-3 pb-2 bg-primary/[0.03] border-b border-outline-variant/10">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-primary/60">● Klaar ({doneCats.length})</span>
-                      </div>
-                    )}
-                    {doneCats.map(cat => (
-                      <CategoryRow key={cat.id} cat={cat} fotos={fotosByCategorie(cat.name)} onOpen={() => openWizardAt(cat)} />
+                  <div className="border-t border-outline-variant/10">
+                    {sortedCats.map(cat => (
+                      <CategoryRow
+                        key={cat.id}
+                        cat={cat}
+                        fotos={fotosByCategorie(cat.name)}
+                        isSkipped={isSkipped(cat.name)}
+                        onOpen={() => openWizardAt(cat)}
+                      />
                     ))}
-
-                    {skippedCats.length > 0 && (
-                      <>
-                        <div className="px-4 pt-3 pb-2 border-t border-outline-variant/10">
-                          <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">— Overgeslagen ({skippedCats.length})</span>
-                        </div>
-                        {skippedCats.map(cat => (
-                          <CategoryRow key={cat.id} cat={cat} fotos={[]} isSkipped onOpen={() => openWizardAt(cat)} />
-                        ))}
-                      </>
-                    )}
                   </div>
                 )}
               </div>
