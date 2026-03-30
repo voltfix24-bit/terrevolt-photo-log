@@ -91,7 +91,7 @@ export default function NewStation() {
               type="date"
               value={form.datum}
               onChange={(e) => setForm({ ...form, datum: e.target.value })}
-              className="w-full px-4 py-3.5 bg-primary-container/15 border-0 rounded-2xl text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
+              className="w-full px-4 py-3.5 bg-surface-low border-0 rounded-2xl text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
             />
           </div>
 
