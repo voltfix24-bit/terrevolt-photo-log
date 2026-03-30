@@ -7,7 +7,7 @@ export default function Instellingen() {
     <div className="min-h-screen bg-background pb-28 md:pb-8">
       <main className="pt-24 pb-8 px-6 max-w-2xl mx-auto animate-fade-up">
         <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary transition-colors font-semibold mb-6">
-          <span className="material-symbols-outlined text-lg">arrow_back_ios</span> Terug
+          <span className="material-symbols-rounded text-lg">arrow_back_ios</span> Terug
         </button>
 
         <div className="flex items-center gap-4 mb-6">
@@ -52,19 +52,19 @@ export default function Instellingen() {
           >
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-2xl bg-primary-container/30 flex items-center justify-center text-primary">
-                <span className="material-symbols-outlined">photo_library</span>
+                <span className="material-symbols-rounded">photo_library</span>
               </div>
               <div>
                 <div className="font-bold text-sm text-on-surface">Categorieën beheren</div>
                 <div className="text-xs text-muted-foreground">Voorbeeld foto's toevoegen per categorie</div>
               </div>
             </div>
-            <span className="material-symbols-outlined text-muted-foreground">chevron_right</span>
+            <span className="material-symbols-rounded text-muted-foreground">chevron_right</span>
           </button>
 
           <div className="w-full bg-card rounded-2xl p-4 border border-outline-variant/10 shadow-sm flex items-center gap-3">
             <div className="w-11 h-11 rounded-2xl bg-surface-container flex items-center justify-center text-muted-foreground">
-              <span className="material-symbols-outlined">info</span>
+              <span className="material-symbols-rounded">info</span>
             </div>
             <div>
               <div className="font-bold text-sm text-on-surface">Over de app</div>

@@ -54,7 +54,7 @@ export default function Dashboard() {
 
         {/* Search — large pill */}
         <div className="relative mb-8">
-          <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-on-surface-variant/50 text-[22px]">search</span>
+          <span className="material-symbols-rounded absolute left-5 top-1/2 -translate-y-1/2 text-on-surface-variant/50 text-[22px]">search</span>
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -108,7 +108,7 @@ export default function Dashboard() {
                       <div className="flex items-center gap-1.5">
                         {complete && (
                           <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
-                            <span className="material-symbols-outlined fill text-primary text-[18px]">check_circle</span>
+                            <span className="material-symbols-rounded text-primary text-[18px]">check_circle</span>
                           </div>
                         )}
                       </div>
@@ -152,7 +152,7 @@ export default function Dashboard() {
                           onClick={() => navigate(`/stations/${station.id}`)}
                           className="flex-1 min-h-[52px] bg-primary text-primary-foreground rounded-2xl font-display text-[15px] font-bold shadow-lg shadow-primary/20 active:scale-[0.97] transition-transform flex items-center justify-center gap-2"
                         >
-                          <span className="material-symbols-outlined text-lg">edit_note</span>
+                          <span className="material-symbols-rounded text-lg">edit_note</span>
                           Invullen
                         </button>
                         <button
@@ -160,7 +160,7 @@ export default function Dashboard() {
                           className="h-[52px] w-[52px] flex items-center justify-center rounded-2xl bg-primary-container/15 active:scale-[0.95] transition-transform flex-shrink-0"
                           title="PDF rapport"
                         >
-                          <span className="material-symbols-outlined text-primary/70 text-xl">picture_as_pdf</span>
+                          <span className="material-symbols-rounded text-primary/70 text-xl">picture_as_pdf</span>
                         </button>
                         <button
                           onClick={async () => {
@@ -180,7 +180,7 @@ export default function Dashboard() {
                           {zipProgress !== null && (
                             <div className="absolute bottom-0 left-0 right-0 bg-primary/15 transition-all duration-300" style={{ height: `${zipProgress}%` }} />
                           )}
-                          <span className="material-symbols-outlined text-primary/70 text-xl relative z-10">
+                          <span className="material-symbols-rounded text-primary/70 text-xl relative z-10">
                             {zipProgress !== null ? "downloading" : "folder_zip"}
                           </span>
                         </button>

@@ -85,14 +85,14 @@ export default function CategorieenBeheren() {
       <main className="pt-24 pb-8 px-4 max-w-2xl mx-auto animate-fade-up">
         {/* Header */}
         <button onClick={() => navigate("/instellingen")} className="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary transition-colors font-semibold mb-4">
-          <span className="material-symbols-outlined text-lg">arrow_back_ios</span> Instellingen
+          <span className="material-symbols-rounded text-lg">arrow_back_ios</span> Instellingen
         </button>
 
         <h1 className="text-2xl font-black text-on-surface mb-4">Categorieën beheren</h1>
 
         {/* Search */}
         <div className="relative mb-3">
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-lg">search</span>
+          <span className="material-symbols-rounded absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-lg">search</span>
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -177,7 +177,7 @@ export default function CategorieenBeheren() {
                         : 'bg-primary-container/40 text-primary hover:bg-primary-container/60'
                     }`}
                   >
-                    <span className="material-symbols-outlined text-sm">
+                    <span className="material-symbols-rounded text-sm">
                       {isUploading ? 'hourglass_empty' : 'add_photo_alternate'}
                     </span>
                     {isUploading ? 'Uploaden...' : examples.length > 0 ? 'Meer' : 'Toevoegen'}

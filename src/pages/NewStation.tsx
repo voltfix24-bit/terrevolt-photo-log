@@ -55,7 +55,7 @@ export default function NewStation() {
             onClick={() => navigate("/")}
             className="w-10 h-10 rounded-full bg-on-surface/10 flex items-center justify-center hover:bg-on-surface/20 transition-colors"
           >
-            <span className="material-symbols-outlined text-on-surface text-xl">close</span>
+            <span className="material-symbols-rounded text-on-surface text-xl">close</span>
           </button>
         </div>
 
@@ -120,7 +120,7 @@ export default function NewStation() {
                     : "bg-primary-container/15 text-on-surface hover:bg-primary-container/25"
                 }`}
               >
-                <span className={`material-symbols-outlined text-2xl ${
+                <span className={`material-symbols-rounded text-2xl ${
                   form.type_ruimte === "Compact Station" ? "text-primary-foreground" : "text-primary"
                 }`}>dashboard</span>
                 <div>
@@ -139,7 +139,7 @@ export default function NewStation() {
                     : "bg-primary-container/15 text-on-surface hover:bg-primary-container/25"
                 }`}
               >
-                <span className={`material-symbols-outlined text-2xl ${
+                <span className={`material-symbols-rounded text-2xl ${
                   form.type_ruimte === "Betreedbaar station" ? "text-primary-foreground" : "text-primary"
                 }`}>door_open</span>
                 <div>
@@ -159,7 +159,7 @@ export default function NewStation() {
               <div className="flex items-center justify-between px-5 py-4 bg-primary-container/15 rounded-2xl">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-primary text-xl">bolt</span>
+                    <span className="material-symbols-rounded text-primary text-xl">bolt</span>
                   </div>
                   <span className="text-sm font-semibold text-on-surface">Vermogensveld aanwezig</span>
                 </div>
@@ -180,7 +180,7 @@ export default function NewStation() {
               <div className="flex items-center justify-between px-5 py-4 bg-primary-container/15 rounded-2xl">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-primary text-xl">electrical_services</span>
+                    <span className="material-symbols-rounded text-primary text-xl">electrical_services</span>
                   </div>
                   <span className="text-sm font-semibold text-on-surface">DA-kast aanwezig</span>
                 </div>
@@ -208,7 +208,7 @@ export default function NewStation() {
             className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground font-bold py-4 rounded-2xl shadow-xl shadow-primary/25 hover:shadow-primary/40 hover:scale-[1.01] active:scale-[0.98] transition-all mt-2 disabled:opacity-50"
           >
             {loading ? "Opslaan..." : "Station opslaan"}
-            <span className="material-symbols-outlined text-xl">save</span>
+            <span className="material-symbols-rounded text-xl">save</span>
           </button>
         </div>
       </main>
