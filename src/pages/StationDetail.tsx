@@ -167,6 +167,7 @@ export default function StationDetail() {
   const [openSections, setOpenSections] = useState<string[]>([]);
   const [openCategory, setOpenCategory] = useState<Category | null>(null);
   const [tipOpen, setTipOpen] = useState<Record<number, boolean>>({});
+  const [highlightCatId, setHighlightCatId] = useState<number | null>(null);
   const { data: voorbeelden } = useVoorbeelden();
   const { skipped, toggleSkip, isSkipped } = useSkippedCategories(id);
 
