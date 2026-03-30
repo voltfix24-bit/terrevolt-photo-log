@@ -467,9 +467,9 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
         {/* Tip toggle */}
         {category.tip && (
           <>
-            <button onClick={onToggleTip} className={`flex items-center gap-2 text-[13px] font-semibold transition-colors py-1 ${tipOpen ? "text-yellow-600" : "text-muted-foreground hover:text-yellow-600"}`}>
-              <div className="w-8 h-8 rounded-lg bg-yellow-50 flex items-center justify-center">
-                <span className={`material-symbols-rounded ${tipOpen ? "fill" : ""} text-lg text-yellow-500`}>lightbulb</span>
+            <button onClick={onToggleTip} className={`flex items-center gap-2 text-[13px] font-semibold transition-colors py-1 ${tipOpen ? "text-amber-600" : "text-muted-foreground hover:text-amber-600"}`}>
+              <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
+                <span className="material-symbols-rounded text-lg text-amber-500">lightbulb</span>
               </div>
               {tipOpen ? "Verberg tip" : "Toon tip"}
             </button>
