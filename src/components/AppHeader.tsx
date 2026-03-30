@@ -15,12 +15,12 @@ export default function AppHeader() {
       {/* Desktop header */}
       <header className="fixed top-0 w-full z-50 bg-white/75 backdrop-blur-md shadow-[0_8px_32px_rgba(25,28,30,0.05)] border-b border-slate-200/20">
         <div className="flex justify-between items-center px-6 h-16 max-w-7xl mx-auto">
-          <div className="flex items-center gap-3">
+          <button onClick={() => navigate("/")} className="flex items-center gap-3 active:scale-95 transition-transform">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-primary-light flex items-center justify-center text-primary-foreground shadow-md shadow-primary/30">
               <span className="material-symbols-outlined fill text-lg">bolt</span>
             </div>
             <span className="text-xl font-black tracking-tighter text-primary">TerreVolt</span>
-          </div>
+          </button>
           <nav className="hidden md:flex items-center gap-7">
             <button onClick={() => navigate("/")} className={`text-sm font-medium transition-all ${isActive("/") && !isActive("/stations") ? "text-primary font-bold" : "text-muted-foreground hover:text-on-surface"}`}>
               Dashboard
