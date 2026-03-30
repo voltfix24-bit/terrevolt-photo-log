@@ -441,7 +441,7 @@ export default function StationDetail() {
                     <div className={`text-xs font-semibold mt-0.5 ${isComplete ? 'text-primary/60' : 'text-muted-foreground'}`}>
                       {doneCats.length} / {cats.length} klaar
                       {!isComplete && openCount > 0 && (
-                        <span className="text-accent-gold ml-2">· {openCount} open</span>
+                        <span className="text-orange font-bold ml-2">· {openCount} open</span>
                       )}
                       {isComplete && <span> · {totalFotosInSection} foto's</span>}
                     </div>
