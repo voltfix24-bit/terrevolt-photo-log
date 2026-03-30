@@ -68,7 +68,7 @@ export default function NewStation() {
               placeholder="bv. Sint Martinusstraat 49NB"
               value={form.naam_msr}
               onChange={(e) => setForm({ ...form, naam_msr: e.target.value })}
-              className="w-full px-4 py-3.5 bg-primary-container/15 border-0 rounded-2xl text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
+              className="w-full px-4 py-3.5 bg-surface-low border-0 rounded-2xl text-sm text-text-primary placeholder:text-text-faint focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
             />
           </div>
 
