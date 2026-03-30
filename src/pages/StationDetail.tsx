@@ -435,7 +435,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
             className="absolute -top-1.5 w-5 h-5 rounded-full bg-primary flex items-center justify-center transition-all duration-500"
             style={{ left: `calc(${Math.max(progressPct, 3)}% - 10px)` }}
           >
-            <span className="text-primary-foreground text-[10px]">⚡</span>
+            <span className="material-symbols-rounded text-primary-foreground text-[12px]">bolt</span>
           </div>
         </div>
       </div>
