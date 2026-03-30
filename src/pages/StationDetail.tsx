@@ -242,7 +242,7 @@ export default function StationDetail() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background pt-24 px-6 max-w-7xl mx-auto">
+      <div className="min-h-screen bg-app-background pt-24 px-6 max-w-7xl mx-auto">
         <Skeleton className="h-40 w-full rounded-3xl mb-6" />
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
