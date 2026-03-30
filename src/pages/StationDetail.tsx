@@ -119,33 +119,33 @@ function CategoryRow({ cat, fotos, isSkipped, onOpen }: {
     <button
       data-cat-id={cat.id}
       onClick={onOpen}
-      className={`w-full flex items-center gap-4 px-4 py-4 text-left transition-colors border-b border-outline-variant/10 last:border-b-0 ${
-        isDone ? 'bg-card hover:bg-surface-low' : isSkipped ? 'bg-card hover:bg-surface-low' : 'bg-card hover:bg-primary/[0.03]'
+      className={`w-full flex items-center gap-4 px-4 py-4 text-left transition-all border-b border-outline-variant/[0.08] last:border-b-0 ${
+        isDone ? 'bg-card hover:bg-surface-low' : isSkipped ? 'bg-card' : 'bg-orange/[0.03] hover:bg-orange/[0.06]'
       }`}
     >
-      {/* Icon box */}
-      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 ${
-        isDone ? 'bg-primary/10' : 'bg-surface-container'
+      {/* Icon */}
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+        isDone ? 'bg-primary/10' : isSkipped ? 'bg-surface-container' : 'bg-orange/10'
       }`}>
-        <span className={`material-symbols-rounded text-xl ${
-          isDone ? 'text-primary' : 'text-muted-foreground'
+        <span className={`material-symbols-rounded text-lg ${
+          isDone ? 'text-primary' : isSkipped ? 'text-muted-foreground' : 'text-orange'
         }`} style={isDone ? { fontVariationSettings: "'FILL' 1" } : undefined}>
-          {isDone ? 'check_circle' : isSkipped ? 'remove_circle' : 'photo_camera'}
+          {isDone ? 'check_circle' : isSkipped ? 'remove' : 'photo_camera'}
         </span>
       </div>
-      {/* Text content */}
+      {/* Content */}
       <div className="flex-1 min-w-0">
-        <div className={`font-bold text-[14px] leading-tight mb-0.5 ${isSkipped ? 'text-muted-foreground line-through' : 'text-on-surface'}`}>
+        <div className={`font-bold text-[14px] leading-tight ${
+          isDone ? 'text-on-surface' : isSkipped ? 'text-muted-foreground line-through decoration-muted-foreground/40' : 'text-on-surface'
+        }`}>
           {cat.name}
         </div>
-        <div className="text-[12px] text-muted-foreground leading-snug truncate">
+        <div className="text-[11px] text-muted-foreground mt-0.5">
           {isDone
             ? `${fotos.length} foto${fotos.length > 1 ? "'s" : ""} geüpload`
             : isSkipped
             ? 'Overgeslagen (NVT)'
-            : cat.instruction.length > 50
-              ? cat.instruction.substring(0, 50) + '...'
-              : cat.instruction
+            : cat.instruction.substring(0, 55) + (cat.instruction.length > 55 ? '...' : '')
           }
         </div>
         {isDone && fotos.length > 0 && (
@@ -162,15 +162,17 @@ function CategoryRow({ cat, fotos, isSkipped, onOpen }: {
         )}
       </div>
       {/* Status badge */}
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="flex-shrink-0">
         {isDone ? (
-          <span className="text-[10px] font-black uppercase tracking-wide px-2.5 py-1.5 rounded-full bg-primary/10 text-primary">Klaar</span>
+          <span className="text-[9px] font-black uppercase tracking-wide text-primary">KLAAR</span>
         ) : isSkipped ? (
-          <span className="text-[10px] font-black uppercase tracking-wide px-2.5 py-1.5 rounded-full bg-surface-container text-muted-foreground">NVT</span>
+          <span className="text-[9px] font-black uppercase tracking-wide text-muted-foreground">NVT</span>
         ) : (
-          <span className="text-[10px] font-black uppercase tracking-wide px-2.5 py-1.5 rounded-full bg-orange/10 text-orange">Open</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[9px] font-black uppercase tracking-wide px-2 py-1 rounded-full bg-orange/10 text-orange">OPEN</span>
+            <span className="material-symbols-rounded text-orange text-base">arrow_forward</span>
+          </div>
         )}
-        <span className="material-symbols-rounded text-muted-foreground/30 text-lg">chevron_right</span>
       </div>
     </button>
   );
