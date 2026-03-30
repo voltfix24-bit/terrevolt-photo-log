@@ -16,6 +16,7 @@ import imageCompression from "browser-image-compression";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { generatePdfHtml } from "@/lib/pdf-generator";
+import { CategorieSettingsDialog, useVoorbeelden } from "@/components/CategorieSettings";
 
 const MAX_SIZE = 10 * 1024 * 1024;
 const ACCEPTED = ["image/jpeg", "image/png", "image/heic", "image/webp"];
@@ -116,6 +117,8 @@ export default function StationDetail() {
   const [lightboxSlides, setLightboxSlides] = useState<{ src: string }[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [editOpen, setEditOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const { data: voorbeelden } = useVoorbeelden();
   // Persist invullen progress in localStorage
   const storageKey = `to-fotos-progress-${id}`;
   const savedProgress = (() => {
@@ -261,6 +264,7 @@ export default function StationDetail() {
     <div className="min-h-screen bg-background pb-28 md:pb-8">
       <Lightbox open={lightboxOpen} close={() => setLightboxOpen(false)} slides={lightboxSlides} index={lightboxIndex} />
       <EditStationDialog station={station} open={editOpen} onOpenChange={setEditOpen} onSaved={() => { queryClient.invalidateQueries({ queryKey: ["station", id] }); queryClient.invalidateQueries({ queryKey: ["stations"] }); }} />
+      <CategorieSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
 
       <main className="pt-20 pb-0 px-4 max-w-7xl mx-auto animate-fade-up">
         {viewMode === "invullen" && !completed ? (
@@ -283,6 +287,8 @@ export default function StationDetail() {
             onBackToList={() => navigate("/")}
             filledCount={filledCount}
             totalCategories={FOTO_CATEGORIEEN.length}
+            voorbeelden={voorbeelden?.filter(v => v.categorie === CATEGORIES[currentStep].name) ?? []}
+            onOpenSettings={() => setSettingsOpen(true)}
           />
         ) : completed ? (
           <CompletionScreen
@@ -363,9 +369,11 @@ interface StepByStepViewProps {
   onBackToList: () => void;
   filledCount: number;
   totalCategories: number;
+  voorbeelden: { id: string; url: string }[];
+  onOpenSettings: () => void;
 }
 
-function StepByStepView({ station, category, step, total, fotos, tipOpen, onToggleTip, isUploading, uploadProgress, onUpload, onDelete, onNext, onPrev, onSkip, onClickThumb, onBackToList, filledCount, totalCategories }: StepByStepViewProps) {
+function StepByStepView({ station, category, step, total, fotos, tipOpen, onToggleTip, isUploading, uploadProgress, onUpload, onDelete, onNext, onPrev, onSkip, onClickThumb, onBackToList, filledCount, totalCategories, voorbeelden, onOpenSettings }: StepByStepViewProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const isVermogensveld = category.id === 14;
   const isDaKast = category.id === 15;
@@ -407,7 +415,12 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
             <span className="material-symbols-outlined text-lg">arrow_back_ios</span>
             <span className="truncate max-w-[120px]">{station.naam_msr}</span>
           </button>
-          <span className="text-xs font-extrabold text-primary">{filledCount}/{totalCategories}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-extrabold text-primary">{filledCount}/{totalCategories}</span>
+            <button onClick={onOpenSettings} className="w-8 h-8 flex items-center justify-center rounded-xl text-muted-foreground hover:text-primary hover:bg-primary-container/30 active:scale-90 transition-all">
+              <span className="material-symbols-outlined text-lg">settings</span>
+            </button>
+          </div>
           <button onClick={onSkip} className="text-[13px] font-semibold text-muted-foreground active:bg-surface-low px-3 py-2 rounded-xl transition-colors min-h-[44px]">
             Sla over
           </button>
@@ -449,6 +462,22 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
           <span className="material-symbols-outlined fill text-blue-400 flex-shrink-0 text-xl">info</span>
           <p className="text-[13px] leading-relaxed text-blue-400">{category.instruction}</p>
         </div>
+
+        {/* Example photos */}
+        {voorbeelden.length > 0 && (
+          <div>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5 flex items-center gap-1">
+              <span className="material-symbols-outlined text-sm">image</span> Voorbeeld
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {voorbeelden.map((v) => (
+                <div key={v.id} className="flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden border border-outline-variant/20 bg-surface-container">
+                  <img src={v.url} alt="Voorbeeld" className="w-full h-full object-cover" />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Conditional warnings */}
         {isVermogensveld && (
