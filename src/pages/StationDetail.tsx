@@ -403,10 +403,10 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
   }, [onNext, onPrev, step]);
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-56px)] overflow-hidden" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      <div className="flex flex-col h-[calc(100dvh-56px)] overflow-hidden" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
 
       {/* ── Premium sticky header ── */}
-      <div className="sticky top-14 z-30 bg-surface -mx-4 px-6 pt-4 pb-4">
+      <div className="relative z-10 shrink-0 bg-surface -mx-4 px-6 pt-4 pb-3 border-b border-outline-variant/10">
         {/* Back affordance */}
         <button onClick={onBackToList} className="flex items-center gap-1 text-on-surface-variant/60 text-[13px] font-medium mb-3 active:scale-95 transition-transform">
           <span className="material-symbols-rounded text-[18px]">arrow_back_ios</span>
@@ -439,7 +439,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
       </div>
 
       {/* ── Content area — no scroll, fills viewport ── */}
-      <div className="flex-1 flex flex-col px-2 pt-3 pb-20 gap-3 overflow-y-auto min-h-0 scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
+      <div className="flex-1 flex flex-col px-2 pt-4 pb-20 gap-3 overflow-y-auto min-h-0 scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
 
         {/* Instruction — collapsed by default, expandable */}
         <div className="bg-primary/[0.06] rounded-2xl border border-primary/12">
