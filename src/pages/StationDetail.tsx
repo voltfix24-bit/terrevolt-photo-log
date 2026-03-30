@@ -877,7 +877,7 @@ export default function StationDetail() {
                     </div>
                     <div>
                       <h3 className={`font-display font-bold text-[17px] ${
-                        isSectionOpen ? 'text-primary' : isComplete ? 'text-primary' : 'text-on-surface'
+                        isComplete ? 'text-primary font-extrabold' : 'text-on-surface'
                       }`}>
                         {section.label}
                       </h3>
