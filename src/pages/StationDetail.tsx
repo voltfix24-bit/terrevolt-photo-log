@@ -432,15 +432,15 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
         </div>
       </div>
 
-      {/* ── Scrollable content area ── */}
-      <div className="flex-1 py-3 space-y-3 pb-[80px]">
-        {/* Instruction card — lightbulb style like Saudia's tip card */}
-        <div className="bg-card rounded-3xl p-4 shadow-sm border border-outline-variant/10">
-          <div className="flex gap-3 items-start">
-            <div className="w-10 h-10 rounded-xl bg-primary-container/30 flex items-center justify-center flex-shrink-0">
-              <span className="material-symbols-outlined fill text-primary text-xl">info</span>
+      {/* ── Content area — compact ── */}
+      <div className="flex-1 py-2 space-y-2 pb-[80px]">
+        {/* Instruction */}
+        <div className="bg-card rounded-2xl p-3 shadow-sm border border-outline-variant/10">
+          <div className="flex gap-2.5 items-start">
+            <div className="w-8 h-8 rounded-lg bg-primary-container/30 flex items-center justify-center flex-shrink-0">
+              <span className="material-symbols-outlined fill text-primary text-lg">info</span>
             </div>
-            <p className="text-[13px] leading-relaxed text-on-surface-variant pt-1.5">{category.instruction}</p>
+            <p className="text-[12px] leading-relaxed text-on-surface-variant pt-1">{category.instruction}</p>
           </div>
         </div>
 
