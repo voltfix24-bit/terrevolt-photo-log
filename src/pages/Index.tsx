@@ -12,6 +12,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { generatePdfHtml } from "@/lib/pdf-generator";
 import { downloadStationZip } from "@/lib/zip-download";
 import { toast } from "sonner";
+import { useInstellingen } from "@/hooks/use-theme";
 
 export default function Dashboard() {
   const navigate = useNavigate();
