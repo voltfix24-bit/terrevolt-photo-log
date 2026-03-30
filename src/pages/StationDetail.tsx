@@ -691,7 +691,7 @@ function CompletionScreen({ filledCount, total, stationName, fotos, onReset, onB
       {/* Back link */}
       <button
         onClick={onBack}
-        className="flex items-center justify-center gap-1.5 py-3 font-display text-[13px] font-semibold text-on-surface-variant/50 hover:text-primary active:scale-[0.97] transition-all mx-auto"
+        className="flex items-center justify-center gap-1.5 py-3 font-display text-[13px] font-semibold text-text-muted hover:text-primary active:scale-[0.97] transition-all mx-auto"
       >
         <span className="material-symbols-rounded text-[16px]">chevron_left</span>
         Terug naar overzicht
