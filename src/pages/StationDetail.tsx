@@ -142,8 +142,8 @@ function CategoryRow({ cat, fotos, isSkipped, sectionComplete, onOpen }: {
         data-cat-id={cat.id}
         onClick={onOpen}
         className="flex items-center justify-between w-full p-4 rounded-xl
-                   bg-surface-high/50 border border-dashed border-outline-variant/50
-                   hover:bg-surface-high transition-colors text-left
+                   bg-card shadow-sm border border-outline-variant/15
+                   hover:bg-surface-low transition-colors text-left
                    active:scale-[0.98] group"
       >
         <div className="flex items-center gap-4">
@@ -196,7 +196,7 @@ function CategoryRow({ cat, fotos, isSkipped, sectionComplete, onOpen }: {
         data-cat-id={cat.id}
         onClick={onOpen}
         className="flex items-center justify-between w-full p-4 rounded-xl
-                   bg-card shadow-sm ring-1 ring-outline-variant/20
+                   bg-primary/[0.04] border border-primary/15
                    relative overflow-hidden text-left active:scale-[0.98] group"
       >
         <div className="absolute left-0 top-0 bottom-0 w-1 bg-orange" />
@@ -869,21 +869,19 @@ export default function StationDetail() {
                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm ${
                       isComplete
                         ? 'bg-primary text-primary-foreground shadow-primary/30'
-                        : isSectionOpen
-                        ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
                         : 'bg-primary/10 text-primary'
                     }`}>
-                      <span className="material-symbols-rounded text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+                      <span className={`material-symbols-rounded text-xl ${isComplete ? '' : ''}`} style={isComplete ? { fontVariationSettings: "'FILL' 1" } : undefined}>
                         {isComplete ? 'check' : getSectionIcon(section.id)}
                       </span>
                     </div>
                     <div>
                       <h3 className={`font-display font-bold text-[17px] ${
-                        isSectionOpen ? 'text-primary' : isComplete ? 'text-primary' : 'text-on-surface'
+                        isComplete ? 'text-primary font-extrabold' : 'text-on-surface'
                       }`}>
                         {section.label}
                       </h3>
-                      <p className={`text-xs mt-0.5 ${isSectionOpen ? 'text-primary/70' : 'text-on-surface-variant'}`}>
+                      <p className="text-xs mt-0.5 text-on-surface-variant">
                         {cats.length} taken
                         {openCats.length > 0 && <> · <span className="text-orange font-semibold">{openCats.length} open</span></>}
                         {isComplete && <> · <span className="text-primary font-semibold">Voltooid</span></>}
