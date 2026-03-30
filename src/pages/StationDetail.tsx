@@ -117,6 +117,8 @@ export default function StationDetail() {
   const [lightboxSlides, setLightboxSlides] = useState<{ src: string }[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [editOpen, setEditOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const { data: voorbeelden } = useVoorbeelden();
   // Persist invullen progress in localStorage
   const storageKey = `to-fotos-progress-${id}`;
   const savedProgress = (() => {
