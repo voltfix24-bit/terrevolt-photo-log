@@ -254,13 +254,13 @@ export default function StationDetail() {
   }
 
   if (!station) {
-    return <div className="flex min-h-screen items-center justify-center bg-background text-on-surface">Station niet gevonden</div>;
+    return <div className="flex min-h-screen items-center justify-center bg-background text-text-primary">Station niet gevonden</div>;
   }
 
   const isCS = station.type_ruimte === "Compact Station";
 
   return (
-    <div className="min-h-screen bg-primary-container/15 pb-28 md:pb-8" style={viewMode === "invullen" && !completed ? { height: "100dvh", overflow: "hidden" } : undefined}>
+    <div className="min-h-screen bg-background pb-28 md:pb-8" style={viewMode === "invullen" && !completed ? { height: "100dvh", overflow: "hidden" } : undefined}>
       <Lightbox open={lightboxOpen} close={() => setLightboxOpen(false)} slides={lightboxSlides} index={lightboxIndex} />
       <EditStationDialog station={station} open={editOpen} onOpenChange={setEditOpen} onSaved={() => { queryClient.invalidateQueries({ queryKey: ["station", id] }); queryClient.invalidateQueries({ queryKey: ["stations"] }); }} />
       
@@ -302,26 +302,25 @@ export default function StationDetail() {
           <>
             {/* Back row */}
             <div className="flex items-center justify-between mb-6">
-              <button onClick={() => navigate("/")} className="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary transition-colors font-semibold">
+              <button onClick={() => navigate("/")} className="flex items-center gap-1 text-sm text-text-secondary hover:text-primary transition-colors font-semibold">
                 <span className="material-symbols-rounded text-lg">arrow_back_ios</span> Alle stations
               </button>
-              <button onClick={() => setEditOpen(true)} className="p-2.5 bg-card border border-outline-variant/30 rounded-xl shadow-sm hover:shadow-md transition-all active:scale-95 text-on-surface-variant">
+              <button onClick={() => setEditOpen(true)} className="p-2.5 bg-surface-white border border-outline-variant/30 rounded-xl shadow-sm hover:shadow-md transition-all active:scale-95 text-text-secondary">
                 <span className="material-symbols-rounded text-lg">edit</span>
               </button>
             </div>
 
             {/* Hero card */}
-            <div className="bg-card rounded-3xl p-6 shadow-sm border border-outline-variant/10 mb-6">
+            <div className="bg-surface-white rounded-3xl p-6 shadow-sm border border-outline-variant/10 mb-6">
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full"
-                  style={isCS ? { background: "rgba(232,84,26,0.1)", color: "#E8541A" } : { background: "rgba(107,45,139,0.1)", color: "#6B2D8B" }}
+                <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-accent-gold/[0.08] text-accent-gold"
                 >{station.type_ruimte}</span>
               </div>
-              <h2 className="font-display text-2xl font-extrabold tracking-tight mb-1 text-foreground">{station.naam_msr}</h2>
+              <h2 className="font-display text-2xl font-extrabold tracking-tight mb-1 text-text-primary">{station.naam_msr}</h2>
               <div className="mt-4">
                 <div className="flex justify-between items-center mb-1.5">
-                  <span className="text-xs font-semibold text-on-surface-variant">Categorieën ingevuld</span>
-                  <span className="text-xs font-black text-primary">{filledCount} / {FOTO_CATEGORIEEN.length}</span>
+                  <span className="text-xs font-semibold text-text-secondary">Categorieën ingevuld</span>
+                  <span className="text-xs font-black text-accent-gold">{filledCount} / {FOTO_CATEGORIEEN.length}</span>
                 </div>
                 <div className="h-2 bg-surface-high rounded-full overflow-hidden">
                   <div className="h-full rounded-full bg-gradient-to-r from-primary to-primary-light transition-all duration-800" style={{ width: `${pct}%` }} />
@@ -408,24 +407,24 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
       {/* ── Premium sticky header ── */}
       <div className="relative z-10 shrink-0 bg-surface -mx-4 px-6 pt-4 pb-3 border-b border-outline-variant/10">
         {/* Back affordance */}
-        <button onClick={onBackToList} className="flex items-center gap-1 text-on-surface-variant/60 text-[13px] font-medium mb-3 active:scale-95 transition-transform">
+        <button onClick={onBackToList} className="flex items-center gap-1 text-text-muted text-[13px] font-medium mb-3 active:scale-95 transition-transform">
           <span className="material-symbols-rounded text-[18px]">arrow_back_ios</span>
           <span>Terug</span>
         </button>
 
         {/* Section label */}
-        <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/50 mb-1">
+        <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-accent-gold mb-1">
           Technische oplevering
         </div>
 
         {/* Title + counter row */}
         <div className="flex items-start justify-between gap-3 mb-4">
-          <h2 className="font-display text-[22px] font-extrabold tracking-tight leading-[1.15] text-primary min-w-0 flex-1 break-words">
+          <h2 className="font-display text-[22px] font-extrabold tracking-tight leading-[1.15] text-text-primary min-w-0 flex-1 break-words">
             {category.name}
           </h2>
           <div className="flex items-baseline gap-0.5 pt-1 flex-shrink-0">
-            <span className="font-display text-[28px] font-extrabold text-on-surface leading-none">{step + 1}</span>
-            <span className="font-display text-[14px] font-medium text-on-surface-variant/40">/{total}</span>
+            <span className="font-display text-[28px] font-extrabold text-text-primary leading-none">{step + 1}</span>
+            <span className="font-display text-[14px] font-medium text-text-faint">/{total}</span>
           </div>
         </div>
 
@@ -517,8 +516,8 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
               <div className="w-16 h-16 rounded-full bg-primary/6 flex items-center justify-center mb-5">
                 <span className="material-symbols-rounded text-[32px] text-primary/70">photo_camera</span>
               </div>
-              <div className="font-display text-[17px] font-extrabold text-on-surface mb-1.5">Tik om foto's te maken</div>
-              <div className="text-[13px] text-on-surface-variant/50 leading-relaxed text-center max-w-[240px]">
+               <div className="font-display text-[17px] font-extrabold text-text-primary mb-1.5">Tik om foto's te maken</div>
+              <div className="text-[13px] text-text-muted leading-relaxed text-center max-w-[240px]">
                 Hoge resolutie aanbevolen voor verificatie.
               </div>
             </div>
@@ -573,13 +572,13 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
       </div>
 
       {/* ── Premium bottom action bar ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-[60] bg-surface/90 backdrop-blur-2xl border-t border-on-surface/5 px-5 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
+      <div className="fixed bottom-0 left-0 right-0 z-[60] bg-surface-white/90 backdrop-blur-2xl border-t border-outline-variant/10 px-5 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
         <div className="flex items-center gap-3 max-w-lg mx-auto">
           {/* Vorige */}
           <button
             onClick={onPrev}
             disabled={step === 0}
-            className="min-h-[48px] px-4 flex items-center gap-1.5 font-display text-[14px] font-semibold text-on-surface-variant/60 active:scale-[0.97] transition-all disabled:opacity-20"
+            className="min-h-[48px] px-4 flex items-center gap-1.5 font-display text-[14px] font-semibold text-text-muted active:scale-[0.97] transition-all disabled:opacity-20"
           >
             <span className="material-symbols-rounded text-[18px]">chevron_left</span>
             Vorige
@@ -588,7 +587,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
           {/* NVT */}
           <button
             onClick={() => { onSkip(); toast("Overgeslagen"); }}
-            className="min-h-[48px] px-3 font-display text-[12px] font-semibold text-on-surface-variant/40 uppercase tracking-wider active:scale-[0.97] transition-all"
+            className="min-h-[48px] px-3 font-display text-[12px] font-semibold text-text-faint uppercase tracking-wider active:scale-[0.97] transition-all"
           >
             NVT
           </button>
@@ -596,7 +595,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
           {/* Volgende — primary CTA */}
           <button
             onClick={onNext}
-            className="flex-1 min-h-[48px] bg-primary text-primary-foreground rounded-2xl font-display text-[15px] font-bold active:scale-[0.97] transition-all flex items-center justify-center gap-1.5"
+            className="flex-1 min-h-[48px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-2xl font-display text-[15px] font-bold active:scale-[0.97] transition-all flex items-center justify-center gap-1.5"
           >
             {step === total - 1 ? "Afronden" : "Volgende"}
             <span className="material-symbols-rounded text-[18px]">chevron_right</span>
@@ -637,43 +636,43 @@ function CompletionScreen({ filledCount, total, stationName, fotos, onReset, onB
 
       {/* Heading area */}
       <div className="text-center mb-10">
-        <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/50 mb-3">
+        <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-accent-gold mb-3">
           Oplevering voltooid
         </div>
-        <h2 className="font-display text-[36px] font-extrabold tracking-tight text-on-surface leading-none mb-3">
+        <h2 className="font-display text-[36px] font-extrabold tracking-tight text-text-primary leading-none mb-3">
           Klaar!
         </h2>
-        <p className="text-[14px] text-on-surface-variant/60 leading-relaxed max-w-[260px] mx-auto">
-          Alle gegevens en foto's voor <strong className="text-on-surface font-semibold">{stationName}</strong> zijn verwerkt.
+        <p className="text-[14px] text-text-muted leading-relaxed max-w-[260px] mx-auto">
+          Alle gegevens en foto's voor <strong className="text-text-primary font-semibold">{stationName}</strong> zijn verwerkt.
         </p>
       </div>
 
       {/* Progress card */}
-      <div className="bg-primary-container/8 rounded-3xl px-6 py-5 border border-primary/5 mb-4">
+      <div className="bg-surface-low rounded-3xl px-6 py-5 border border-outline-variant/10 mb-4">
         <div className="flex items-center justify-between mb-4">
-          <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-on-surface-variant/50">Voortgang</span>
+          <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-accent-gold">Voortgang</span>
           <div className="flex items-baseline gap-0.5">
-            <span className="font-display text-[28px] font-extrabold text-on-surface leading-none">{pct}</span>
-            <span className="font-display text-[14px] font-medium text-on-surface-variant/40">%</span>
+            <span className="font-display text-[28px] font-extrabold text-text-primary leading-none">{pct}</span>
+            <span className="font-display text-[14px] font-medium text-text-faint">%</span>
           </div>
         </div>
-        <div className="h-[3px] bg-on-surface/6 rounded-full overflow-hidden mb-4">
+        <div className="h-[3px] bg-surface-high rounded-full overflow-hidden mb-4">
           <div className="h-full rounded-full bg-primary transition-all duration-700" style={{ width: `${pct}%` }} />
         </div>
-        <p className="text-[13px] text-on-surface-variant/50 leading-relaxed">
+        <p className="text-[13px] text-text-muted leading-relaxed">
           {filledCount} van de {total} categorieën gevalideerd.
         </p>
       </div>
 
       {/* Downloads card */}
-      <div className="bg-primary-container/8 rounded-3xl px-6 py-5 border border-primary/5 mb-8">
-        <div className="text-[11px] font-bold uppercase tracking-[0.15em] text-on-surface-variant/50 mb-4">
+      <div className="bg-surface-low rounded-3xl px-6 py-5 border border-outline-variant/10 mb-8">
+        <div className="text-[11px] font-bold uppercase tracking-[0.15em] text-accent-gold mb-4">
           Bestanden downloaden
         </div>
         <div className="flex flex-col gap-2.5">
           <button
             onClick={onPdf}
-            className="w-full min-h-[48px] bg-primary text-primary-foreground rounded-2xl font-display text-[14px] font-bold active:scale-[0.97] transition-all flex items-center justify-center gap-2.5"
+            className="w-full min-h-[48px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-2xl font-display text-[14px] font-bold active:scale-[0.97] transition-all flex items-center justify-center gap-2.5"
           >
             <span className="material-symbols-rounded text-[18px]">description</span>
             PDF rapport
@@ -681,9 +680,9 @@ function CompletionScreen({ filledCount, total, stationName, fotos, onReset, onB
           <button
             onClick={handleZip}
             disabled={zipProgress !== null || fotos.length === 0}
-            className="w-full min-h-[48px] bg-on-surface/4 rounded-2xl font-display text-[14px] font-semibold text-on-surface active:scale-[0.97] transition-all flex items-center justify-center gap-2.5 disabled:opacity-40"
+            className="w-full min-h-[48px] bg-surface-high rounded-2xl font-display text-[14px] font-semibold text-text-primary active:scale-[0.97] transition-all flex items-center justify-center gap-2.5 disabled:opacity-40"
           >
-            <span className="material-symbols-rounded text-[18px] text-on-surface-variant/60">folder_zip</span>
+            <span className="material-symbols-rounded text-[18px] text-text-muted">folder_zip</span>
             {zipProgress !== null ? `Downloaden… ${zipProgress}%` : "Foto's als ZIP"}
           </button>
         </div>
@@ -692,7 +691,7 @@ function CompletionScreen({ filledCount, total, stationName, fotos, onReset, onB
       {/* Back link */}
       <button
         onClick={onBack}
-        className="flex items-center justify-center gap-1.5 py-3 font-display text-[13px] font-semibold text-on-surface-variant/50 hover:text-primary active:scale-[0.97] transition-all mx-auto"
+        className="flex items-center justify-center gap-1.5 py-3 font-display text-[13px] font-semibold text-text-muted hover:text-primary active:scale-[0.97] transition-all mx-auto"
       >
         <span className="material-symbols-rounded text-[16px]">chevron_left</span>
         Terug naar overzicht
@@ -701,7 +700,7 @@ function CompletionScreen({ filledCount, total, stationName, fotos, onReset, onB
       {/* Brand footer */}
       <div className="mt-auto pt-12 text-center">
         <span className="font-display text-[13px] font-extrabold text-primary/20 tracking-tight">TerreVolt</span>
-        <div className="text-[9px] font-medium uppercase tracking-[0.18em] text-on-surface-variant/25 mt-0.5">Technische Oplevering</div>
+        <div className="text-[9px] font-medium uppercase tracking-[0.18em] text-text-faint/40 mt-0.5">Technische Oplevering</div>
       </div>
     </div>
   );
@@ -725,7 +724,7 @@ function CategoryCard({ category, fotos, icon, isUploading, uploadProgress, onUp
   const filled = fotos.length > 0;
 
   return (
-    <div className="group bg-surface-low hover:bg-card transition-all duration-200 rounded-[1.5rem] p-3 border border-transparent hover:border-outline-variant/20 hover:shadow-md space-y-2 relative overflow-hidden cursor-pointer active:scale-[0.98]">
+    <div className="group bg-surface-low hover:bg-surface-white transition-all duration-200 rounded-[1.5rem] p-3 border border-transparent hover:border-outline-variant/20 hover:shadow-md space-y-2 relative overflow-hidden cursor-pointer active:scale-[0.98]">
       <div className={`relative aspect-square rounded-xl flex items-center justify-center overflow-hidden ${
         filled ? "bg-primary-container/40" : "bg-surface-high border-2 border-dashed border-outline-variant/40"
       }`}>
@@ -754,11 +753,11 @@ function CategoryCard({ category, fotos, icon, isUploading, uploadProgress, onUp
       </div>
 
       <div className="px-0.5">
-        <div className="text-[9px] font-black text-on-surface-variant/40 uppercase tracking-wider">#{String(category.id).padStart(2, "0")}</div>
-        <div className="text-xs font-bold leading-tight text-on-surface">{category.name}</div>
+        <div className="text-[9px] font-black text-text-faint uppercase tracking-wider">#{String(category.id).padStart(2, "0")}</div>
+        <div className="text-xs font-bold leading-tight text-text-primary">{category.name}</div>
         <div className="flex items-center gap-1 mt-1">
-          <span className={`w-1.5 h-1.5 rounded-full ${filled ? "bg-primary" : "bg-slate-300"}`} />
-          <span className={`text-[9px] font-black uppercase tracking-wide ${filled ? "text-primary" : "text-on-surface-variant/40"}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${filled ? "bg-accent-gold-bright" : "bg-text-faint"}`} />
+          <span className={`text-[9px] font-black uppercase tracking-wide ${filled ? "text-accent-gold" : "text-text-faint"}`}>
             {filled ? `${fotos.length} FOTO${fotos.length > 1 ? "'S" : ""}` : "ONTBREEKT"}
           </span>
         </div>
@@ -809,7 +808,7 @@ function EditStationDialog({ station, open, onOpenChange, onSaved }: EditStation
           <div><Label>Type ruimte</Label><Select value={form.type_ruimte} onValueChange={(v) => setForm({ ...form, type_ruimte: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Compact Station">Compact Station</SelectItem><SelectItem value="Betreedbaar station">Betreedbaar station</SelectItem></SelectContent></Select></div>
           <div><Label>Ingevuld door</Label><input value={form.ingevuld_door} onChange={(e) => setForm({ ...form, ingevuld_door: e.target.value })} className="w-full px-4 py-3 bg-surface-low border border-outline-variant/30 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/25 transition" /></div>
           <div><Label>Datum</Label><input type="date" value={form.datum} onChange={(e) => setForm({ ...form, datum: e.target.value })} className="w-full px-4 py-3 bg-surface-low border border-outline-variant/30 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/25 transition" /></div>
-          <button onClick={handleSave} disabled={saving} className="w-full bg-gradient-to-r from-primary to-primary-light text-primary-foreground font-bold py-3 rounded-xl shadow-lg shadow-primary/25 active:scale-[0.98] transition-transform disabled:opacity-50">
+          <button onClick={handleSave} disabled={saving} className="w-full bg-primary hover:bg-primary-hover text-primary-foreground font-bold py-3 rounded-xl shadow-lg shadow-primary/25 active:scale-[0.98] transition-all disabled:opacity-50">
             {saving ? "Opslaan..." : "Opslaan"}
           </button>
         </div>

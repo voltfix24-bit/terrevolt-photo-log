@@ -46,70 +46,70 @@ export default function NewStation() {
   };
 
   return (
-    <div className="min-h-screen bg-surface pb-28 md:pb-8">
+    <div className="min-h-screen bg-background pb-28 md:pb-8">
       <main className="pt-6 pb-8 px-5 max-w-lg mx-auto animate-fade-up">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <h2 className="text-xl font-extrabold text-on-surface font-display tracking-tight">Nieuw station</h2>
+          <h2 className="text-xl font-extrabold text-text-primary font-display tracking-tight">Nieuw station</h2>
           <button
             onClick={() => navigate("/")}
-            className="w-10 h-10 rounded-full bg-on-surface/10 flex items-center justify-center hover:bg-on-surface/20 transition-colors"
+            className="w-10 h-10 rounded-full bg-surface-high flex items-center justify-center hover:bg-surface-highest transition-colors"
           >
-            <span className="material-symbols-rounded text-on-surface text-xl">close</span>
+            <span className="material-symbols-rounded text-text-secondary text-xl">close</span>
           </button>
         </div>
 
         <div className="space-y-6">
           {/* Naam MSR */}
           <div>
-            <label className="block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Naam MSR</label>
+            <label className="block text-[11px] font-bold uppercase tracking-widest text-accent-gold mb-2">Naam MSR</label>
             <input
               type="text"
               placeholder="bv. Sint Martinusstraat 49NB"
               value={form.naam_msr}
               onChange={(e) => setForm({ ...form, naam_msr: e.target.value })}
-              className="w-full px-4 py-3.5 bg-primary-container/15 border-0 rounded-2xl text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
+              className="w-full px-4 py-3.5 bg-surface-low border-0 rounded-2xl text-sm text-text-primary placeholder:text-text-faint focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
             />
           </div>
 
           {/* Behuizingsnummer */}
           <div>
-            <label className="block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Behuizingsnummer</label>
+            <label className="block text-[11px] font-bold uppercase tracking-widest text-accent-gold mb-2">Behuizingsnummer</label>
             <input
               type="text"
               placeholder="MSR-9920-X"
               value={form.behuizingsnummer}
               onChange={(e) => setForm({ ...form, behuizingsnummer: e.target.value })}
-              className="w-full px-4 py-3.5 bg-primary-container/15 border-0 rounded-2xl text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
+              className="w-full px-4 py-3.5 bg-surface-low border-0 rounded-2xl text-sm text-text-primary placeholder:text-text-faint focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
             />
           </div>
 
           {/* Datum */}
           <div>
-            <label className="block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Datum</label>
+            <label className="block text-[11px] font-bold uppercase tracking-widest text-accent-gold mb-2">Datum</label>
             <input
               type="date"
               value={form.datum}
               onChange={(e) => setForm({ ...form, datum: e.target.value })}
-              className="w-full px-4 py-3.5 bg-primary-container/15 border-0 rounded-2xl text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
+              className="w-full px-4 py-3.5 bg-surface-low border-0 rounded-2xl text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
             />
           </div>
 
           {/* Ingevuld door */}
           <div>
-            <label className="block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Ingevuld door</label>
+            <label className="block text-[11px] font-bold uppercase tracking-widest text-accent-gold mb-2">Ingevuld door</label>
             <input
               type="text"
               placeholder="Naam monteur"
               value={form.ingevuld_door}
               onChange={(e) => setForm({ ...form, ingevuld_door: e.target.value })}
-              className="w-full px-4 py-3.5 bg-primary-container/15 border-0 rounded-2xl text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
+              className="w-full px-4 py-3.5 bg-surface-low border-0 rounded-2xl text-sm text-text-primary placeholder:text-text-faint focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
             />
           </div>
 
           {/* Type ruimte */}
           <div>
-            <label className="block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant mb-3">Type ruimte</label>
+            <label className="block text-[11px] font-bold uppercase tracking-widest text-accent-gold mb-3">Type ruimte</label>
             <div className="space-y-3">
               <button
                 type="button"
@@ -117,7 +117,7 @@ export default function NewStation() {
                 className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-left transition-all ${
                   form.type_ruimte === "Compact Station"
                     ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-                    : "bg-primary-container/15 text-on-surface hover:bg-primary-container/25"
+                    : "bg-surface-low text-text-primary hover:bg-surface"
                 }`}
               >
                 <span className={`material-symbols-rounded text-2xl ${
@@ -136,7 +136,7 @@ export default function NewStation() {
                 className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-left transition-all ${
                   form.type_ruimte === "Betreedbaar station"
                     ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-                    : "bg-primary-container/15 text-on-surface hover:bg-primary-container/25"
+                    : "bg-surface-low text-text-primary hover:bg-surface"
                 }`}
               >
                 <span className={`material-symbols-rounded text-2xl ${
@@ -154,14 +154,14 @@ export default function NewStation() {
 
           {/* Extra opties */}
           <div>
-            <label className="block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant mb-3">Extra opties</label>
+            <label className="block text-[11px] font-bold uppercase tracking-widest text-accent-gold mb-3">Extra opties</label>
             <div className="space-y-3">
-              <div className="flex items-center justify-between px-5 py-4 bg-primary-container/15 rounded-2xl">
+              <div className="flex items-center justify-between px-5 py-4 bg-surface-low rounded-2xl">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <span className="material-symbols-rounded text-primary text-xl">bolt</span>
+                  <div className="w-10 h-10 rounded-xl bg-accent-gold/[0.08] flex items-center justify-center">
+                    <span className="material-symbols-rounded text-accent-gold text-xl">bolt</span>
                   </div>
-                  <span className="text-sm font-semibold text-on-surface">Vermogensveld aanwezig</span>
+                  <span className="text-sm font-semibold text-text-primary">Vermogensveld aanwezig</span>
                 </div>
                 <button
                   type="button"
@@ -177,12 +177,12 @@ export default function NewStation() {
                   />
                 </button>
               </div>
-              <div className="flex items-center justify-between px-5 py-4 bg-primary-container/15 rounded-2xl">
+              <div className="flex items-center justify-between px-5 py-4 bg-surface-low rounded-2xl">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <span className="material-symbols-rounded text-primary text-xl">electrical_services</span>
+                  <div className="w-10 h-10 rounded-xl bg-accent-gold/[0.08] flex items-center justify-center">
+                    <span className="material-symbols-rounded text-accent-gold text-xl">electrical_services</span>
                   </div>
-                  <span className="text-sm font-semibold text-on-surface">DA-kast aanwezig</span>
+                  <span className="text-sm font-semibold text-text-primary">DA-kast aanwezig</span>
                 </div>
                 <button
                   type="button"
@@ -205,7 +205,7 @@ export default function NewStation() {
           <button
             onClick={handleSubmit}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground font-bold py-4 rounded-2xl shadow-xl shadow-primary/25 hover:shadow-primary/40 hover:scale-[1.01] active:scale-[0.98] transition-all mt-2 disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary-hover text-primary-foreground font-bold py-4 rounded-2xl shadow-xl shadow-primary/25 hover:shadow-primary/40 hover:scale-[1.01] active:scale-[0.98] transition-all mt-2 disabled:opacity-50"
           >
             {loading ? "Opslaan..." : "Station opslaan"}
             <span className="material-symbols-rounded text-xl">save</span>

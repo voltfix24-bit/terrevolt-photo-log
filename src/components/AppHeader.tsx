@@ -13,7 +13,7 @@ export default function AppHeader() {
   return (
     <>
       {/* Top header — Saudia style: hamburger + brand + avatar */}
-      <header className="fixed top-0 w-full z-50 bg-primary-container/20 backdrop-blur-md border-b border-outline-variant/8">
+      <header className="fixed top-0 w-full z-50 bg-surface-white/80 backdrop-blur-md border-b border-outline-variant/8">
         <div className="flex justify-between items-center px-5 h-14 max-w-7xl mx-auto">
           <div className="flex items-center gap-3">
             <button className="w-9 h-9 flex items-center justify-center text-on-surface-variant md:hidden">
@@ -37,7 +37,7 @@ export default function AppHeader() {
       </header>
 
       {/* Bottom nav (mobile) */}
-      <nav className={`md:hidden fixed bottom-0 w-full z-50 bg-card/95 backdrop-blur-2xl shadow-[0_-4px_24px_rgba(0,0,0,0.06)] border-t border-outline-variant/8 ${location.pathname.startsWith("/stations/") && location.pathname !== "/stations/new" ? "hidden" : ""}`}>
+      <nav className={`md:hidden fixed bottom-0 w-full z-50 bg-surface-white/95 backdrop-blur-2xl shadow-[0_-4px_24px_rgba(0,0,0,0.06)] border-t border-outline-variant/8 ${location.pathname.startsWith("/stations/") && location.pathname !== "/stations/new" ? "hidden" : ""}`}>
         <div className="flex justify-around items-center h-[68px] px-2">
           <button onClick={() => navigate("/")} className={`flex flex-col items-center gap-0.5 px-5 py-2 rounded-2xl transition-all min-w-[72px] ${isActive("/") && !isActive("/stations") ? "text-primary" : "text-muted-foreground"}`}>
             <span className={`material-symbols-rounded ${isActive("/") && !isActive("/stations") ? "fill" : ""} text-[24px]`}>dashboard</span>
