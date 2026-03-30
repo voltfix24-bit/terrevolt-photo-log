@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      categorie_voorbeelden: {
+        Row: {
+          categorie: string
+          created_at: string | null
+          id: string
+          storage_path: string
+          url: string
+        }
+        Insert: {
+          categorie: string
+          created_at?: string | null
+          id?: string
+          storage_path: string
+          url: string
+        }
+        Update: {
+          categorie?: string
+          created_at?: string | null
+          id?: string
+          storage_path?: string
+          url?: string
+        }
+        Relationships: []
+      }
       fotos: {
         Row: {
           categorie: string
