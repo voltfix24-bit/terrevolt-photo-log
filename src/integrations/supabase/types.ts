@@ -109,6 +109,51 @@ export type Database = {
           },
         ]
       }
+      instellingen: {
+        Row: {
+          accent_gold_color: string | null
+          background_color: string | null
+          bedrijfsnaam: string | null
+          created_at: string | null
+          id: string
+          logo_url: string | null
+          orange_color: string | null
+          primary_color: string | null
+          primary_light_color: string | null
+          profielfoto_url: string | null
+          regio: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          accent_gold_color?: string | null
+          background_color?: string | null
+          bedrijfsnaam?: string | null
+          created_at?: string | null
+          id?: string
+          logo_url?: string | null
+          orange_color?: string | null
+          primary_color?: string | null
+          primary_light_color?: string | null
+          profielfoto_url?: string | null
+          regio?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          accent_gold_color?: string | null
+          background_color?: string | null
+          bedrijfsnaam?: string | null
+          created_at?: string | null
+          id?: string
+          logo_url?: string | null
+          orange_color?: string | null
+          primary_color?: string | null
+          primary_light_color?: string | null
+          profielfoto_url?: string | null
+          regio?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       monteurs: {
         Row: {
           created_at: string | null

@@ -14,7 +14,18 @@ interface Foto {
   url: string;
 }
 
-export function generatePdfHtml(station: Station, fotos: Foto[]): string {
+export interface PdfBranding {
+  bedrijfsnaam?: string;
+  regio?: string;
+  logo_url?: string | null;
+  primary_color?: string;
+  primary_light_color?: string;
+}
+
+export function generatePdfHtml(station: Station, fotos: Foto[], branding?: PdfBranding): string {
+  const bedrijfsnaam = branding?.bedrijfsnaam || 'Terrevolt B.V.';
+  const regio = branding?.regio || 'Liander Zuidoost';
+  const logoUrl = branding?.logo_url;
   const categoriesWithFotos = FOTO_CATEGORIEEN
     .map((cat) => ({
       name: cat,
@@ -46,12 +57,15 @@ export function generatePdfHtml(station: Station, fotos: Foto[]): string {
     <div class="deco-arc deco-arc-3"></div>
 
     <div class="cover-logo">
-      <div class="logo-icon">
+      ${logoUrl 
+        ? `<img src="${logoUrl}" alt="Logo" style="height:44px;max-width:180px;object-fit:contain;" />`
+        : `<div class="logo-icon">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
           <path d="M7 2L3 14h7l-2 8 11-12h-7l2-8z"/>
         </svg>
       </div>
-      <span class="logo-text">TerreVolt</span>
+      <span class="logo-text">${bedrijfsnaam}</span>`
+      }
     </div>
 
     <div class="cover-center">
@@ -92,9 +106,9 @@ export function generatePdfHtml(station: Station, fotos: Foto[]): string {
     </div>
 
     <div class="cover-footer-line">
-      <span>Terrevolt B.V.</span>
+      <span>${bedrijfsnaam}</span>
       <span class="cf-dot">·</span>
-      <span>Liander Zuidoost</span>
+      <span>${regio}</span>
       <span class="cf-dot">·</span>
       <span>${new Date().toLocaleDateString("nl-NL")}</span>
     </div>
@@ -134,7 +148,7 @@ export function generatePdfHtml(station: Station, fotos: Foto[]): string {
     <div class="toc-footer">
       <span class="toc-footer-left">
         <span class="footer-dot"></span>
-        TO Fotorapport · Terrevolt B.V.
+        TO Fotorapport · ${bedrijfsnaam}
       </span>
       <span class="toc-footer-right">p. 2</span>
     </div>
@@ -230,7 +244,7 @@ export function generatePdfHtml(station: Station, fotos: Foto[]): string {
           <div class="photo-footer">
             <span class="pf-left">
               <span class="footer-dot" style="background: ${group.section.color};"></span>
-              TO Fotorapport · Terrevolt B.V.
+              TO Fotorapport · ${bedrijfsnaam}
             </span>
             <span class="pf-center">${station.naam_msr}</span>
             <span class="pf-right">

@@ -12,6 +12,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { generatePdfHtml } from "@/lib/pdf-generator";
 import { downloadStationZip } from "@/lib/zip-download";
 import { toast } from "sonner";
+import { useInstellingen } from "@/hooks/use-theme";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -38,9 +39,11 @@ export default function Dashboard() {
       s.behuizingsnummer?.toLowerCase().includes(search.toLowerCase())
   );
 
+  const { data: instellingenData } = useInstellingen();
+
   const openPdf = (station: any) => {
     const fotos = station.fotos ?? [];
-    const html = generatePdfHtml(station, fotos);
+    const html = generatePdfHtml(station, fotos, instellingenData ?? undefined);
     const w = window.open("", "_blank");
     if (w) { w.document.write(html); w.document.close(); }
   };

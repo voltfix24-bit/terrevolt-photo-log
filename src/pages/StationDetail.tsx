@@ -17,6 +17,7 @@ import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { generatePdfHtml } from "@/lib/pdf-generator";
 import { useVoorbeelden } from "@/components/CategorieSettings";
+import { useInstellingen } from "@/hooks/use-theme";
 
 const MAX_SIZE = 10 * 1024 * 1024;
 const ACCEPTED = ["image/jpeg", "image/png", "image/heic", "image/webp"];
@@ -605,6 +606,7 @@ export default function StationDetail() {
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardStartIndex, setWizardStartIndex] = useState(0);
   const { data: voorbeelden } = useVoorbeelden();
+  const { data: instellingenData } = useInstellingen();
   const { skipped, addSkip, removeSkip, isSkipped } = useSkippedCategories(id);
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -704,7 +706,7 @@ export default function StationDetail() {
 
   const openPdf = () => {
     if (!station || !fotos) return;
-    const html = generatePdfHtml(station, fotos);
+    const html = generatePdfHtml(station, fotos, instellingenData ?? undefined);
     const w = window.open("", "_blank");
     if (w) { w.document.write(html); w.document.close(); }
   };

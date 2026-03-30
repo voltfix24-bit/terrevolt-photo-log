@@ -9,23 +9,33 @@ import StationDetail from "./pages/StationDetail";
 import Instellingen from "./pages/Instellingen";
 import CategorieenBeheren from "./pages/CategorieenBeheren";
 import NotFound from "./pages/NotFound";
+import { useInstellingen } from "@/hooks/use-theme";
 
 const queryClient = new QueryClient();
+
+function AppContent() {
+  useInstellingen(); // Apply theme globally on load
+  return (
+    <>
+      <AppHeader />
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/stations/new" element={<NewStation />} />
+        <Route path="/stations/:id" element={<StationDetail />} />
+        <Route path="/instellingen" element={<Instellingen />} />
+        <Route path="/instellingen/categorieen" element={<CategorieenBeheren />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </>
+  );
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Sonner />
       <BrowserRouter>
-        <AppHeader />
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/stations/new" element={<NewStation />} />
-          <Route path="/stations/:id" element={<StationDetail />} />
-          <Route path="/instellingen" element={<Instellingen />} />
-          <Route path="/instellingen/categorieen" element={<CategorieenBeheren />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AppContent />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
