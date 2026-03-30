@@ -420,6 +420,7 @@ export default function StationDetail() {
 
             return (
               <div
+                ref={el => { sectionRefs.current[section.id] = el; }}
                 key={section.id}
                 className={`rounded-2xl overflow-hidden transition-all ${
                   isComplete
