@@ -372,6 +372,8 @@ interface StepByStepViewProps {
 
 function StepByStepView({ station, category, step, total, fotos, tipOpen, onToggleTip, isUploading, uploadProgress, onUpload, onDelete, onNext, onPrev, onSkip, onClickThumb, onBackToList, filledCount, totalCategories, voorbeelden }: StepByStepViewProps) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [showVoorbeeld, setShowVoorbeeld] = useState(false);
+  const [voorbeeldLightbox, setVoorbeeldLightbox] = useState<number | null>(null);
   const isVermogensveld = category.id === 14;
   const isDaKast = category.id === 15;
   const notApplicable = (isVermogensveld && !station.vermogensveld) || (isDaKast && !station.da_kast);
@@ -455,19 +457,32 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
           <p className="text-[13px] leading-relaxed text-blue-400">{category.instruction}</p>
         </div>
 
-        {/* Example photos */}
+        {/* Example photos — toggle */}
         {voorbeelden.length > 0 && (
           <div>
-            <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5 flex items-center gap-1">
-              <span className="material-symbols-outlined text-sm">image</span> Voorbeeld
-            </div>
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {voorbeelden.map((v) => (
-                <div key={v.id} className="flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden border border-outline-variant/20 bg-surface-container">
-                  <img src={v.url} alt="Voorbeeld" className="w-full h-full object-cover" />
-                </div>
-              ))}
-            </div>
+            <button
+              onClick={() => setShowVoorbeeld(!showVoorbeeld)}
+              className={`flex items-center gap-2 text-[13px] font-semibold py-1.5 transition-colors ${showVoorbeeld ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
+            >
+              <span className="material-symbols-outlined text-lg">image</span>
+              {showVoorbeeld ? "Verberg voorbeeld" : "Toon voorbeeld foto"}
+              <span className="material-symbols-outlined text-base">{showVoorbeeld ? "expand_less" : "expand_more"}</span>
+            </button>
+            {showVoorbeeld && (
+              <div className="flex gap-2 overflow-x-auto pb-1 mt-1.5">
+                {voorbeelden.map((v, i) => (
+                  <button key={v.id} onClick={() => setVoorbeeldLightbox(i)} className="flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden border border-outline-variant/20 bg-surface-container active:scale-95 transition-transform">
+                    <img src={v.url} alt="Voorbeeld" className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+            <Lightbox
+              open={voorbeeldLightbox !== null}
+              close={() => setVoorbeeldLightbox(null)}
+              slides={voorbeelden.map(v => ({ src: v.url }))}
+              index={voorbeeldLightbox ?? 0}
+            />
           </div>
         )}
 
