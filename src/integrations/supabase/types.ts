@@ -109,6 +109,24 @@ export type Database = {
           },
         ]
       }
+      monteurs: {
+        Row: {
+          created_at: string | null
+          id: string
+          naam: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          naam: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          naam?: string
+        }
+        Relationships: []
+      }
       stations: {
         Row: {
           behuizingsnummer: string | null

@@ -1,24 +1,45 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export default function NewStation() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     naam_msr: "",
     behuizingsnummer: "",
     type_ruimte: "",
-    ingevuld_door: "",
     datum: new Date().toISOString().split("T")[0],
     vermogensveld: false,
     da_kast: false,
   });
 
+  const [selectedMonteur, setSelectedMonteur] = useState('');
+  const [showAddNew, setShowAddNew] = useState(false);
+  const [newNaam, setNewNaam] = useState('');
+
+  const { data: monteurs } = useQuery({
+    queryKey: ['monteurs'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('monteurs' as any)
+        .select('*')
+        .order('naam', { ascending: true });
+      if (error) throw error;
+      return (data as any) as { id: string; naam: string; created_at: string }[];
+    }
+  });
+
   const handleSubmit = async () => {
     if (!form.naam_msr || !form.type_ruimte) {
       toast.error("Vul minimaal de naam MSR en type ruimte in");
+      return;
+    }
+    if (!selectedMonteur) {
+      toast.error("Selecteer of voeg een monteur toe");
       return;
     }
     setLoading(true);
@@ -28,7 +49,7 @@ export default function NewStation() {
         naam_msr: form.naam_msr,
         behuizingsnummer: form.behuizingsnummer || null,
         type_ruimte: form.type_ruimte,
-        ingevuld_door: form.ingevuld_door || null,
+        ingevuld_door: selectedMonteur || null,
         datum: form.datum || null,
         vermogensveld: form.vermogensveld,
         da_kast: form.da_kast,
@@ -95,16 +116,106 @@ export default function NewStation() {
             />
           </div>
 
-          {/* Ingevuld door */}
+          {/* Ingevuld door — Monteur picker */}
           <div>
-            <label className="block text-[11px] font-bold uppercase tracking-widest text-accent-gold mb-2">Ingevuld door</label>
-            <input
-              type="text"
-              placeholder="Naam monteur"
-              value={form.ingevuld_door}
-              onChange={(e) => setForm({ ...form, ingevuld_door: e.target.value })}
-              className="w-full px-4 py-3.5 bg-surface-low border-0 rounded-2xl text-sm text-text-primary placeholder:text-text-faint focus:outline-none focus:ring-2 focus:ring-primary/30 transition"
-            />
+            <label className="block text-[11px] font-bold uppercase tracking-widest text-accent-gold mb-2">
+              Ingevuld door *
+            </label>
+            {/* Monteur list */}
+            <div className="space-y-2 mb-3">
+              {monteurs?.map(monteur => (
+                <button
+                  key={monteur.id}
+                  type="button"
+                  onClick={() => setSelectedMonteur(monteur.naam)}
+                  className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl
+                              border-2 text-left transition-all active:scale-[0.98] ${
+                    selectedMonteur === monteur.naam
+                      ? 'border-primary bg-primary/[0.08] text-primary'
+                      : 'border-outline-variant/30 bg-surface-low text-on-surface hover:border-primary/40'
+                  }`}
+                >
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center
+                                   text-sm font-black flex-shrink-0 ${
+                    selectedMonteur === monteur.naam
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-surface-container text-on-surface-variant'
+                  }`}>
+                    {monteur.naam.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                  </div>
+                  <span className="font-display font-semibold text-[15px] flex-1">
+                    {monteur.naam}
+                  </span>
+                  {selectedMonteur === monteur.naam && (
+                    <span className="material-symbols-rounded text-primary text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+                      check_circle
+                    </span>
+                  )}
+                </button>
+              ))}
+              {monteurs?.length === 0 && !showAddNew && (
+                <div className="text-center py-4 text-sm text-muted-foreground">
+                  Nog geen monteurs. Voeg er een toe hieronder.
+                </div>
+              )}
+            </div>
+            {/* Add new monteur */}
+            {showAddNew ? (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Naam monteur"
+                  value={newNaam}
+                  onChange={e => setNewNaam(e.target.value)}
+                  autoFocus
+                  className="flex-1 px-4 py-3 bg-surface-low border border-outline-variant/30
+                             rounded-xl text-sm focus:outline-none focus:ring-2
+                             focus:ring-primary/25 transition"
+                />
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!newNaam.trim()) return;
+                    const { error } = await supabase
+                      .from('monteurs' as any)
+                      .insert({ naam: newNaam.trim() } as any);
+                    if (!error) {
+                      setSelectedMonteur(newNaam.trim());
+                      setNewNaam('');
+                      setShowAddNew(false);
+                      queryClient.invalidateQueries({ queryKey: ['monteurs'] });
+                      toast.success(`${newNaam.trim()} toegevoegd`);
+                    }
+                  }}
+                  className="px-4 py-3 bg-primary text-primary-foreground rounded-xl
+                             font-bold text-sm active:scale-95 transition-transform
+                             shadow-md shadow-primary/25"
+                >
+                  Toevoegen
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowAddNew(false); setNewNaam(''); }}
+                  className="px-3 py-3 bg-surface-container rounded-xl text-sm
+                             text-muted-foreground active:scale-95 transition-transform"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowAddNew(true)}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3
+                           rounded-xl border-2 border-dashed border-outline-variant/40
+                           text-sm font-semibold text-muted-foreground
+                           hover:border-primary/40 hover:text-primary transition-all
+                           active:scale-[0.98]"
+              >
+                <span className="material-symbols-rounded text-lg">person_add</span>
+                Voeg monteur toe
+              </button>
+            )}
           </div>
 
           {/* Type ruimte */}
