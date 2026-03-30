@@ -819,8 +819,6 @@ export default function StationDetail() {
               </div>
             );
           })}
-            );
-          })}
         </div>
       </main>
 
