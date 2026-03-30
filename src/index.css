@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=DM+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,46 +7,64 @@
 
 @layer base {
   :root {
-    --background: 225 25% 7%;
-    --foreground: 225 20% 93%;
+    --background: 210 20% 98%;
+    --foreground: 200 10% 10%;
 
-    --card: 225 22% 10%;
-    --card-foreground: 225 20% 93%;
+    --card: 0 0% 100%;
+    --card-foreground: 200 10% 10%;
 
-    --popover: 225 22% 10%;
-    --popover-foreground: 225 20% 93%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 200 10% 10%;
 
-    --primary: 15 82% 50%;
+    --primary: 150 100% 22%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 276 52% 36%;
+    --primary-light: 145 73% 40%;
+
+    --secondary: 140 32% 32%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 225 20% 15%;
-    --muted-foreground: 220 10% 50%;
+    --muted: 210 11% 93%;
+    --muted-foreground: 215 8% 42%;
 
-    --accent: 225 22% 14%;
-    --accent-foreground: 225 20% 93%;
+    --accent: 210 14% 91%;
+    --accent-foreground: 200 10% 10%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
     --success: 142 71% 45%;
 
-    --border: 225 25% 20%;
-    --input: 225 22% 14%;
-    --ring: 15 82% 50%;
+    --border: 150 12% 78%;
+    --input: 210 11% 93%;
+    --ring: 150 100% 22%;
 
     --radius: 0.75rem;
 
-    --sidebar-background: 225 22% 10%;
-    --sidebar-foreground: 225 20% 93%;
-    --sidebar-primary: 15 82% 50%;
+    --surface: 210 20% 98%;
+    --surface-low: 210 14% 96%;
+    --surface-container: 210 10% 93%;
+    --surface-high: 210 8% 90%;
+    --on-surface: 200 10% 10%;
+    --on-surface-variant: 140 11% 27%;
+    --outline-variant: 140 12% 75%;
+
+    --orange: 15 82% 50%;
+    --purple: 276 52% 36%;
+
+    --primary-container: 138 54% 82%;
+    --on-primary-container: 150 100% 8%;
+
+    --tertiary: 42 100% 23%;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 200 10% 10%;
+    --sidebar-primary: 150 100% 22%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 225 22% 14%;
-    --sidebar-accent-foreground: 225 20% 93%;
-    --sidebar-border: 225 25% 20%;
-    --sidebar-ring: 15 82% 50%;
+    --sidebar-accent: 210 14% 91%;
+    --sidebar-accent-foreground: 200 10% 10%;
+    --sidebar-border: 150 12% 78%;
+    --sidebar-ring: 150 100% 22%;
   }
 }
 
@@ -56,12 +75,59 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
 }
 
 @layer utilities {
   .font-mono {
-    font-family: 'DM Mono', monospace;
+    font-family: monospace;
   }
+
+  .material-symbols-outlined {
+    font-family: 'Material Symbols Outlined';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-feature-settings: 'liga';
+    font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+
+  .material-symbols-outlined.fill {
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+
+  .glass {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pop {
+  from { transform: scale(0.5); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.22s ease forwards;
+}
+
+.animate-pop {
+  animation: pop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
