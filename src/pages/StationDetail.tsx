@@ -571,8 +571,8 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
           </div>
         )}
 
-        {/* Spacer for bottom nav */}
-        <div className="h-20 md:hidden" />
+        {/* Spacer for fixed bottom nav */}
+        <div className="h-24" />
       </div>
 
       {/* ── FIXED BOTTOM NAV — always pinned ── */}
