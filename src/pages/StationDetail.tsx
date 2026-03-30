@@ -262,128 +262,8 @@ export default function StationDetail() {
       <Lightbox open={lightboxOpen} close={() => setLightboxOpen(false)} slides={lightboxSlides} index={lightboxIndex} />
       <EditStationDialog station={station} open={editOpen} onOpenChange={setEditOpen} onSaved={() => { queryClient.invalidateQueries({ queryKey: ["station", id] }); queryClient.invalidateQueries({ queryKey: ["stations"] }); }} />
 
-      <main className="pt-24 pb-8 px-6 max-w-7xl mx-auto animate-fade-up">
-        {/* Back row */}
-        <div className="flex items-center justify-between mb-6">
-          <button onClick={() => navigate("/")} className="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary transition-colors font-semibold">
-            <span className="material-symbols-outlined text-lg">arrow_back_ios</span> Alle stations
-          </button>
-          <div className="flex gap-2">
-            <button onClick={() => setEditOpen(true)} className="p-2.5 bg-card border border-outline-variant/30 rounded-xl shadow-sm hover:shadow-md transition-all active:scale-95 text-on-surface-variant">
-              <span className="material-symbols-outlined text-lg">edit</span>
-            </button>
-            <button onClick={openPdf} className="flex items-center gap-2 bg-gradient-to-r from-primary to-primary-light text-primary-foreground text-sm font-bold px-5 py-2.5 rounded-xl shadow-lg shadow-primary/30 active:scale-95 transition-transform">
-              <span className="material-symbols-outlined fill text-base">picture_as_pdf</span> PDF downloaden
-            </button>
-          </div>
-        </div>
-
-        {/* Hero card */}
-        <div className="bg-card rounded-3xl p-6 shadow-sm border border-outline-variant/10 mb-6 flex items-center justify-between gap-6">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-2">
-              <span
-                className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full"
-                style={isCS
-                  ? { background: "rgba(232,84,26,0.1)", color: "#E8541A" }
-                  : { background: "rgba(107,45,139,0.1)", color: "#6B2D8B" }
-                }
-              >
-                {station.type_ruimte}
-              </span>
-              {station.behuizingsnummer && (
-                <span className="text-xs text-on-surface-variant font-mono">{station.behuizingsnummer}</span>
-              )}
-            </div>
-            <h2 className="text-2xl font-black tracking-tight mb-1 text-on-surface">{station.naam_msr}</h2>
-            <p className="text-sm text-muted-foreground font-medium">
-              {station.datum} {station.ingevuld_door && `· ${station.ingevuld_door}`}
-            </p>
-            {/* Progress bar */}
-            <div className="mt-4">
-              <div className="flex justify-between items-center mb-1.5">
-                <span className="text-xs font-semibold text-on-surface-variant">Categorieën ingevuld</span>
-                <span className="text-xs font-black text-primary">{filledCount} / {FOTO_CATEGORIEEN.length}</span>
-              </div>
-              <div className="h-2 bg-surface-high rounded-full overflow-hidden">
-                <div className="h-full rounded-full bg-gradient-to-r from-primary to-primary-light transition-all duration-800" style={{ width: `${pct}%` }} />
-              </div>
-            </div>
-          </div>
-          {/* Progress ring */}
-          <div className="relative w-24 h-24 flex-shrink-0 hidden sm:block">
-            <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-              <path className="stroke-slate-200" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" strokeWidth="2.5" />
-              <path className="stroke-primary-light" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" strokeDasharray={`${pct},100`} strokeLinecap="round" strokeWidth="2.5" style={{ transition: "stroke-dasharray 1s ease" }} />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-sm font-black text-on-surface">{pct}%</span>
-              <span className="text-[10px] text-muted-foreground font-semibold">{pct === 100 ? "volledig" : "voortgang"}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Continue CTA */}
-        {filledCount < FOTO_CATEGORIEEN.length && (
-          <div className="glass rounded-2xl p-4 shadow-sm border border-white/50 flex items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <div className="w-11 h-11 rounded-2xl bg-amber-100 flex items-center justify-center text-amber-700">
-                <span className="material-symbols-outlined fill">photo_camera</span>
-              </div>
-              <div>
-                <div className="font-bold text-sm text-on-surface">Foto's invullen</div>
-                <div className="text-xs text-on-surface-variant">{FOTO_CATEGORIEEN.length - filledCount} categorieën resterend</div>
-              </div>
-            </div>
-            <button
-              onClick={() => { setViewMode("invullen"); setCompleted(false); }}
-              className="w-11 h-11 rounded-full bg-gradient-to-br from-primary to-primary-light flex items-center justify-center text-primary-foreground shadow-lg shadow-primary/30 active:scale-90 transition-transform"
-            >
-              <span className="material-symbols-outlined fill text-lg">arrow_forward_ios</span>
-            </button>
-          </div>
-        )}
-
-        {/* Mode tabs */}
-        <div className="flex gap-1 bg-surface-container rounded-2xl p-1 border border-outline-variant/20 mb-5 shadow-sm">
-          <button
-            onClick={() => { setViewMode("overzicht"); setCompleted(false); }}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-1 ${
-              viewMode === "overzicht" ? "bg-card shadow-sm text-on-surface" : "text-on-surface-variant hover:text-on-surface"
-            }`}
-          >
-            <span className="material-symbols-outlined text-base">grid_view</span>Overzicht
-          </button>
-          <button
-            onClick={() => { setViewMode("invullen"); setCompleted(false); }}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-1 ${
-              viewMode === "invullen" ? "bg-card shadow-sm text-on-surface" : "text-on-surface-variant hover:text-on-surface"
-            }`}
-          >
-            <span className="material-symbols-outlined text-base">photo_camera</span>Invullen
-          </button>
-        </div>
-
-        {viewMode === "overzicht" ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {CATEGORIES.map((cat) => {
-              const catFotos = fotosByCategorie(cat.name);
-              return (
-                <CategoryCard
-                  key={cat.id}
-                  category={cat}
-                  fotos={catFotos}
-                  icon={CATEGORY_ICONS[cat.id] || "photo_camera"}
-                  isUploading={uploadingCat === cat.name}
-                  uploadProgress={uploadProgress[cat.name]}
-                  onUpload={(files) => handleUpload(cat.name, files)}
-                  onDelete={handleDelete}
-                  onClickThumb={(idx) => openLightbox(cat.name, idx)}
-                />
-              );
-            })}
-          </div>
-        ) : viewMode === "invullen" && !completed ? (
+      <main className="pt-20 pb-0 px-4 max-w-7xl mx-auto animate-fade-up">
+        {viewMode === "invullen" && !completed ? (
           <StepByStepView
             station={station}
             category={CATEGORIES[currentStep]}
@@ -400,16 +280,69 @@ export default function StationDetail() {
             onPrev={goPrev}
             onSkip={goNext}
             onClickThumb={(idx) => openLightbox(CATEGORIES[currentStep].name, idx)}
+            onBackToList={() => navigate("/")}
+            filledCount={filledCount}
+            totalCategories={FOTO_CATEGORIEEN.length}
           />
-        ) : (
+        ) : completed ? (
           <CompletionScreen
             filledCount={filledCount}
             total={CATEGORIES.length}
             stationName={station.naam_msr}
             onReset={() => { setCurrentStep(0); setCompleted(false); }}
-            onBack={() => { setViewMode("overzicht"); setCompleted(false); }}
+            onBack={() => navigate("/")}
             onPdf={openPdf}
           />
+        ) : (
+          <>
+            {/* Back row */}
+            <div className="flex items-center justify-between mb-6">
+              <button onClick={() => navigate("/")} className="flex items-center gap-1 text-sm text-on-surface-variant hover:text-primary transition-colors font-semibold">
+                <span className="material-symbols-outlined text-lg">arrow_back_ios</span> Alle stations
+              </button>
+              <button onClick={() => setEditOpen(true)} className="p-2.5 bg-card border border-outline-variant/30 rounded-xl shadow-sm hover:shadow-md transition-all active:scale-95 text-on-surface-variant">
+                <span className="material-symbols-outlined text-lg">edit</span>
+              </button>
+            </div>
+
+            {/* Hero card */}
+            <div className="bg-card rounded-3xl p-6 shadow-sm border border-outline-variant/10 mb-6">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full"
+                  style={isCS ? { background: "rgba(232,84,26,0.1)", color: "#E8541A" } : { background: "rgba(107,45,139,0.1)", color: "#6B2D8B" }}
+                >{station.type_ruimte}</span>
+              </div>
+              <h2 className="text-2xl font-black tracking-tight mb-1 text-on-surface">{station.naam_msr}</h2>
+              <div className="mt-4">
+                <div className="flex justify-between items-center mb-1.5">
+                  <span className="text-xs font-semibold text-on-surface-variant">Categorieën ingevuld</span>
+                  <span className="text-xs font-black text-primary">{filledCount} / {FOTO_CATEGORIEEN.length}</span>
+                </div>
+                <div className="h-2 bg-surface-high rounded-full overflow-hidden">
+                  <div className="h-full rounded-full bg-gradient-to-r from-primary to-primary-light transition-all duration-800" style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {CATEGORIES.map((cat) => {
+                const catFotos = fotosByCategorie(cat.name);
+                return (
+                  <CategoryCard
+                    key={cat.id}
+                    category={cat}
+                    fotos={catFotos}
+                    icon={CATEGORY_ICONS[cat.id] || "photo_camera"}
+                    isUploading={uploadingCat === cat.name}
+                    uploadProgress={uploadProgress[cat.name]}
+                    onUpload={(files) => handleUpload(cat.name, files)}
+                    onDelete={handleDelete}
+                    onClickThumb={(idx) => openLightbox(cat.name, idx)}
+                  />
+                );
+              })}
+            </div>
+          </>
         )}
       </main>
     </div>
