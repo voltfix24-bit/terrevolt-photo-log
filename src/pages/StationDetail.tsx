@@ -541,11 +541,21 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
           </div>
         )}
 
-        {/* Status badge */}
+        {/* Status badge + add more button */}
         {hasPhotos && (
-          <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl" style={{ background: "rgba(28,176,80,0.08)", border: "1px solid rgba(28,176,80,0.2)" }}>
-            <span className="material-symbols-outlined fill text-xl" style={{ color: "#1cb050" }}>check_circle</span>
-            <span className="text-[13px] font-bold text-primary">{fotos.length} foto{fotos.length > 1 ? "'s" : ""} geüpload</span>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 flex items-center gap-2 px-3.5 py-2.5 rounded-xl" style={{ background: "rgba(28,176,80,0.08)", border: "1px solid rgba(28,176,80,0.2)" }}>
+              <span className="material-symbols-outlined fill text-xl" style={{ color: "#1cb050" }}>check_circle</span>
+              <span className="text-[13px] font-bold text-primary">{fotos.length} foto{fotos.length > 1 ? "'s" : ""} geüpload</span>
+            </div>
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={isUploading}
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary-container/30 text-primary text-[13px] font-bold hover:bg-primary-container/50 active:scale-95 transition-all flex-shrink-0"
+            >
+              <span className="material-symbols-outlined text-lg">add_photo_alternate</span>
+              Meer
+            </button>
           </div>
         )}
 
