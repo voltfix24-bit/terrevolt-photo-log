@@ -463,6 +463,22 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
           <p className="text-[13px] leading-relaxed text-blue-400">{category.instruction}</p>
         </div>
 
+        {/* Example photos */}
+        {voorbeelden.length > 0 && (
+          <div>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5 flex items-center gap-1">
+              <span className="material-symbols-outlined text-sm">image</span> Voorbeeld
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {voorbeelden.map((v) => (
+                <div key={v.id} className="flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden border border-outline-variant/20 bg-surface-container">
+                  <img src={v.url} alt="Voorbeeld" className="w-full h-full object-cover" />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Conditional warnings */}
         {isVermogensveld && (
           <div className="rounded-2xl p-3 flex gap-2 text-xs" style={{ background: "rgba(234,179,8,0.07)", border: "1px solid rgba(234,179,8,0.2)", color: "#fbbf24" }}>
