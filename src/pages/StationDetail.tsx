@@ -916,6 +916,7 @@ export default function StationDetail() {
             );
           })}
         </div>
+      </main>
 
       {/* ── BOTTOM CTA ── */}
       {nextIncomplete && !wizardOpen && (
