@@ -419,11 +419,11 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
         </div>
 
         {/* Title + counter row */}
-        <div className="flex items-end justify-between gap-3 mb-4">
-          <h2 className="font-display text-[26px] font-extrabold tracking-tight leading-[1.1] text-primary min-w-0 truncate flex-1">
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <h2 className="font-display text-[22px] font-extrabold tracking-tight leading-[1.15] text-primary min-w-0 flex-1 break-words">
             {category.name}
           </h2>
-          <div className="flex items-baseline gap-0.5 pb-0.5 flex-shrink-0">
+          <div className="flex items-baseline gap-0.5 pt-1 flex-shrink-0">
             <span className="font-display text-[28px] font-extrabold text-on-surface leading-none">{step + 1}</span>
             <span className="font-display text-[14px] font-medium text-on-surface-variant/40">/{total}</span>
           </div>
