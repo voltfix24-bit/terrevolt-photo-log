@@ -260,7 +260,7 @@ export default function StationDetail() {
   const isCS = station.type_ruimte === "Compact Station";
 
   return (
-    <div className="min-h-screen bg-primary-container/15 pb-28 md:pb-8">
+    <div className="min-h-screen bg-primary-container/15 pb-28 md:pb-8" style={viewMode === "invullen" && !completed ? { height: "100dvh", overflow: "hidden" } : undefined}>
       <Lightbox open={lightboxOpen} close={() => setLightboxOpen(false)} slides={lightboxSlides} index={lightboxIndex} />
       <EditStationDialog station={station} open={editOpen} onOpenChange={setEditOpen} onSaved={() => { queryClient.invalidateQueries({ queryKey: ["station", id] }); queryClient.invalidateQueries({ queryKey: ["stations"] }); }} />
       
@@ -403,7 +403,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
   }, [onNext, onPrev, step]);
 
   return (
-    <div className="flex flex-col" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{ minHeight: "calc(100dvh - 56px)" }}>
+    <div className="flex flex-col h-[calc(100dvh-56px)] overflow-hidden" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
 
       {/* ── Premium sticky header ── */}
       <div className="sticky top-14 z-30 bg-surface -mx-4 px-6 pt-4 pb-4">
@@ -439,7 +439,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
       </div>
 
       {/* ── Content area — no scroll, fills viewport ── */}
-      <div className="flex-1 flex flex-col px-2 pt-4 pb-[100px] gap-4 overflow-hidden">
+      <div className="flex-1 flex flex-col px-2 pt-3 pb-0 gap-3 overflow-hidden min-h-0">
 
         {/* Instruction — collapsed by default, expandable */}
         <div className="bg-primary-container/8 rounded-3xl border border-primary/5">
