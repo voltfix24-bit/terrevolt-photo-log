@@ -692,6 +692,14 @@ body {
 .print-btn:hover { transform: translateY(-1px); box-shadow: 0 12px 32px rgba(0,110,45,0.45); }
 .print-btn:active { transform: scale(0.97); }
 
+@media print {
+  .photo-cell img {
+    image-rendering: auto;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -704,6 +712,25 @@ body {
 </button>
 
 ${pages}
+
+<script>
+window.addEventListener('load', async () => {
+  const imgs = document.querySelectorAll('.photo-cell img');
+  const MAX = 1200;
+  for (const img of imgs) {
+    try {
+      if (img.naturalWidth <= MAX) continue;
+      const canvas = document.createElement('canvas');
+      const scale = MAX / img.naturalWidth;
+      canvas.width = img.naturalWidth * scale;
+      canvas.height = img.naturalHeight * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      img.src = canvas.toDataURL('image/jpeg', 0.82);
+    } catch(e) { /* cross-origin fallback: skip */ }
+  }
+});
+</script>
 
 </body>
 </html>`;
