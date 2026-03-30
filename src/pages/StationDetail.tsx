@@ -96,10 +96,10 @@ function DropZone({ onFiles, disabled, onClick, compact, children }: {
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`rounded-[20px] py-8 px-5 text-center cursor-pointer border-2 transition-all mb-3 active:scale-[0.99] w-full ${
+      className={`rounded-3xl py-10 px-6 text-center cursor-pointer border-2 transition-all active:scale-[0.99] w-full ${
         dragging
-          ? "border-primary bg-primary/10 scale-[1.01]"
-          : "border-dashed border-[#bccab9] bg-[#f9fbf9] hover:border-primary/50 hover:bg-primary/5"
+          ? "border-primary bg-primary/8 scale-[1.01]"
+          : "border-dashed border-on-surface/10 bg-card/50 hover:border-primary/30 hover:bg-primary/4"
       }`}
     >
       {children}
