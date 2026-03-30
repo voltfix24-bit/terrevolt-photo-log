@@ -575,8 +575,8 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
         <div className="h-20 md:hidden" />
       </div>
 
-      {/* ── STICKY BOTTOM NAV — thumb zone, above app bottom nav ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-[60] md:static md:mt-4 bg-white/95 backdrop-blur-xl border-t border-black/[0.06] p-3 pb-[max(16px,env(safe-area-inset-bottom))] md:bg-transparent md:border-none md:backdrop-blur-none md:p-0">
+      {/* ── FIXED BOTTOM NAV — always pinned ── */}
+      <div className="fixed bottom-0 left-0 right-0 z-[60] bg-white/95 backdrop-blur-xl border-t border-black/[0.06] p-3 pb-[max(16px,env(safe-area-inset-bottom))]">
         <div className="flex gap-2.5 max-w-lg mx-auto">
           <button
             onClick={onPrev}
