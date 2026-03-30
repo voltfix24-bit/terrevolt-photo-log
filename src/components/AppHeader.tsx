@@ -46,6 +46,18 @@ export default function AppHeader() {
           </button>
         </div>
       </nav>
+
+      {/* FAB — rechtsonder op alle schermformaten, verborgen op stationsdetail */}
+      {!location.pathname.startsWith("/stations/") || location.pathname === "/stations/new" ? null : null}
+      <button
+        onClick={() => navigate("/stations/new")}
+        className={`fixed bottom-24 md:bottom-8 right-5 z-50 w-14 h-14 rounded-full bg-primary hover:bg-primary-hover text-primary-foreground shadow-[0_6px_24px_-4px_rgba(0,100,47,0.4)] flex items-center justify-center active:scale-90 transition-all ${
+          location.pathname.startsWith("/stations/") ? "hidden" : ""
+        }`}
+        aria-label="Nieuw station toevoegen"
+      >
+        <span className="material-symbols-rounded text-[28px]">add</span>
+      </button>
     </>
   );
 }
