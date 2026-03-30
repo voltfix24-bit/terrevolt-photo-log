@@ -111,53 +111,67 @@ function useSkippedCategories(stationId: string | undefined) {
 }
 
 /* ==================== CATEGORY ROW ==================== */
-function CategoryRow({ cat, fotos, isLast, isSkipped, onOpen, highlight }: {
-  cat: Category; fotos: FotoRow[]; isLast?: boolean; isSkipped?: boolean; onOpen: () => void; highlight?: boolean;
+function CategoryRow({ cat, fotos, isSkipped, onOpen }: {
+  cat: Category; fotos: FotoRow[]; isSkipped?: boolean; onOpen: () => void;
 }) {
   const isDone = fotos.length > 0;
   return (
     <button
       data-cat-id={cat.id}
       onClick={onOpen}
-      className={`w-full flex items-center gap-3 px-4 py-4 min-h-[56px] text-left active:bg-surface-low transition-colors duration-300 ${
-        !isLast ? 'border-b border-outline-variant/15' : ''
-      } ${highlight ? 'bg-primary/10' : ''}`}
+      className={`w-full flex items-center gap-4 px-4 py-4 text-left transition-colors border-b border-outline-variant/10 last:border-b-0 ${
+        isDone ? 'bg-card hover:bg-surface-low' : isSkipped ? 'bg-card hover:bg-surface-low' : 'bg-card hover:bg-primary/[0.03]'
+      }`}
     >
-      <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
-        isDone
-          ? 'bg-primary'
-          : isSkipped
-          ? 'bg-surface-high'
-          : 'bg-orange/10 border border-orange/25'
+      {/* Icon box */}
+      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+        isDone ? 'bg-primary/10' : 'bg-surface-container'
       }`}>
-        <span className={`material-symbols-rounded text-sm ${
-          isDone ? 'text-primary-foreground' : isSkipped ? 'text-text-faint' : 'text-accent-gold'
-        }`} style={{ fontVariationSettings: "'FILL' 1" }}>
-          {isDone ? 'check' : isSkipped ? 'remove' : 'photo_camera'}
+        <span className={`material-symbols-rounded text-xl ${
+          isDone ? 'text-primary' : 'text-muted-foreground'
+        }`} style={isDone ? { fontVariationSettings: "'FILL' 1" } : undefined}>
+          {isDone ? 'check_circle' : isSkipped ? 'remove_circle' : 'photo_camera'}
         </span>
       </div>
+      {/* Text content */}
       <div className="flex-1 min-w-0">
-        <div className={`text-sm font-bold leading-tight ${isSkipped ? 'text-text-faint line-through' : 'text-on-surface'}`}>
+        <div className={`font-bold text-[14px] leading-tight mb-0.5 ${isSkipped ? 'text-muted-foreground line-through' : 'text-on-surface'}`}>
           {cat.name}
         </div>
-        {isDone ? (
-          <div className="flex gap-1.5 mt-1.5">
-            {fotos.slice(0, 5).map(f => (
-              <img key={f.id} src={f.url} className="w-11 h-11 rounded-lg object-cover border border-outline-variant/20" alt="" />
+        <div className="text-[12px] text-muted-foreground leading-snug truncate">
+          {isDone
+            ? `${fotos.length} foto${fotos.length > 1 ? "'s" : ""} geüpload`
+            : isSkipped
+            ? 'Overgeslagen (NVT)'
+            : cat.instruction.length > 50
+              ? cat.instruction.substring(0, 50) + '...'
+              : cat.instruction
+          }
+        </div>
+        {isDone && fotos.length > 0 && (
+          <div className="flex gap-1.5 mt-2">
+            {fotos.slice(0, 4).map(f => (
+              <img key={f.id} src={f.url} className="w-8 h-8 rounded-lg object-cover border border-outline-variant/20" alt="" />
             ))}
-            {fotos.length > 5 && (
-              <div className="w-11 h-11 rounded-lg bg-surface-container flex items-center justify-center">
-                <span className="text-[10px] font-bold text-muted-foreground">+{fotos.length - 5}</span>
+            {fotos.length > 4 && (
+              <div className="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center text-[10px] font-bold text-muted-foreground">
+                +{fotos.length - 4}
               </div>
             )}
           </div>
-        ) : isSkipped ? (
-          <div className="text-xs text-text-faint mt-0.5">Overgeslagen (NVT)</div>
-        ) : (
-          <div className="text-xs text-accent-gold font-semibold mt-0.5">Nog geen foto's</div>
         )}
       </div>
-      <span className="material-symbols-rounded text-muted-foreground/30 text-lg flex-shrink-0">chevron_right</span>
+      {/* Status badge */}
+      <div className="flex items-center gap-2 flex-shrink-0">
+        {isDone ? (
+          <span className="text-[10px] font-black uppercase tracking-wide px-2.5 py-1.5 rounded-full bg-primary/10 text-primary">Klaar</span>
+        ) : isSkipped ? (
+          <span className="text-[10px] font-black uppercase tracking-wide px-2.5 py-1.5 rounded-full bg-surface-container text-muted-foreground">NVT</span>
+        ) : (
+          <span className="text-[10px] font-black uppercase tracking-wide px-2.5 py-1.5 rounded-full bg-orange/10 text-orange">Open</span>
+        )}
+        <span className="material-symbols-rounded text-muted-foreground/30 text-lg">chevron_right</span>
+      </div>
     </button>
   );
 }
@@ -734,95 +748,69 @@ export default function StationDetail() {
         </div>
 
         {/* ── 2. SECTION ACCORDION ── */}
-        <div className="space-y-3 mb-8">
+        <div className="space-y-6 mb-8">
           {sectionGroups.map(({ section, categories: cats }) => {
             const doneCats = cats.filter(c => fotosByCategorie(c.name).length > 0);
             const openCats = cats.filter(c => fotosByCategorie(c.name).length === 0 && !isSkipped(c.name));
             const skippedCats = cats.filter(c => fotosByCategorie(c.name).length === 0 && isSkipped(c.name));
             const isComplete = openCats.length === 0 && skippedCats.length === 0;
             const isSectionOpen = openSections.includes(section.id);
-            const totalFotosInSection = cats.reduce((sum, c) => sum + fotosByCategorie(c.name).length, 0);
-            const openCount = openCats.length;
 
             return (
-              <div
-                ref={el => { sectionRefs.current[section.id] = el; }}
-                key={section.id}
-                className={`rounded-2xl overflow-hidden transition-all ${
-                  isComplete
-                    ? 'bg-primary/[0.06] border border-primary/20'
-                    : 'bg-card border border-outline-variant/15 shadow-sm'
-                }`}
-              >
-                <button onClick={() => toggleSection(section.id)} className="w-full flex items-center gap-3 px-4 py-4 text-left">
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${
-                    isComplete
-                      ? 'bg-primary shadow-sm shadow-primary/30'
-                      : 'bg-surface-high border border-outline-variant/40'
-                  }`}>
-                    {isComplete ? (
-                      <span className="material-symbols-rounded text-lg text-primary-foreground" style={{ fontVariationSettings: "'FILL' 1" }}>check</span>
-                    ) : (
-                      <span className="text-sm font-extrabold text-on-surface">{openCount + skippedCats.length}</span>
-                    )}
+              <div ref={el => { sectionRefs.current[section.id] = el; }} key={section.id}>
+                {/* Section header — flat, no card */}
+                <button onClick={() => toggleSection(section.id)} className="w-full flex items-center justify-between mb-3 px-1 text-left">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-1 h-6 rounded-full flex-shrink-0 ${isComplete ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
+                    <h3 className="font-display font-extrabold text-[17px] text-on-surface">{section.label}</h3>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className={`font-display font-extrabold text-[15px] ${isComplete ? 'text-primary' : 'text-on-surface'}`}>{section.label}</div>
-                    <div className={`text-xs font-semibold mt-0.5 ${isComplete ? 'text-primary/60' : 'text-muted-foreground'}`}>
-                      {doneCats.length} / {cats.length} klaar
-                      {!isComplete && openCount > 0 && (
-                        <span className="text-orange font-bold ml-2">· {openCount} open</span>
-                      )}
-                      {!isComplete && skippedCats.length > 0 && (
-                        <span className="text-text-faint ml-2">· {skippedCats.length} NVT</span>
-                      )}
-                      {isComplete && <span> · {totalFotosInSection} foto's</span>}
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                      isComplete ? 'bg-primary/10 text-primary' : 'bg-surface-container text-muted-foreground'
+                    }`}>
+                      {doneCats.length}/{cats.length}
+                    </span>
+                    <span className="material-symbols-rounded text-muted-foreground/40 text-xl">
+                      {isSectionOpen ? 'expand_less' : 'expand_more'}
+                    </span>
                   </div>
-                  <span className={`material-symbols-rounded text-xl ${isComplete ? 'text-primary/60' : 'text-muted-foreground/40'}`}>
-                    {isSectionOpen ? 'expand_less' : 'expand_more'}
-                  </span>
                 </button>
 
+                {/* Category list card */}
                 {isSectionOpen && (
-                  <div className={`border-t ${isComplete ? 'border-primary/15 bg-primary/[0.03]' : 'border-outline-variant/10'}`}>
+                  <div className="bg-card rounded-2xl overflow-hidden border border-outline-variant/10 shadow-sm mb-2">
                     {openCats.length > 0 && (
                       <>
-                        <div className="px-4 pt-3 pb-1.5 flex items-center gap-1.5">
-                          <div className="w-1.5 h-1.5 rounded-full bg-orange flex-shrink-0" />
-                          <span className="text-[11px] font-black uppercase tracking-wider text-orange">Nog te doen ({openCats.length})</span>
+                        <div className="px-4 pt-3 pb-2 bg-orange/[0.04] border-b border-orange/10">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-orange">● Nog te doen ({openCats.length})</span>
                         </div>
-                        {openCats.map((cat, idx) => (
-                          <CategoryRow key={cat.id} cat={cat} fotos={[]} isLast={idx === openCats.length - 1 && doneCats.length === 0 && skippedCats.length === 0} onOpen={() => openWizardAt(cat)} highlight={highlightCatId === cat.id} />
+                        {openCats.map(cat => (
+                          <CategoryRow key={cat.id} cat={cat} fotos={[]} onOpen={() => openWizardAt(cat)} />
                         ))}
                       </>
                     )}
 
-                    {openCats.length > 0 && (doneCats.length > 0 || skippedCats.length > 0) && (
-                      <div className="mx-4 my-1 h-px bg-outline-variant/20" />
+                    {openCats.length > 0 && doneCats.length > 0 && (
+                      <div className="px-4 pt-3 pb-2 bg-primary/[0.03] border-t border-outline-variant/10 border-b border-outline-variant/10">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-primary/60">● Klaar ({doneCats.length})</span>
+                      </div>
                     )}
-
-                    {doneCats.length > 0 && (
-                      <>
-                        <div className="px-4 pt-2 pb-1.5 flex items-center gap-1.5">
-                          <div className="w-1.5 h-1.5 rounded-full bg-primary/60 flex-shrink-0" />
-                          <span className="text-[11px] font-black uppercase tracking-wider text-primary/60">Klaar ({doneCats.length})</span>
-                        </div>
-                        {doneCats.map((cat, idx) => (
-                          <CategoryRow key={cat.id} cat={cat} fotos={fotosByCategorie(cat.name)} isLast={idx === doneCats.length - 1 && skippedCats.length === 0} onOpen={() => openWizardAt(cat)} highlight={highlightCatId === cat.id} />
-                        ))}
-                      </>
+                    {openCats.length === 0 && doneCats.length > 0 && (
+                      <div className="px-4 pt-3 pb-2 bg-primary/[0.03] border-b border-outline-variant/10">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-primary/60">● Klaar ({doneCats.length})</span>
+                      </div>
                     )}
+                    {doneCats.map(cat => (
+                      <CategoryRow key={cat.id} cat={cat} fotos={fotosByCategorie(cat.name)} onOpen={() => openWizardAt(cat)} />
+                    ))}
 
                     {skippedCats.length > 0 && (
                       <>
-                        {(openCats.length > 0 || doneCats.length > 0) && <div className="mx-4 my-1 h-px bg-outline-variant/15" />}
-                        <div className="px-4 pt-2 pb-1.5 flex items-center gap-1.5">
-                          <div className="w-1.5 h-1.5 rounded-full bg-text-faint flex-shrink-0" />
-                          <span className="text-[11px] font-black uppercase tracking-wider text-text-faint">Overgeslagen ({skippedCats.length})</span>
+                        <div className="px-4 pt-3 pb-2 border-t border-outline-variant/10">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">— Overgeslagen ({skippedCats.length})</span>
                         </div>
-                        {skippedCats.map((cat, idx) => (
-                          <CategoryRow key={cat.id} cat={cat} fotos={[]} isLast={idx === skippedCats.length - 1} isSkipped onOpen={() => openWizardAt(cat)} highlight={highlightCatId === cat.id} />
+                        {skippedCats.map(cat => (
+                          <CategoryRow key={cat.id} cat={cat} fotos={[]} isSkipped onOpen={() => openWizardAt(cat)} />
                         ))}
                       </>
                     )}
