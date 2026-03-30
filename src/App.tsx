@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import NewStation from "./pages/NewStation";
 import StationDetail from "./pages/StationDetail";
 import Instellingen from "./pages/Instellingen";
+import CategorieenBeheren from "./pages/CategorieenBeheren";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ const App = () => (
           <Route path="/stations/new" element={<NewStation />} />
           <Route path="/stations/:id" element={<StationDetail />} />
           <Route path="/instellingen" element={<Instellingen />} />
+          <Route path="/instellingen/categorieen" element={<CategorieenBeheren />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
