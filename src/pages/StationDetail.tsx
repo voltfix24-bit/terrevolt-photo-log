@@ -99,7 +99,7 @@ function DropZone({ onFiles, disabled, onClick, compact, children }: {
       className={`rounded-3xl py-10 px-6 text-center cursor-pointer border-2 transition-all active:scale-[0.99] w-full ${
         dragging
           ? "border-primary bg-primary/8 scale-[1.01]"
-          : "border-dashed border-on-surface/10 bg-card/50 hover:border-primary/30 hover:bg-primary/4"
+          : "border-dashed border-outline-variant/20 bg-surface-low hover:border-primary/30 hover:bg-primary/[0.04]"
       }`}
     >
       {children}
