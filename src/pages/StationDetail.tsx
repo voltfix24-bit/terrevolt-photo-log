@@ -789,35 +789,53 @@ export default function StationDetail() {
       <main className="pt-20 pb-0 px-4 max-w-3xl mx-auto animate-fade-up">
         {/* ── 1. HERO ── */}
         <div className="px-5 pt-4 pb-5">
-          {/* Eyebrow */}
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-1.5 h-1.5 rounded-full bg-accent-gold-bright" />
-            <span className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-accent-gold font-display">
-              Technische Oplevering
-            </span>
-          </div>
-          {/* Station name */}
-          <div className="flex items-start justify-between gap-3 mb-4">
-            <div className="flex-1 min-w-0">
-              <h1 className="font-display text-[28px] font-extrabold tracking-tight text-on-surface leading-tight mb-1">
-                {station.naam_msr}
-              </h1>
-              <p className="text-sm text-muted-foreground font-medium">
-                {[station.type_ruimte, station.behuizingsnummer].filter(Boolean).join(' · ')}
-              </p>
-            </div>
-            <div className="flex gap-1.5 flex-shrink-0 pt-1">
-              <button onClick={() => navigate("/")} className="p-2.5 bg-surface-white border border-outline-variant/20 rounded-xl shadow-sm hover:shadow-md hover:border-primary/20 transition-all active:scale-95 text-text-secondary hover:text-primary">
-                <span className="material-symbols-rounded text-lg">arrow_back</span>
-              </button>
-              <button onClick={openPdf} className="p-2.5 bg-surface-white border border-outline-variant/20 rounded-xl shadow-sm hover:shadow-md hover:border-primary/20 transition-all active:scale-95 text-text-secondary hover:text-primary">
+          {/* ROW 1: Navigation bar */}
+          <div className="flex items-center justify-between mb-4">
+            <button
+              onClick={() => navigate('/')}
+              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-primary font-semibold transition-colors active:scale-95 min-h-[44px] min-w-[44px]"
+            >
+              <span className="material-symbols-rounded text-lg">arrow_back_ios</span>
+              <span className="hidden sm:inline">Stations</span>
+            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={openPdf}
+                className="w-10 h-10 rounded-xl bg-surface-low border border-outline-variant/20 flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/30 transition-all active:scale-95"
+              >
                 <span className="material-symbols-rounded text-lg">picture_as_pdf</span>
               </button>
-              <button onClick={() => setEditOpen(true)} className="p-2.5 bg-surface-white border border-outline-variant/20 rounded-xl shadow-sm hover:shadow-md hover:border-primary/20 transition-all active:scale-95 text-text-secondary hover:text-primary">
+              <button
+                onClick={() => setEditOpen(true)}
+                className="w-10 h-10 rounded-xl bg-surface-low border border-outline-variant/20 flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/30 transition-all active:scale-95"
+              >
                 <span className="material-symbols-rounded text-lg">edit</span>
               </button>
             </div>
           </div>
+
+          {/* ROW 2: Station info */}
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full ${
+              station.type_ruimte === 'Compact Station'
+                ? 'bg-orange/10 text-orange'
+                : 'bg-primary/10 text-primary'
+            }`}>
+              {station.type_ruimte || '—'}
+            </span>
+            {station.behuizingsnummer && (
+              <span className="text-xs text-muted-foreground font-mono">
+                {station.behuizingsnummer}
+              </span>
+            )}
+          </div>
+          <h2 className="font-display text-[24px] font-extrabold tracking-tight text-on-surface leading-tight mb-1">
+            {station.naam_msr}
+          </h2>
+          <p className="text-xs text-muted-foreground mb-4">
+            {[station.datum, station.ingevuld_door].filter(Boolean).join(' · ')}
+          </p>
+
           {/* Progress row */}
           <div className="flex items-end justify-between mb-2">
             <div>
