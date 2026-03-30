@@ -713,6 +713,4 @@ body {
 
 ${pages}
 
-</body>
-</html>`;
 }
