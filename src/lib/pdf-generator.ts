@@ -692,6 +692,14 @@ body {
 .print-btn:hover { transform: translateY(-1px); box-shadow: 0 12px 32px rgba(0,110,45,0.45); }
 .print-btn:active { transform: scale(0.97); }
 
+@media print {
+  .photo-cell img {
+    image-rendering: auto;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
 </style>
 </head>
 <body>
