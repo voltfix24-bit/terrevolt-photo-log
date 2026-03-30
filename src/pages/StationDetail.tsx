@@ -486,7 +486,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
               className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-[12px] font-semibold transition-all active:scale-95 ${
                 showVoorbeeld
                   ? 'bg-primary/8 text-primary'
-                  : 'bg-on-surface/4 text-on-surface-variant/60 hover:text-on-surface-variant'
+                  : 'bg-surface-high text-text-muted hover:text-primary hover:bg-primary/[0.06]'
               }`}
             >
               <span className="material-symbols-rounded text-[16px]">{showVoorbeeld ? 'visibility_off' : 'visibility'}</span>
