@@ -404,54 +404,43 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
 
   return (
     <div className="flex flex-col" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{ minHeight: "calc(100dvh - 80px)" }}>
-      {/* ── Sticky progress header — Saudia style ── */}
-      <div className="sticky top-14 z-30 bg-primary-container/15 backdrop-blur-xl -mx-4 px-5 pt-3 pb-4 md:rounded-2xl md:mx-0 md:border md:border-outline-variant/20 md:bg-card md:backdrop-blur-none md:mb-4">
-        {/* Top row: hamburger + station name + close */}
-        <div className="flex items-center justify-between mb-2">
-          <button onClick={onBackToList} className="flex items-center gap-1 text-on-surface-variant font-semibold text-sm active:scale-95 transition-transform min-h-[44px]">
-            <span className="material-symbols-outlined text-lg">menu</span>
+      {/* ── Compact sticky header ── */}
+      <div className="sticky top-14 z-30 bg-primary-container/15 backdrop-blur-xl -mx-4 px-5 pt-2 pb-3 md:rounded-2xl md:mx-0 md:border md:border-outline-variant/20 md:bg-card md:backdrop-blur-none md:mb-4">
+        {/* Top row */}
+        <div className="flex items-center justify-between mb-1">
+          <button onClick={onBackToList} className="flex items-center gap-1 text-on-surface-variant font-semibold text-sm active:scale-95 transition-transform min-h-[40px]">
+            <span className="material-symbols-outlined text-lg">arrow_back_ios</span>
           </button>
-          <span className="font-display text-[15px] font-extrabold text-foreground truncate max-w-[160px]">{station.naam_msr}</span>
-          <button onClick={onBackToList} className="w-9 h-9 rounded-full bg-on-surface/5 flex items-center justify-center active:scale-90 transition-transform">
+          <span className="font-display text-[14px] font-extrabold text-foreground truncate max-w-[160px]">{station.naam_msr}</span>
+          <button onClick={onBackToList} className="w-8 h-8 rounded-full bg-on-surface/5 flex items-center justify-center active:scale-90 transition-transform">
             <span className="material-symbols-outlined text-lg text-on-surface-variant">close</span>
           </button>
         </div>
 
-        {/* Category label — uppercase tracked like "TRAVEL DOCUMENTATION" */}
-        <div className="text-[10px] font-display font-extrabold uppercase tracking-[0.18em] text-primary mb-1">
-          Technische Oplevering
-        </div>
-
-        {/* Category name + count — large bold like Saudia's "Overzicht binnenzijde 8/40" */}
-        <div className="flex items-end justify-between mb-3">
-          <h3 className="font-display text-[24px] font-extrabold tracking-tight leading-tight text-foreground">{category.name}</h3>
+        {/* Category name + count */}
+        <div className="flex items-end justify-between mb-2">
+          <h3 className="font-display text-[20px] font-extrabold tracking-tight leading-tight text-foreground">{category.name}</h3>
           <div className="text-right flex items-baseline gap-0.5">
-            <span className="font-display text-[24px] font-extrabold text-foreground">{filledCount}</span>
-            <span className="font-display text-[16px] text-muted-foreground font-medium">/{totalCategories}</span>
+            <span className="font-display text-[20px] font-extrabold text-foreground">{filledCount}</span>
+            <span className="font-display text-[14px] text-muted-foreground font-medium">/{totalCategories}</span>
           </div>
         </div>
 
-        {/* Progress bar with bolt icon — like Saudia's airplane bar */}
-        <div className="relative h-2.5 bg-surface-container rounded-full overflow-visible mb-1">
+        {/* Progress bar */}
+        <div className="h-2 bg-surface-container rounded-full overflow-hidden">
           <div className="h-full rounded-full bg-gradient-to-r from-primary to-primary-light transition-all duration-500" style={{ width: `${progressPct}%` }} />
-          <div
-            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-6 h-6 bg-primary rounded-full flex items-center justify-center shadow-md z-10"
-            style={{ left: `${Math.max(6, progressPct)}%` }}
-          >
-            <span className="material-symbols-outlined fill text-primary-foreground text-[12px]">bolt</span>
-          </div>
         </div>
       </div>
 
-      {/* ── Scrollable content area ── */}
-      <div className="flex-1 py-3 space-y-3 pb-[80px]">
-        {/* Instruction card — lightbulb style like Saudia's tip card */}
-        <div className="bg-card rounded-3xl p-4 shadow-sm border border-outline-variant/10">
-          <div className="flex gap-3 items-start">
-            <div className="w-10 h-10 rounded-xl bg-primary-container/30 flex items-center justify-center flex-shrink-0">
-              <span className="material-symbols-outlined fill text-primary text-xl">info</span>
+      {/* ── Content area — compact ── */}
+      <div className="flex-1 py-2 space-y-2 pb-[80px]">
+        {/* Instruction */}
+        <div className="bg-card rounded-2xl p-3 shadow-sm border border-outline-variant/10">
+          <div className="flex gap-2.5 items-start">
+            <div className="w-8 h-8 rounded-lg bg-primary-container/30 flex items-center justify-center flex-shrink-0">
+              <span className="material-symbols-outlined fill text-primary text-lg">info</span>
             </div>
-            <p className="text-[13px] leading-relaxed text-on-surface-variant pt-1.5">{category.instruction}</p>
+            <p className="text-[12px] leading-relaxed text-on-surface-variant pt-1">{category.instruction}</p>
           </div>
         </div>
 
@@ -517,14 +506,14 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/heic,image/webp" multiple className="hidden"
           onChange={(e) => { if (e.target.files) onUpload(e.target.files); e.target.value = ""; }} />
 
-        {/* Large upload zone — dashed card like Saudia's camera zone */}
+        {/* Upload zone — compact */}
         {!hasPhotos && (
           <DropZone onFiles={onUpload} disabled={isUploading} onClick={() => fileRef.current?.click()}>
-            <div className="w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center bg-primary-container/30">
-              <span className="material-symbols-outlined fill text-[32px] text-primary">add_a_photo</span>
+            <div className="w-12 h-12 rounded-xl mx-auto mb-2 flex items-center justify-center bg-primary-container/30">
+              <span className="material-symbols-outlined fill text-[26px] text-primary">add_a_photo</span>
             </div>
-            <div className="font-display text-[17px] font-extrabold mb-1 text-foreground">Tik om foto's te maken</div>
-            <div className="text-[13px] text-muted-foreground">Hoge resolutie aanbevolen voor verificatie.</div>
+            <div className="font-display text-[15px] font-extrabold mb-0.5 text-foreground">Tik om foto's te maken</div>
+            <div className="text-[12px] text-muted-foreground">Hoge resolutie aanbevolen.</div>
           </DropZone>
         )}
 
@@ -572,19 +561,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
           </>
         )}
 
-        {/* Document details card — like Saudia's "Document Details" link */}
-        {hasPhotos && (
-          <button className="w-full bg-card rounded-2xl p-3.5 flex items-center gap-3 border border-outline-variant/10 shadow-sm active:scale-[0.98] transition-transform">
-            <div className="w-10 h-10 rounded-xl bg-primary-container/30 flex items-center justify-center flex-shrink-0">
-              <span className="material-symbols-outlined fill text-primary text-xl">description</span>
-            </div>
-            <div className="flex-1 text-left">
-              <div className="font-display text-[14px] font-bold text-foreground">Categorie details</div>
-              <div className="text-[12px] text-muted-foreground">{fotos.length} foto{fotos.length > 1 ? "'s" : ""} · Categorie {String(category.id).padStart(2, "0")}</div>
-            </div>
-            <span className="material-symbols-outlined text-muted-foreground/40">chevron_right</span>
-          </button>
-        )}
+        {/* Removed verbose "Document details" card to reduce scrolling */}
       </div>
 
       {/* ── FIXED BOTTOM NAV — 3 buttons like Saudia ── */}
