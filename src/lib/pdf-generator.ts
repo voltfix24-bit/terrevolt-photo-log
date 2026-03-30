@@ -106,9 +106,9 @@ export function generatePdfHtml(station: Station, fotos: Foto[], branding?: PdfB
     </div>
 
     <div class="cover-footer-line">
-      <span>Terrevolt B.V.</span>
+      <span>${bedrijfsnaam}</span>
       <span class="cf-dot">·</span>
-      <span>Liander Zuidoost</span>
+      <span>${regio}</span>
       <span class="cf-dot">·</span>
       <span>${new Date().toLocaleDateString("nl-NL")}</span>
     </div>
