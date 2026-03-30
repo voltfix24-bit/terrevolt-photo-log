@@ -305,7 +305,7 @@ export default function StationDetail() {
               <button onClick={() => navigate("/")} className="flex items-center gap-1 text-sm text-text-secondary hover:text-primary-hover transition-colors font-semibold">
                 <span className="material-symbols-rounded text-lg">arrow_back_ios</span> Alle stations
               </button>
-              <button onClick={() => setEditOpen(true)} className="p-2.5 bg-surface-white border border-outline-variant/30 rounded-xl shadow-sm hover:shadow-md transition-all active:scale-95 text-text-secondary">
+              <button onClick={() => setEditOpen(true)} className="p-2.5 bg-surface-white border border-outline-variant/30 rounded-xl shadow-sm hover:shadow-md hover:border-primary/20 transition-all active:scale-95 text-text-secondary hover:text-primary">
                 <span className="material-symbols-rounded text-lg">edit</span>
               </button>
             </div>
