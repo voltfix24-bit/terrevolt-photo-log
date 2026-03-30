@@ -59,35 +59,6 @@ export default function Dashboard() {
           </div>
         </section>
 
-        {/* Bento stats */}
-        <section className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
-          <div className="col-span-2 bg-gradient-to-br from-primary to-primary-light p-7 rounded-3xl text-primary-foreground shadow-xl shadow-primary/20 relative overflow-hidden group">
-            <div className="relative z-10">
-              <p className="text-white/75 font-semibold text-xs uppercase tracking-widest mb-2">Totale voortgang</p>
-              <h2 className="text-5xl font-black mb-3">{avgProgress}%</h2>
-              <p className="text-white/85 text-sm max-w-[180px] leading-relaxed">Gemiddelde completering over alle actieve stations</p>
-            </div>
-            <span className="material-symbols-outlined absolute -right-4 -bottom-4 text-[110px] opacity-10 rotate-12 group-hover:rotate-0 transition-transform duration-700">analytics</span>
-          </div>
-          <div className="bg-card p-5 rounded-3xl shadow-sm border border-outline-variant/10 flex flex-col justify-between">
-            <div className="w-11 h-11 rounded-2xl bg-primary-container flex items-center justify-center text-primary mb-3">
-              <span className="material-symbols-outlined">ev_station</span>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-on-surface">{compactCount}</div>
-              <div className="text-muted-foreground text-sm font-medium">Compact Station</div>
-            </div>
-          </div>
-          <div className="bg-card p-5 rounded-3xl shadow-sm border border-outline-variant/10 flex flex-col justify-between">
-            <div className="w-11 h-11 rounded-2xl bg-purple-100 flex items-center justify-center text-purple-700 mb-3">
-              <span className="material-symbols-outlined">door_front</span>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-on-surface">{betreedbaarCount}</div>
-              <div className="text-muted-foreground text-sm font-medium">Betreedbaar station</div>
-            </div>
-          </div>
-        </section>
 
         {/* Station list */}
         <section>
