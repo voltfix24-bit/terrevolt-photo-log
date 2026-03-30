@@ -136,7 +136,7 @@ export default function NewStation() {
                 className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-left transition-all ${
                   form.type_ruimte === "Betreedbaar station"
                     ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-                    : "bg-primary-container/15 text-on-surface hover:bg-primary-container/25"
+                    : "bg-surface-low text-text-primary hover:bg-surface"
                 }`}
               >
                 <span className={`material-symbols-rounded text-2xl ${
