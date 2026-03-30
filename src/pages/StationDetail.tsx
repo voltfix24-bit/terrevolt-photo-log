@@ -33,6 +33,79 @@ const CATEGORY_ICONS: Record<number, string> = {
 
 type FotoRow = { id: string; url: string; storage_path: string; categorie: string };
 
+/* ==================== DROP ZONE COMPONENT ==================== */
+function DropZone({ onFiles, disabled, onClick, compact, children }: {
+  onFiles: (files: FileList) => void;
+  disabled?: boolean;
+  onClick?: (e: React.MouseEvent) => void;
+  compact?: boolean;
+  children: React.ReactNode;
+}) {
+  const [dragging, setDragging] = useState(false);
+  const dragCounter = useRef(0);
+
+  const handleDrag = useCallback((e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); }, []);
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    dragCounter.current++;
+    if (e.dataTransfer.items?.length) setDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    dragCounter.current--;
+    if (dragCounter.current === 0) setDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    setDragging(false);
+    dragCounter.current = 0;
+    if (disabled) return;
+    const files = e.dataTransfer.files;
+    if (files?.length) onFiles(files);
+  }, [disabled, onFiles]);
+
+  if (compact) {
+    return (
+      <button
+        onClick={onClick}
+        disabled={disabled}
+        onDragOver={handleDrag}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className={`w-full py-2 bg-card border rounded-xl text-xs font-semibold transition-all active:scale-95 flex items-center justify-center gap-1 ${
+          dragging
+            ? "border-primary bg-primary/5 text-primary scale-[1.02]"
+            : "border-outline-variant/20 text-on-surface-variant hover:text-primary hover:border-primary/30"
+        }`}
+      >
+        {children}
+      </button>
+    );
+  }
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      onDragOver={handleDrag}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={`rounded-2xl p-6 text-center cursor-pointer border-2 transition-all mb-4 active:scale-[0.98] w-full ${
+        dragging
+          ? "border-primary bg-primary/10 scale-[1.02] shadow-lg shadow-primary/10"
+          : "border-dashed border-outline-variant/40 bg-surface-low hover:border-primary/40 hover:bg-primary/5"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function StationDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
