@@ -751,7 +751,7 @@ export default function StationDetail() {
         </div>
 
         {/* ── 2. SECTION ACCORDION ── */}
-        <div className="space-y-6 mb-8">
+        <div className="space-y-3 mb-8">
           {sectionGroups.map(({ section, categories: cats }) => {
             const doneCats = cats.filter(c => fotosByCategorie(c.name).length > 0);
             const openCats = cats.filter(c => fotosByCategorie(c.name).length === 0 && !isSkipped(c.name));
@@ -759,64 +759,70 @@ export default function StationDetail() {
             const isComplete = openCats.length === 0 && skippedCats.length === 0;
             const isSectionOpen = openSections.includes(section.id);
 
+            // Sort: open first, then done, then skipped
+            const sortedCats = [...openCats, ...doneCats, ...skippedCats];
+
             return (
-              <div ref={el => { sectionRefs.current[section.id] = el; }} key={section.id}>
-                {/* Section header — flat, no card */}
-                <button onClick={() => toggleSection(section.id)} className="w-full flex items-center justify-between mb-3 px-1 text-left">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-1 h-6 rounded-full flex-shrink-0 ${isComplete ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
-                    <h3 className="font-display font-extrabold text-[17px] text-on-surface">{section.label}</h3>
+              <div ref={el => { sectionRefs.current[section.id] = el; }} key={section.id}
+                className={`rounded-2xl overflow-hidden shadow-sm ${
+                  isComplete
+                    ? 'bg-primary/[0.06] border border-primary/20'
+                    : isSectionOpen
+                    ? 'bg-card border border-outline-variant/15 shadow-md'
+                    : 'bg-card border border-outline-variant/10'
+                }`}
+              >
+                <button onClick={() => toggleSection(section.id)} className="w-full flex items-center gap-4 px-4 py-4 text-left">
+                  {/* Icon box */}
+                  <div className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+                    isComplete ? 'bg-primary shadow-sm shadow-primary/30' : 'bg-surface-container'
+                  }`}>
+                    <span className={`material-symbols-rounded text-xl ${
+                      isComplete ? 'text-primary-foreground' : 'text-muted-foreground'
+                    }`} style={isComplete ? { fontVariationSettings: "'FILL' 1" } : undefined}>
+                      {isComplete ? 'check' : 'folder_open'}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                      isComplete ? 'bg-primary/10 text-primary' : 'bg-surface-container text-muted-foreground'
+                  {/* Text */}
+                  <div className="flex-1 min-w-0">
+                    <div className={`font-display font-extrabold text-[16px] leading-tight ${
+                      isComplete ? 'text-primary' : 'text-on-surface'
                     }`}>
-                      {doneCats.length}/{cats.length}
-                    </span>
-                    <span className="material-symbols-rounded text-muted-foreground/40 text-xl">
-                      {isSectionOpen ? 'expand_less' : 'expand_more'}
-                    </span>
+                      {section.label}
+                    </div>
+                    <div className="text-[12px] text-muted-foreground mt-0.5 flex items-center gap-1.5">
+                      <span>{cats.length} taken</span>
+                      {openCats.length > 0 && (
+                        <>
+                          <span>·</span>
+                          <span className="text-orange font-semibold">{openCats.length} open</span>
+                        </>
+                      )}
+                      {isComplete && (
+                        <>
+                          <span>·</span>
+                          <span className="text-primary font-semibold">Voltooid</span>
+                        </>
+                      )}
+                    </div>
                   </div>
+                  <span className="material-symbols-rounded text-muted-foreground/40 text-xl">
+                    {isSectionOpen ? 'expand_less' : 'expand_more'}
+                  </span>
                 </button>
 
-                {/* Category list card */}
+                {/* Expanded content */}
                 {isSectionOpen && (
-                  <div className="bg-card rounded-2xl overflow-hidden border border-outline-variant/10 shadow-sm mb-2">
-                    {openCats.length > 0 && (
-                      <>
-                        <div className="px-4 pt-3 pb-2 bg-orange/[0.04] border-b border-orange/10">
-                          <span className="text-[10px] font-black uppercase tracking-wider text-orange">● Nog te doen ({openCats.length})</span>
-                        </div>
-                        {openCats.map(cat => (
-                          <CategoryRow key={cat.id} cat={cat} fotos={[]} onOpen={() => openWizardAt(cat)} />
-                        ))}
-                      </>
-                    )}
-
-                    {openCats.length > 0 && doneCats.length > 0 && (
-                      <div className="px-4 pt-3 pb-2 bg-primary/[0.03] border-t border-outline-variant/10 border-b border-outline-variant/10">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-primary/60">● Klaar ({doneCats.length})</span>
-                      </div>
-                    )}
-                    {openCats.length === 0 && doneCats.length > 0 && (
-                      <div className="px-4 pt-3 pb-2 bg-primary/[0.03] border-b border-outline-variant/10">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-primary/60">● Klaar ({doneCats.length})</span>
-                      </div>
-                    )}
-                    {doneCats.map(cat => (
-                      <CategoryRow key={cat.id} cat={cat} fotos={fotosByCategorie(cat.name)} onOpen={() => openWizardAt(cat)} />
+                  <div className="border-t border-outline-variant/10">
+                    {sortedCats.map(cat => (
+                      <CategoryRow
+                        key={cat.id}
+                        cat={cat}
+                        fotos={fotosByCategorie(cat.name)}
+                        isSkipped={isSkipped(cat.name)}
+                        onOpen={() => openWizardAt(cat)}
+                      />
                     ))}
-
-                    {skippedCats.length > 0 && (
-                      <>
-                        <div className="px-4 pt-3 pb-2 border-t border-outline-variant/10">
-                          <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">— Overgeslagen ({skippedCats.length})</span>
-                        </div>
-                        {skippedCats.map(cat => (
-                          <CategoryRow key={cat.id} cat={cat} fotos={[]} isSkipped onOpen={() => openWizardAt(cat)} />
-                        ))}
-                      </>
-                    )}
                   </div>
                 )}
               </div>
