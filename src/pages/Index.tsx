@@ -39,47 +39,85 @@ export default function Dashboard() {
     if (w) { w.document.write(html); w.document.close(); }
   };
 
+  const stationCount = filtered?.length ?? 0;
+
   return (
-    <div className="min-h-screen bg-surface pb-28 md:pb-8">
-      <main className="pt-20 pb-8 px-5 max-w-lg mx-auto animate-fade-up">
-        {/* Hero header — Saudia style */}
-        <section className="mb-8 pt-6">
-          <h1 className="font-display text-[38px] font-extrabold tracking-tight text-primary leading-[1.05]">
+    <div className="min-h-screen bg-primary/[0.04] pb-28 md:pb-8">
+
+      {/* ── Branded hero canvas ── */}
+      <div className="relative overflow-hidden bg-gradient-to-b from-primary/[0.09] via-primary/[0.04] to-transparent pt-[88px] pb-10 px-6">
+        {/* Decorative shapes */}
+        <div className="absolute -top-20 -right-16 w-56 h-56 rounded-full bg-primary/[0.06] blur-xl" />
+        <div className="absolute top-32 -left-24 w-40 h-40 rounded-full bg-primary-container/20 blur-2xl" />
+
+        <div className="relative max-w-lg mx-auto animate-fade-up">
+          {/* Eyebrow */}
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-2 h-2 rounded-full bg-primary" />
+            <span className="text-[10px] font-extrabold uppercase tracking-[0.25em] text-primary/60 font-display">
+              Technische Oplevering
+            </span>
+          </div>
+
+          {/* Main title — editorial scale */}
+          <h1 className="font-display text-[46px] font-extrabold tracking-[-0.03em] text-on-surface leading-[1] mb-3">
             Stations
           </h1>
-          <p className="text-on-surface-variant text-[15px] mt-2 leading-relaxed">
-            Beheer en monitor alle technische opleveringen.
-          </p>
-        </section>
 
-        {/* Search — large pill */}
-        <div className="relative mb-8">
-          <span className="material-symbols-rounded absolute left-5 top-1/2 -translate-y-1/2 text-on-surface-variant/50 text-[22px]">search</span>
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Zoek station of behuizingsnummer..."
-            className="w-full bg-primary-container/12 border-none rounded-2xl py-4.5 pl-14 pr-5 text-[15px] focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all placeholder:text-on-surface-variant/40 font-medium text-on-surface"
-          />
+          {/* Supporting text */}
+          <p className="text-[15px] text-on-surface-variant/60 leading-relaxed max-w-[280px]">
+            Beheer en monitor alle technische opleveringen op één plek.
+          </p>
+
+          {/* Count badge */}
+          {!isLoading && (
+            <div className="mt-5 inline-flex items-center gap-2 bg-card/80 backdrop-blur-md rounded-full px-4 py-2 border border-outline-variant/10 shadow-sm">
+              <span className="material-symbols-rounded text-primary text-[16px]">bolt</span>
+              <span className="text-[13px] font-bold text-on-surface font-display">{stationCount}</span>
+              <span className="text-[12px] text-on-surface-variant/50">station{stationCount !== 1 ? 's' : ''}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <main className="px-5 max-w-lg mx-auto animate-fade-up">
+
+        {/* ── Search — editorial floating bar ── */}
+        <div className="relative -mt-2 mb-8">
+          <div className="relative bg-card rounded-[22px] shadow-lg shadow-on-surface/[0.04] border border-outline-variant/8 overflow-hidden">
+            <span className="material-symbols-rounded absolute left-5 top-1/2 -translate-y-1/2 text-primary/40 text-[22px]">search</span>
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Zoek op naam of behuizingsnummer..."
+              className="w-full bg-transparent border-none rounded-[22px] py-[18px] pl-14 pr-5 text-[15px] focus:ring-0 focus:outline-none transition-all placeholder:text-on-surface-variant/35 font-medium text-on-surface"
+            />
+          </div>
         </div>
 
-        {/* Station cards */}
+        {/* ── Station list ── */}
         {isLoading ? (
-          <div className="space-y-4">
+          <div className="space-y-5">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="p-5 rounded-3xl bg-primary-container/8">
-                <Skeleton className="h-5 w-3/4 mb-3" />
-                <Skeleton className="h-3 w-1/2" />
+              <div key={i} className="rounded-[28px] bg-card/70 p-6 border border-outline-variant/8">
+                <Skeleton className="h-4 w-2/5 mb-4 rounded-full" />
+                <Skeleton className="h-6 w-4/5 mb-3 rounded-lg" />
+                <Skeleton className="h-3 w-3/5 rounded-full" />
               </div>
             ))}
           </div>
         ) : filtered?.length === 0 ? (
-          <div className="py-20 text-center text-on-surface-variant text-[15px]">
-            {search ? "Geen stations gevonden" : "Nog geen stations aangemaakt."}
+          <div className="py-24 text-center">
+            <div className="w-16 h-16 rounded-full bg-primary/[0.06] flex items-center justify-center mx-auto mb-5">
+              <span className="material-symbols-rounded text-primary/40 text-[32px]">search_off</span>
+            </div>
+            <p className="text-on-surface-variant/50 text-[15px] font-medium">
+              {search ? "Geen stations gevonden" : "Nog geen stations aangemaakt."}
+            </p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {filtered?.map((station) => {
+          <div className="space-y-4">
+            {filtered?.map((station, idx) => {
               const uniqueCategories = new Set(
                 station.fotos?.map((f: { categorie: string }) => f.categorie)
               );
@@ -90,77 +128,97 @@ export default function Dashboard() {
               const isExpanded = expandedId === station.id;
 
               return (
-                <div key={station.id} className="rounded-3xl overflow-hidden">
-                  {/* Station card */}
+                <div key={station.id} className="rounded-[28px] overflow-hidden" style={{ animationDelay: `${idx * 40}ms` }}>
                   <button
                     onClick={() => setExpandedId(isExpanded ? null : station.id)}
-                    className={`w-full text-left px-5 py-5 transition-all active:scale-[0.99] ${
+                    className={`relative w-full text-left transition-all active:scale-[0.99] overflow-hidden ${
                       isExpanded
-                        ? "bg-card shadow-md rounded-t-3xl rounded-b-none"
-                        : "bg-primary-container/10 hover:bg-primary-container/18 rounded-3xl"
+                        ? "bg-card shadow-xl shadow-on-surface/[0.06] rounded-t-[28px] rounded-b-none"
+                        : "bg-card hover:shadow-lg hover:shadow-on-surface/[0.04] rounded-[28px] border border-outline-variant/8"
                     }`}
                   >
-                    {/* Top: label + badge */}
-                    <div className="flex items-start justify-between mb-1">
-                      <span className="text-[11px] font-bold uppercase tracking-widest text-primary/70">
-                        {station.type_ruimte || "Station"}
-                      </span>
-                      <div className="flex items-center gap-1.5">
+                    {/* Decorative background shape */}
+                    <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-primary/[0.04]" />
+                    <div className="absolute bottom-0 right-12 w-20 h-20 rounded-full bg-primary-container/10" />
+
+                    <div className="relative px-6 py-6">
+                      {/* Top row: type label + completion badge */}
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="inline-flex items-center gap-1.5 bg-primary/[0.06] rounded-full px-3 py-1">
+                          <span className="material-symbols-rounded text-primary/60 text-[14px]">bolt</span>
+                          <span className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-primary/70 font-display">
+                            {station.type_ruimte || "Station"}
+                          </span>
+                        </div>
                         {complete && (
-                          <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
-                            <span className="material-symbols-rounded text-primary text-[18px]">check_circle</span>
+                          <div className="w-8 h-8 rounded-full bg-primary/[0.08] flex items-center justify-center">
+                            <span className="material-symbols-rounded text-primary text-[18px]">verified</span>
                           </div>
                         )}
                       </div>
-                    </div>
 
-                    {/* Name — large */}
-                    <h3 className="font-display text-[22px] font-extrabold text-on-surface leading-tight tracking-tight">
-                      {station.naam_msr}
-                    </h3>
+                      {/* Station name — editorial weight */}
+                      <h3 className="font-display text-[24px] font-extrabold text-on-surface leading-[1.1] tracking-tight mb-1">
+                        {station.naam_msr}
+                      </h3>
 
-                    {/* Subtitle */}
-                    {station.behuizingsnummer && (
-                      <p className="text-[13px] text-on-surface-variant mt-0.5">{station.behuizingsnummer}</p>
-                    )}
+                      {/* Subtitle */}
+                      {station.behuizingsnummer && (
+                        <p className="text-[13px] text-on-surface-variant/50 font-medium mb-4">{station.behuizingsnummer}</p>
+                      )}
 
-                    {/* Progress bar */}
-                    <div className="flex items-center gap-3 mt-3">
-                      <div className="flex-1 h-1.5 bg-on-surface/8 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-primary rounded-full transition-all duration-500"
-                          style={{ width: `${pct}%` }}
-                        />
+                      {/* Progress — refined composition */}
+                      <div className="flex items-center gap-4 mt-3">
+                        <div className="flex-1 h-[5px] bg-primary/[0.06] rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-primary to-primary-light rounded-full transition-all duration-700 ease-out"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <div className="flex items-baseline gap-0.5 flex-shrink-0">
+                          <span className="font-display text-[18px] font-extrabold text-on-surface leading-none">{pct}</span>
+                          <span className="font-display text-[11px] font-medium text-on-surface-variant/40">%</span>
+                        </div>
                       </div>
-                      <span className="text-[12px] font-extrabold text-primary font-display">{pct}%</span>
                     </div>
                   </button>
 
                   {/* Expanded action panel */}
                   {isExpanded && (
-                    <div className="bg-card rounded-b-3xl px-5 pb-5 pt-1 shadow-md animate-fade-up">
-                      {/* Meta row */}
-                      <div className="flex items-center gap-3 mb-4 text-[12px] text-on-surface-variant">
-                        {station.datum && <span>{station.datum}</span>}
-                        <span>{totalFotos} foto's</span>
-                        <span>{cats}/{FOTO_CATEGORIEEN.length} cat.</span>
+                    <div className="bg-card rounded-b-[28px] px-6 pb-6 pt-2 shadow-xl shadow-on-surface/[0.06] animate-fade-up border-t border-outline-variant/5">
+                      {/* Meta chips */}
+                      <div className="flex flex-wrap items-center gap-2 mb-5">
+                        {station.datum && (
+                          <span className="inline-flex items-center gap-1 bg-surface-low rounded-full px-3 py-1.5 text-[11px] font-semibold text-on-surface-variant/60">
+                            <span className="material-symbols-rounded text-[13px]">calendar_today</span>
+                            {station.datum}
+                          </span>
+                        )}
+                        <span className="inline-flex items-center gap-1 bg-surface-low rounded-full px-3 py-1.5 text-[11px] font-semibold text-on-surface-variant/60">
+                          <span className="material-symbols-rounded text-[13px]">photo_library</span>
+                          {totalFotos} foto's
+                        </span>
+                        <span className="inline-flex items-center gap-1 bg-surface-low rounded-full px-3 py-1.5 text-[11px] font-semibold text-on-surface-variant/60">
+                          <span className="material-symbols-rounded text-[13px]">category</span>
+                          {cats}/{FOTO_CATEGORIEEN.length}
+                        </span>
                       </div>
 
-                      {/* Buttons */}
-                      <div className="flex gap-2">
+                      {/* Action buttons */}
+                      <div className="flex gap-2.5">
                         <button
                           onClick={() => navigate(`/stations/${station.id}`)}
-                          className="flex-1 min-h-[52px] bg-primary text-primary-foreground rounded-2xl font-display text-[15px] font-bold shadow-lg shadow-primary/20 active:scale-[0.97] transition-transform flex items-center justify-center gap-2"
+                          className="flex-1 min-h-[52px] bg-primary text-primary-foreground rounded-2xl font-display text-[15px] font-bold shadow-lg shadow-primary/20 active:scale-[0.97] transition-transform flex items-center justify-center gap-2.5"
                         >
-                          <span className="material-symbols-rounded text-lg">edit_note</span>
+                          <span className="material-symbols-rounded text-[18px]">edit_note</span>
                           Invullen
                         </button>
                         <button
                           onClick={() => openPdf(station)}
-                          className="h-[52px] w-[52px] flex items-center justify-center rounded-2xl bg-primary-container/15 active:scale-[0.95] transition-transform flex-shrink-0"
+                          className="h-[52px] w-[52px] flex items-center justify-center rounded-2xl bg-primary/[0.06] hover:bg-primary/[0.1] active:scale-[0.93] transition-all flex-shrink-0"
                           title="PDF rapport"
                         >
-                          <span className="material-symbols-rounded text-primary/70 text-xl">picture_as_pdf</span>
+                          <span className="material-symbols-rounded text-primary/70 text-[20px]">description</span>
                         </button>
                         <button
                           onClick={async () => {
@@ -174,13 +232,13 @@ export default function Dashboard() {
                             setZipProgress(null);
                           }}
                           disabled={zipProgress !== null}
-                          className="relative h-[52px] w-[52px] flex items-center justify-center rounded-2xl bg-primary-container/15 active:scale-[0.95] transition-transform flex-shrink-0 disabled:opacity-60 overflow-hidden"
+                          className="relative h-[52px] w-[52px] flex items-center justify-center rounded-2xl bg-primary/[0.06] hover:bg-primary/[0.1] active:scale-[0.93] transition-all flex-shrink-0 disabled:opacity-60 overflow-hidden"
                           title="Foto's als ZIP"
                         >
                           {zipProgress !== null && (
-                            <div className="absolute bottom-0 left-0 right-0 bg-primary/15 transition-all duration-300" style={{ height: `${zipProgress}%` }} />
+                            <div className="absolute bottom-0 left-0 right-0 bg-primary/[0.12] transition-all duration-300 rounded-b-2xl" style={{ height: `${zipProgress}%` }} />
                           )}
-                          <span className="material-symbols-rounded text-primary/70 text-xl relative z-10">
+                          <span className="material-symbols-rounded text-primary/70 text-[20px] relative z-10">
                             {zipProgress !== null ? "downloading" : "folder_zip"}
                           </span>
                         </button>
@@ -192,6 +250,12 @@ export default function Dashboard() {
             })}
           </div>
         )}
+
+        {/* Brand footer */}
+        <div className="mt-16 pb-4 text-center">
+          <span className="font-display text-[12px] font-extrabold text-primary/15 tracking-tight">TerreVolt</span>
+          <div className="text-[8px] font-medium uppercase tracking-[0.2em] text-on-surface-variant/20 mt-0.5">Technische Oplevering</div>
+        </div>
       </main>
     </div>
   );
