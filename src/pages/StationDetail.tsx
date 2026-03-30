@@ -404,54 +404,89 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
 
   return (
     <div className="flex flex-col" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{ minHeight: "calc(100dvh - 80px)" }}>
-      {/* ── Sticky progress header ── */}
-      <div className="sticky top-16 z-30 bg-white/92 backdrop-blur-xl border-b border-black/[0.06] -mx-4 px-4 pt-2.5 pb-3 md:rounded-2xl md:mx-0 md:border md:border-outline-variant/20 md:bg-card md:backdrop-blur-none md:mb-4">
-        <div className="flex items-center justify-between mb-2">
-          <button onClick={onBackToList} className="flex items-center gap-0.5 text-primary font-semibold text-sm active:scale-95 transition-transform min-h-[44px]">
-            <span className="material-symbols-outlined text-lg">arrow_back_ios</span>
-            <span className="truncate max-w-[120px]">{station.naam_msr}</span>
+      {/* ── Sticky progress header — Saudia style ── */}
+      <div className="sticky top-14 z-30 bg-primary-container/15 backdrop-blur-xl -mx-4 px-5 pt-3 pb-4 md:rounded-2xl md:mx-0 md:border md:border-outline-variant/20 md:bg-card md:backdrop-blur-none md:mb-4">
+        {/* Top row: back + station name + count */}
+        <div className="flex items-center justify-between mb-1">
+          <button onClick={onBackToList} className="flex items-center gap-1 text-on-surface-variant font-semibold text-sm active:scale-95 transition-transform min-h-[44px]">
+            <span className="material-symbols-outlined text-lg">menu</span>
           </button>
-          <span className="text-xs font-extrabold text-primary">{filledCount}/{totalCategories}</span>
+          <span className="text-sm font-extrabold text-on-surface truncate max-w-[160px]">{station.naam_msr}</span>
+          <button onClick={onBackToList} className="w-9 h-9 rounded-full bg-on-surface/5 flex items-center justify-center active:scale-90 transition-transform">
+            <span className="material-symbols-outlined text-lg text-on-surface-variant">close</span>
+          </button>
         </div>
 
-        {/* Progress bar */}
-        <div className="h-[5px] bg-surface-container rounded-full overflow-hidden mb-2.5">
+        {/* Category label */}
+        <div className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-muted-foreground mb-0.5">
+          Technische Oplevering
+        </div>
+
+        {/* Category name + count — large like Saudia */}
+        <div className="flex items-end justify-between mb-2">
+          <h3 className="text-[22px] font-extrabold tracking-tight leading-tight text-primary">{category.name}</h3>
+          <div className="text-right">
+            <span className="text-[22px] font-extrabold text-on-surface">{filledCount}</span>
+            <span className="text-[14px] text-muted-foreground font-medium">/{totalCategories}</span>
+          </div>
+        </div>
+
+        {/* Progress bar with bolt icon */}
+        <div className="relative h-2 bg-primary-container/30 rounded-full overflow-visible mb-1">
           <div className="h-full rounded-full bg-gradient-to-r from-primary to-primary-light transition-all duration-500" style={{ width: `${progressPct}%` }} />
-        </div>
-
-        {/* Step dots */}
-        <div className="flex gap-1 justify-center items-center">
-          {dots.map((i) => (
-            <div
-              key={i}
-              className={`h-1.5 rounded-full transition-all duration-200 ${
-                i < step ? "w-1.5 bg-primary-light" : i === step ? "w-5 bg-primary" : "w-1.5 bg-slate-200"
-              }`}
-            />
-          ))}
-          {total > maxDots && (
-            <span className="text-[10px] text-muted-foreground font-semibold ml-1">+{total - maxDots}</span>
-          )}
+          <div
+            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-5 h-5 bg-primary rounded-full flex items-center justify-center shadow-sm z-10"
+            style={{ left: `${Math.max(5, progressPct)}%` }}
+          >
+            <span className="material-symbols-outlined fill text-primary-foreground text-[10px]">bolt</span>
+          </div>
         </div>
       </div>
 
       {/* ── Scrollable content area ── */}
-      <div className="flex-1 py-3 space-y-2 pb-[80px]">
-        {/* Category heading */}
-        <div className="mb-2">
-          <div className="text-[11px] font-extrabold uppercase tracking-widest text-muted-foreground mb-0.5">
-            Categorie {String(category.id).padStart(2, "0")}
+      <div className="flex-1 py-3 space-y-3 pb-[80px]">
+        {/* Instruction card — lightbulb style like Saudia's tip card */}
+        <div className="bg-card rounded-3xl p-4 shadow-sm border border-outline-variant/10">
+          <div className="flex gap-3 items-start">
+            <div className="w-10 h-10 rounded-xl bg-primary-container/30 flex items-center justify-center flex-shrink-0">
+              <span className="material-symbols-outlined fill text-primary text-xl">info</span>
+            </div>
+            <p className="text-[13px] leading-relaxed text-on-surface-variant pt-1.5">{category.instruction}</p>
           </div>
-          <h3 className="text-[22px] font-black tracking-tight leading-tight text-on-surface">{category.name}</h3>
         </div>
 
-        {/* Instruction card (blue) */}
-        <div className="rounded-2xl p-3 flex gap-2.5 items-start" style={{ background: "rgba(59,130,246,0.07)", border: "1px solid rgba(59,130,246,0.18)" }}>
-          <span className="material-symbols-outlined fill text-blue-400 flex-shrink-0 text-xl">info</span>
-          <p className="text-[13px] leading-relaxed text-blue-400">{category.instruction}</p>
-        </div>
+        {/* Conditional warnings */}
+        {isVermogensveld && (
+          <div className="bg-card rounded-2xl p-3 flex gap-2.5 items-start border border-outline-variant/10">
+            <span className="material-symbols-outlined fill text-yellow-500 text-lg flex-shrink-0">warning</span>
+            <span className="text-[12px] text-on-surface-variant leading-relaxed">Alleen fotograferen als <strong>vermogensveld aanwezig</strong> is bij dit station.</span>
+          </div>
+        )}
+        {isDaKast && (
+          <div className="bg-card rounded-2xl p-3 flex gap-2.5 items-start border border-outline-variant/10">
+            <span className="material-symbols-outlined fill text-yellow-500 text-lg flex-shrink-0">warning</span>
+            <span className="text-[12px] text-on-surface-variant leading-relaxed">Alleen fotograferen als <strong>DA-kast aanwezig</strong> is bij dit station.</span>
+          </div>
+        )}
 
-        {/* Example photos — pill toggle */}
+        {/* Tip toggle */}
+        {category.tip && (
+          <>
+            <button onClick={onToggleTip} className={`flex items-center gap-2 text-[13px] font-semibold transition-colors py-1 ${tipOpen ? "text-yellow-600" : "text-muted-foreground hover:text-yellow-600"}`}>
+              <div className="w-8 h-8 rounded-lg bg-yellow-50 flex items-center justify-center">
+                <span className={`material-symbols-outlined ${tipOpen ? "fill" : ""} text-lg text-yellow-500`}>lightbulb</span>
+              </div>
+              {tipOpen ? "Verberg tip" : "Toon tip"}
+            </button>
+            {tipOpen && (
+              <div className="bg-card rounded-2xl p-3 text-[12px] leading-relaxed text-on-surface-variant border border-outline-variant/10">
+                {category.tip}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Example photos */}
         {voorbeelden.length > 0 && (
           <div>
             <button
@@ -459,80 +494,37 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
               className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-full border text-[13px] font-semibold transition-all active:scale-95 ${
                 showVoorbeeld
                   ? 'bg-primary/8 border-primary/30 text-primary'
-                  : 'bg-surface-container border-outline-variant/30 text-muted-foreground hover:text-on-surface hover:border-outline-variant/60'
+                  : 'bg-card border-outline-variant/20 text-muted-foreground hover:text-on-surface'
               }`}
             >
-              <span className="material-symbols-outlined text-base">
-                {showVoorbeeld ? 'image_not_supported' : 'image'}
-              </span>
+              <span className="material-symbols-outlined text-base">{showVoorbeeld ? 'image_not_supported' : 'image'}</span>
               {showVoorbeeld ? 'Verberg voorbeeld' : 'Toon voorbeeld foto'}
-              <span className="material-symbols-outlined text-sm">
-                {showVoorbeeld ? 'expand_less' : 'expand_more'}
-              </span>
             </button>
             {showVoorbeeld && (
               <div className="flex gap-2.5 overflow-x-auto pb-2 mt-2 -mx-1 px-1 snap-x snap-mandatory">
                 {voorbeelden.map((v, i) => (
-                  <button
-                    key={v.id}
-                    onClick={() => setVoorbeeldLightbox(i)}
-                    className="flex-shrink-0 snap-start w-28 h-28 rounded-2xl overflow-hidden border border-outline-variant/20 shadow-sm active:scale-95 transition-transform"
-                  >
+                  <button key={v.id} onClick={() => setVoorbeeldLightbox(i)} className="flex-shrink-0 snap-start w-28 h-28 rounded-2xl overflow-hidden border border-outline-variant/15 shadow-sm active:scale-95 transition-transform">
                     <img src={v.url} alt="Voorbeeld" className="w-full h-full object-cover" />
                   </button>
                 ))}
               </div>
             )}
-            <Lightbox
-              open={voorbeeldLightbox !== null}
-              close={() => setVoorbeeldLightbox(null)}
-              slides={voorbeelden.map(v => ({ src: v.url }))}
-              index={voorbeeldLightbox ?? 0}
-            />
+            <Lightbox open={voorbeeldLightbox !== null} close={() => setVoorbeeldLightbox(null)} slides={voorbeelden.map(v => ({ src: v.url }))} index={voorbeeldLightbox ?? 0} />
           </div>
-        )}
-
-        {/* Conditional warnings */}
-        {isVermogensveld && (
-          <div className="rounded-2xl p-2.5 flex gap-2 text-[12px]" style={{ background: "rgba(234,179,8,0.07)", border: "1px solid rgba(234,179,8,0.2)", color: "#fbbf24" }}>
-            <span className="material-symbols-outlined fill text-yellow-400 text-base flex-shrink-0">warning</span>
-            <span>Alleen fotograferen als <strong>vermogensveld aanwezig</strong> is bij dit station.</span>
-          </div>
-        )}
-        {isDaKast && (
-          <div className="rounded-2xl p-2.5 flex gap-2 text-[12px]" style={{ background: "rgba(234,179,8,0.07)", border: "1px solid rgba(234,179,8,0.2)", color: "#fbbf24" }}>
-            <span className="material-symbols-outlined fill text-yellow-400 text-base flex-shrink-0">warning</span>
-            <span>Alleen fotograferen als <strong>DA-kast aanwezig</strong> is bij dit station.</span>
-          </div>
-        )}
-
-        {/* Tip toggle */}
-        {category.tip && (
-          <>
-            <button onClick={onToggleTip} className={`flex items-center gap-1.5 text-[13px] font-semibold transition-colors py-1 ${tipOpen ? "text-yellow-500" : "text-muted-foreground hover:text-yellow-500"}`}>
-              <span className={`material-symbols-outlined ${tipOpen ? "fill" : ""} text-lg`} style={{ color: "#eab308" }}>lightbulb</span>
-              {tipOpen ? "Verberg tip" : "Toon tip"}
-            </button>
-            {tipOpen && (
-              <div className="rounded-2xl p-2.5 text-[12px] leading-relaxed" style={{ background: "rgba(234,179,8,0.07)", border: "1px solid rgba(234,179,8,0.18)", color: "#fbbf24" }}>
-                {category.tip}
-              </div>
-            )}
-          </>
         )}
 
         {/* ── UPLOAD / PHOTOS ── */}
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/heic,image/webp" multiple className="hidden"
           onChange={(e) => { if (e.target.files) onUpload(e.target.files); e.target.value = ""; }} />
 
-        {/* Large upload zone — only when NO photos */}
+        {/* Large upload zone — dashed card like Saudia's camera zone */}
         {!hasPhotos && (
           <DropZone onFiles={onUpload} disabled={isUploading} onClick={() => fileRef.current?.click()}>
-            <div className="w-[56px] h-[56px] rounded-[16px] mx-auto mb-2 flex items-center justify-center bg-surface-container">
-              <span className="material-symbols-outlined fill text-[28px] text-muted-foreground">photo_camera</span>
+            <div className="w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center bg-primary-container/30">
+              <span className="material-symbols-outlined fill text-[32px] text-primary">add_a_photo</span>
             </div>
-            <div className="text-base font-bold mb-0.5 text-on-surface">Tik om foto's te maken</div>
-            <div className="text-[13px] text-muted-foreground">JPG · PNG · HEIC · max <strong className="text-primary">10MB</strong></div>
+            <div className="text-[16px] font-extrabold mb-1 text-on-surface">Tik om foto's te maken</div>
+            <div className="text-[13px] text-muted-foreground">Hoge resolutie aanbevolen voor verificatie.</div>
           </DropZone>
         )}
 
@@ -543,11 +535,11 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
           </div>
         )}
 
-        {/* Status badge + photo grid — only when photos exist */}
+        {/* Status badge + photo grid */}
         {hasPhotos && (
           <>
-            <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl" style={{ background: "rgba(28,176,80,0.08)", border: "1px solid rgba(28,176,80,0.2)" }}>
-              <span className="material-symbols-outlined fill text-lg" style={{ color: "#1cb050" }}>check_circle</span>
+            <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-primary-container/20 border border-primary/10">
+              <span className="material-symbols-outlined fill text-lg text-primary">check_circle</span>
               <span className="text-[13px] font-bold text-primary">{fotos.length} foto{fotos.length > 1 ? "'s" : ""} geüpload</span>
             </div>
 
@@ -568,11 +560,10 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
                   </AlertDialog>
                 </div>
               ))}
-              {/* Add more tile */}
               <button
                 onClick={() => fileRef.current?.click()}
                 disabled={isUploading}
-                className="aspect-square rounded-xl border-2 border-dashed border-outline-variant/40 bg-surface-container/50 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:border-primary/40 hover:text-primary active:scale-95 transition-all"
+                className="aspect-square rounded-xl border-2 border-dashed border-outline-variant/40 bg-card flex flex-col items-center justify-center gap-1 text-muted-foreground hover:border-primary/40 hover:text-primary active:scale-95 transition-all"
               >
                 <span className="material-symbols-outlined text-2xl">add_photo_alternate</span>
                 <span className="text-[10px] font-bold">Meer</span>
@@ -580,29 +571,43 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
             </div>
           </>
         )}
+
+        {/* Document details card — like Saudia's "Document Details" link */}
+        {hasPhotos && (
+          <button className="w-full bg-card rounded-2xl p-3.5 flex items-center gap-3 border border-outline-variant/10 shadow-sm active:scale-[0.98] transition-transform">
+            <div className="w-10 h-10 rounded-xl bg-primary-container/30 flex items-center justify-center flex-shrink-0">
+              <span className="material-symbols-outlined fill text-primary text-xl">description</span>
+            </div>
+            <div className="flex-1 text-left">
+              <div className="text-[14px] font-bold text-on-surface">Categorie details</div>
+              <div className="text-[12px] text-muted-foreground">{fotos.length} foto{fotos.length > 1 ? "'s" : ""} · Categorie {String(category.id).padStart(2, "0")}</div>
+            </div>
+            <span className="material-symbols-outlined text-muted-foreground/40">chevron_right</span>
+          </button>
+        )}
       </div>
 
-      {/* ── FIXED BOTTOM NAV — always pinned, 3 buttons ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-[60] bg-white/95 backdrop-blur-xl border-t border-black/[0.06] p-3 pb-[max(16px,env(safe-area-inset-bottom))]">
+      {/* ── FIXED BOTTOM NAV — 3 buttons like Saudia ── */}
+      <div className="fixed bottom-0 left-0 right-0 z-[60] bg-primary-container/15 backdrop-blur-xl border-t border-outline-variant/10 p-3 pb-[max(16px,env(safe-area-inset-bottom))]">
         <div className="flex gap-2 max-w-lg mx-auto">
           <button
             onClick={onPrev}
             disabled={step === 0}
-            className="flex-1 min-h-[52px] bg-surface-container rounded-2xl text-[15px] font-bold text-on-surface-variant active:scale-[0.97] transition-transform disabled:opacity-30 flex items-center justify-center gap-1.5"
+            className="flex items-center justify-center gap-1.5 min-h-[50px] px-5 rounded-2xl text-[14px] font-bold text-primary active:scale-[0.97] transition-transform disabled:opacity-30"
           >
-            <span className="material-symbols-outlined text-xl">arrow_back</span>Vorige
+            <span className="material-symbols-outlined text-lg">arrow_back</span>Vorige
           </button>
           <button
             onClick={() => { onSkip(); toast("Overgeslagen"); }}
-            className="flex-1 min-h-[52px] bg-surface-container/60 border border-outline-variant/30 rounded-2xl text-[13px] font-semibold text-muted-foreground active:scale-[0.97] transition-transform flex items-center justify-center"
+            className="min-h-[50px] px-4 text-[13px] font-semibold text-muted-foreground active:scale-[0.97] transition-transform"
           >
             NVT
           </button>
           <button
             onClick={onNext}
-            className="flex-[2] min-h-[52px] bg-gradient-to-br from-primary to-primary-light text-primary-foreground rounded-2xl text-[15px] font-bold shadow-lg shadow-primary/30 active:scale-[0.97] transition-transform flex items-center justify-center gap-1.5"
+            className="flex-1 min-h-[50px] bg-gradient-to-r from-primary to-primary-light text-primary-foreground rounded-2xl text-[15px] font-bold shadow-lg shadow-primary/25 active:scale-[0.97] transition-transform flex items-center justify-center gap-1.5"
           >
-            {step === total - 1 ? "Afronden" : "Volgende"}<span className="material-symbols-outlined text-xl">arrow_forward</span>
+            {step === total - 1 ? "Afronden" : "Volgende"}<span className="material-symbols-outlined text-lg">arrow_forward</span>
           </button>
         </div>
       </div>
