@@ -541,25 +541,15 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
           </div>
         )}
 
-        {/* Status badge + add more button */}
+        {/* Status badge */}
         {hasPhotos && (
-          <div className="flex items-center gap-2">
-            <div className="flex-1 flex items-center gap-2 px-3.5 py-2.5 rounded-xl" style={{ background: "rgba(28,176,80,0.08)", border: "1px solid rgba(28,176,80,0.2)" }}>
-              <span className="material-symbols-outlined fill text-xl" style={{ color: "#1cb050" }}>check_circle</span>
-              <span className="text-[13px] font-bold text-primary">{fotos.length} foto{fotos.length > 1 ? "'s" : ""} geüpload</span>
-            </div>
-            <button
-              onClick={() => fileRef.current?.click()}
-              disabled={isUploading}
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary-container/30 text-primary text-[13px] font-bold hover:bg-primary-container/50 active:scale-95 transition-all flex-shrink-0"
-            >
-              <span className="material-symbols-outlined text-lg">add_photo_alternate</span>
-              Meer
-            </button>
+          <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl" style={{ background: "rgba(28,176,80,0.08)", border: "1px solid rgba(28,176,80,0.2)" }}>
+            <span className="material-symbols-outlined fill text-xl" style={{ color: "#1cb050" }}>check_circle</span>
+            <span className="text-[13px] font-bold text-primary">{fotos.length} foto{fotos.length > 1 ? "'s" : ""} geüpload</span>
           </div>
         )}
 
-        {/* Photo thumbnail grid — 3 columns (matches reference) */}
+        {/* Photo thumbnail grid + add more tile */}
         {hasPhotos && (
           <div className="grid grid-cols-3 gap-1.5">
             {fotos.map((foto, i) => (
@@ -578,6 +568,15 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
                 </AlertDialog>
               </div>
             ))}
+            {/* Add more tile */}
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={isUploading}
+              className="aspect-square rounded-xl border-2 border-dashed border-outline-variant/40 bg-surface-container/50 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:border-primary/40 hover:text-primary active:scale-95 transition-all"
+            >
+              <span className="material-symbols-outlined text-2xl">add_photo_alternate</span>
+              <span className="text-[10px] font-bold">Meer</span>
+            </button>
           </div>
         )}
 
