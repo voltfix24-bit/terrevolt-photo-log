@@ -89,6 +89,14 @@ function useSkippedCategories(stationId: string | undefined) {
     });
   }, [key]);
 
+  const addSkip = useCallback((catName: string) => {
+    setSkipped(prev => prev.includes(catName) ? prev : [...prev, catName]);
+  }, [setSkipped]);
+
+  const removeSkip = useCallback((catName: string) => {
+    setSkipped(prev => prev.filter(n => n !== catName));
+  }, [setSkipped]);
+
   const toggleSkip = useCallback((catName: string) => {
     setSkipped(prev =>
       prev.includes(catName)
@@ -99,7 +107,7 @@ function useSkippedCategories(stationId: string | undefined) {
 
   const isSkipped = useCallback((catName: string) => skipped.includes(catName), [skipped]);
 
-  return { skipped, toggleSkip, isSkipped };
+  return { skipped, addSkip, removeSkip, toggleSkip, isSkipped };
 }
 
 /* ==================== CATEGORY ROW ==================== */
@@ -154,6 +162,330 @@ function CategoryRow({ cat, fotos, isLast, isSkipped, onOpen, highlight }: {
   );
 }
 
+/* ==================== WIZARD VIEW ==================== */
+interface WizardViewProps {
+  startIndex: number;
+  onClose: () => void;
+  onSkip: (catName: string) => void;
+  onUnskip: (catName: string) => void;
+  skipped: string[];
+  station: { vermogensveld: boolean | null; da_kast: boolean | null; naam_msr: string };
+  fotos: FotoRow[];
+  fotosByCategorie: (cat: string) => FotoRow[];
+  isUploading: string | null;
+  uploadProgress: Record<string, number>;
+  onUpload: (cat: string, files: FileList) => void;
+  onDelete: (id: string, path: string) => void;
+  onClickThumb: (cat: string, idx: number) => void;
+  onOpenPdf: () => void;
+  filledCount: number;
+  voorbeelden: { id: string; categorie: string; url: string }[];
+}
+
+function WizardView({
+  startIndex, onClose, onSkip, onUnskip, skipped, station,
+  fotosByCategorie, isUploading, uploadProgress,
+  onUpload, onDelete, onClickThumb, onOpenPdf, filledCount, voorbeelden,
+}: WizardViewProps) {
+  const [currentIndex, setCurrentIndex] = useState(startIndex);
+  const [showComplete, setShowComplete] = useState(false);
+  const [tipOpen, setTipOpen] = useState(false);
+  const [showVoorbeeld, setShowVoorbeeld] = useState(false);
+  const [voorbeeldLightbox, setVoorbeeldLightbox] = useState<number | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const cat = CATEGORIES[currentIndex];
+  const catFotos = cat ? fotosByCategorie(cat.name) : [];
+  const isCatSkipped = cat ? skipped.includes(cat.name) : false;
+  const hasPhotos = catFotos.length > 0;
+  const section = cat ? SECTIONS.find(s => s.id === cat.section) : null;
+  const catVoorbeelden = cat ? voorbeelden.filter(v => v.categorie === cat.name) : [];
+
+  const isVermogensveld = cat?.id === 14;
+  const isDaKast = cat?.id === 15;
+
+  const incompleteCategories = CATEGORIES.filter(c =>
+    fotosByCategorie(c.name).length === 0 && !skipped.includes(c.name)
+  );
+
+  const goNext = () => {
+    if (currentIndex < CATEGORIES.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+      setTipOpen(false);
+      setShowVoorbeeld(false);
+    } else {
+      setShowComplete(true);
+    }
+  };
+
+  const goPrev = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1);
+      setTipOpen(false);
+      setShowVoorbeeld(false);
+    }
+  };
+
+  const handleSkip = () => {
+    if (cat) {
+      onSkip(cat.name);
+      goNext();
+    }
+  };
+
+  const openAt = (c: Category) => {
+    const idx = CATEGORIES.findIndex(x => x.id === c.id);
+    setCurrentIndex(idx);
+    setShowComplete(false);
+    setTipOpen(false);
+    setShowVoorbeeld(false);
+  };
+
+  if (showComplete || !cat) {
+    return (
+      <div className="fixed inset-0 z-[70] bg-background flex flex-col animate-fade-up">
+        <div className="shrink-0 px-5 pt-[max(16px,env(safe-area-inset-top))] pb-3 border-b border-outline-variant/10">
+          <button onClick={onClose} className="flex items-center gap-1 text-text-muted hover:text-primary-hover text-[13px] font-medium active:scale-95 transition-all">
+            <span className="material-symbols-rounded text-[20px]">close</span>
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-4 pt-4 pb-8">
+          <div className="flex flex-col items-center py-12 text-center max-w-sm mx-auto">
+            <div className="w-20 h-20 bg-primary rounded-3xl flex items-center justify-center mb-5 shadow-xl shadow-primary/25">
+              <span className="material-symbols-rounded text-primary-foreground text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+            </div>
+            <h2 className="font-display text-2xl font-black mb-2">Doorlopen!</h2>
+            <p className="text-muted-foreground text-sm mb-6">
+              {filledCount} van {CATEGORIES.length} categorieën ingevuld
+            </p>
+
+            {incompleteCategories.length > 0 && (
+              <div className="w-full bg-orange/[0.08] border border-orange/20 rounded-2xl p-4 mb-5 text-left">
+                <div className="text-xs font-black uppercase tracking-wider text-orange mb-3">● Nog open ({incompleteCategories.length})</div>
+                {incompleteCategories.map(c => (
+                  <button key={c.id} onClick={() => openAt(c)} className="w-full flex items-center gap-3 py-2.5 text-left border-b border-orange/10 last:border-0">
+                    <span className="material-symbols-rounded text-orange text-lg">photo_camera</span>
+                    <span className="text-sm font-semibold text-on-surface flex-1">{c.name}</span>
+                    <span className="material-symbols-rounded text-muted-foreground/40">chevron_right</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {skipped.length > 0 && (
+              <div className="w-full bg-surface-container border border-outline-variant/20 rounded-2xl p-4 mb-5 text-left">
+                <div className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-3">— Overgeslagen ({skipped.length})</div>
+                {skipped.map(catName => (
+                  <button key={catName} onClick={() => {
+                    onUnskip(catName);
+                    const c = CATEGORIES.find(x => x.name === catName);
+                    if (c) openAt(c);
+                  }} className="w-full flex items-center gap-3 py-2.5 text-left border-b border-outline-variant/10 last:border-0">
+                    <span className="material-symbols-rounded text-muted-foreground text-lg">remove</span>
+                    <span className="text-sm font-medium text-muted-foreground flex-1 line-through">{catName}</span>
+                    <span className="text-xs text-primary font-semibold">Alsnog invullen</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2.5 w-full">
+              {incompleteCategories.length === 0 ? (
+                <button onClick={() => { onClose(); onOpenPdf(); }} className="w-full min-h-[52px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-2xl font-display font-bold text-[15px] shadow-[0_6px_20px_-4px_rgba(0,100,47,0.35)] active:scale-[0.97] transition-all flex items-center justify-center gap-2">
+                  <span className="material-symbols-rounded" style={{ fontVariationSettings: "'FILL' 1" }}>picture_as_pdf</span>
+                  PDF downloaden
+                </button>
+              ) : (
+                <button onClick={() => openAt(incompleteCategories[0])} className="w-full min-h-[52px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-2xl font-display font-bold text-[15px] shadow-[0_6px_20px_-4px_rgba(0,100,47,0.35)] active:scale-[0.97] transition-all flex items-center justify-center gap-2">
+                  <span className="material-symbols-rounded">arrow_forward</span>
+                  Nog {incompleteCategories.length} open invullen
+                </button>
+              )}
+              <button onClick={onClose} className="w-full min-h-[48px] bg-surface-container rounded-2xl font-semibold text-[14px] text-muted-foreground active:scale-[0.98]">
+                Terug naar overzicht
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-[70] bg-background flex flex-col animate-fade-up">
+      {/* Header */}
+      <div className="shrink-0 bg-surface px-5 pt-[max(16px,env(safe-area-inset-top))] pb-3 border-b border-outline-variant/10">
+        <div className="flex items-center gap-3 mb-2">
+          <button onClick={onClose} className="flex items-center gap-1 text-text-muted hover:text-primary-hover text-[13px] font-medium active:scale-95 transition-all">
+            <span className="material-symbols-rounded text-[20px]">close</span>
+          </button>
+          <div className="flex-1 text-center">
+            <span className="text-xs font-bold text-muted-foreground">{currentIndex + 1} / {CATEGORIES.length}</span>
+          </div>
+          {!hasPhotos && !isCatSkipped && (
+            <button onClick={handleSkip} className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-text-faint hover:text-text-muted active:scale-[0.97] transition-all">
+              NVT
+            </button>
+          )}
+          {(hasPhotos || isCatSkipped) && <div className="w-12" />}
+        </div>
+
+        {/* Progress bar */}
+        <div className="h-1 bg-surface-container rounded-full overflow-hidden mb-3">
+          <div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${((currentIndex + 1) / CATEGORIES.length) * 100}%` }} />
+        </div>
+
+        {section && (
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-2 h-2 rounded-full" style={{ background: section.color }} />
+            <span className="text-[11px] font-bold uppercase tracking-[0.15em]" style={{ color: section.color }}>{section.label}</span>
+          </div>
+        )}
+        <h2 className="font-display text-[20px] font-extrabold tracking-tight leading-tight text-text-primary">{cat.name}</h2>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-32 space-y-3" style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
+        {/* Status badges */}
+        {hasPhotos && (
+          <div className="flex items-center gap-2.5 px-5 py-3 rounded-2xl bg-primary/5">
+            <span className="material-symbols-rounded text-[18px] text-primary/70">check_circle</span>
+            <span className="text-[13px] font-semibold text-primary/80">✓ Al ingevuld — {catFotos.length} foto{catFotos.length > 1 ? "'s" : ""}</span>
+          </div>
+        )}
+        {isCatSkipped && !hasPhotos && (
+          <div className="flex items-center gap-2.5 px-5 py-3 rounded-2xl bg-surface-high">
+            <span className="material-symbols-rounded text-[18px] text-text-faint">remove</span>
+            <span className="text-[13px] font-semibold text-text-faint">— Overgeslagen (NVT)</span>
+          </div>
+        )}
+
+        {/* Instruction */}
+        <div className="bg-primary/[0.06] rounded-2xl border border-primary/12">
+          <button onClick={() => setTipOpen(!tipOpen)} className="w-full flex items-center gap-3 px-5 py-4 text-left active:scale-[0.99] transition-transform">
+            <div className="w-8 h-8 rounded-xl bg-primary/8 flex items-center justify-center flex-shrink-0">
+              <span className="material-symbols-rounded text-primary text-[18px]">info</span>
+            </div>
+            <span className="text-[13px] font-semibold text-on-surface-variant/70 flex-1">Instructie bekijken</span>
+            <span className="material-symbols-rounded text-[18px] text-on-surface-variant/40">{tipOpen ? 'expand_less' : 'expand_more'}</span>
+          </button>
+          {tipOpen && (
+            <div className="px-5 pb-4 pt-0">
+              <p className="text-[13px] leading-[1.7] text-on-surface-variant">{cat.instruction}</p>
+              {cat.tip && (
+                <p className="mt-3 text-[12px] leading-[1.6] text-on-surface-variant/50 border-t border-primary/5 pt-3">{cat.tip}</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Conditional warnings */}
+        {isVermogensveld && (
+          <div className="rounded-2xl px-5 py-4 flex gap-3 items-start bg-amber-50/60 border border-amber-200/30">
+            <span className="material-symbols-rounded text-amber-500/70 text-[20px] flex-shrink-0 mt-0.5">error</span>
+            <span className="text-[13px] text-on-surface-variant leading-relaxed">Alleen fotograferen als <strong>vermogensveld aanwezig</strong> is.</span>
+          </div>
+        )}
+        {isDaKast && (
+          <div className="rounded-2xl px-5 py-4 flex gap-3 items-start bg-amber-50/60 border border-amber-200/30">
+            <span className="material-symbols-rounded text-amber-500/70 text-[20px] flex-shrink-0 mt-0.5">error</span>
+            <span className="text-[13px] text-on-surface-variant leading-relaxed">Alleen fotograferen als <strong>DA-kast aanwezig</strong> is.</span>
+          </div>
+        )}
+
+        {/* Example photos */}
+        {catVoorbeelden.length > 0 && (
+          <div>
+            <button onClick={() => setShowVoorbeeld(!showVoorbeeld)} className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-[12px] font-semibold transition-all active:scale-95 ${showVoorbeeld ? 'bg-primary/8 text-primary' : 'bg-surface-high text-text-muted hover:text-primary hover:bg-primary/[0.06]'}`}>
+              <span className="material-symbols-rounded text-[16px]">{showVoorbeeld ? 'visibility_off' : 'visibility'}</span>
+              {showVoorbeeld ? 'Verberg voorbeeld' : 'Voorbeeld bekijken'}
+            </button>
+            {showVoorbeeld && (
+              <div className="flex gap-2.5 overflow-x-auto pb-2 mt-3 -mx-1 px-1 snap-x snap-mandatory">
+                {catVoorbeelden.map((v, i) => (
+                  <button key={v.id} onClick={() => setVoorbeeldLightbox(i)} className="flex-shrink-0 snap-start w-28 h-28 rounded-2xl overflow-hidden border border-outline-variant/10 active:scale-95 transition-transform">
+                    <img src={v.url} alt="Voorbeeld" className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+            <Lightbox open={voorbeeldLightbox !== null} close={() => setVoorbeeldLightbox(null)} slides={catVoorbeelden.map(v => ({ src: v.url }))} index={voorbeeldLightbox ?? 0} />
+          </div>
+        )}
+
+        {/* Hidden file input */}
+        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/heic,image/webp" multiple className="hidden"
+          onChange={(e) => { if (e.target.files) onUpload(cat.name, e.target.files); e.target.value = ""; }} />
+
+        {/* Upload zone — show when no photos */}
+        {!hasPhotos && (
+          <DropZone onFiles={(files) => onUpload(cat.name, files)} disabled={isUploading === cat.name} onClick={() => fileRef.current?.click()}>
+            <div className="flex flex-col items-center justify-center py-6">
+              <div className="w-16 h-16 rounded-full bg-primary/6 flex items-center justify-center mb-5">
+                <span className="material-symbols-rounded text-[32px] text-primary/70">photo_camera</span>
+              </div>
+              <div className="font-display text-[17px] font-extrabold text-text-primary mb-1.5">Tik om foto's te maken</div>
+              <div className="text-[13px] text-text-muted leading-relaxed text-center max-w-[240px]">Hoge resolutie aanbevolen voor verificatie.</div>
+            </div>
+          </DropZone>
+        )}
+
+        {/* Upload progress */}
+        {isUploading === cat.name && uploadProgress[cat.name] !== undefined && (
+          <div className="h-[3px] overflow-hidden rounded-full bg-on-surface/6">
+            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${uploadProgress[cat.name]}%` }} />
+          </div>
+        )}
+
+        {/* Photos grid */}
+        {hasPhotos && (
+          <div className="grid grid-cols-3 gap-2">
+            {catFotos.map((foto, i) => (
+              <div key={foto.id} className="relative aspect-square rounded-2xl bg-surface-container overflow-hidden">
+                <button onClick={() => onClickThumb(cat.name, i)} className="w-full h-full">
+                  <img src={foto.url} alt="" className="w-full h-full object-cover" />
+                </button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <button className="absolute top-1.5 right-1.5 w-6 h-6 bg-on-surface/60 backdrop-blur-sm rounded-full text-white flex items-center justify-center active:scale-90 transition-transform">
+                      <span className="material-symbols-rounded text-[14px]">close</span>
+                    </button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader><AlertDialogTitle>Foto verwijderen?</AlertDialogTitle><AlertDialogDescription>Deze actie kan niet ongedaan worden gemaakt.</AlertDialogDescription></AlertDialogHeader>
+                    <AlertDialogFooter><AlertDialogCancel>Annuleren</AlertDialogCancel><AlertDialogAction onClick={() => onDelete(foto.id, foto.storage_path)}>Verwijderen</AlertDialogAction></AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            ))}
+            <button onClick={() => fileRef.current?.click()} disabled={isUploading === cat.name} className="aspect-square rounded-2xl border-2 border-dashed border-outline-variant/20 bg-transparent flex flex-col items-center justify-center gap-1.5 text-text-faint hover:border-primary/30 hover:text-primary hover:bg-primary/[0.04] active:scale-95 transition-all">
+              <span className="material-symbols-rounded text-[24px]">add</span>
+              <span className="text-[10px] font-semibold">Meer</span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Bottom navigation */}
+      <div className="fixed bottom-0 left-0 right-0 z-[75] bg-surface-white/90 backdrop-blur-2xl border-t border-outline-variant/10 px-5 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
+        <div className="flex items-center gap-3 max-w-3xl mx-auto">
+          <button onClick={goPrev} disabled={currentIndex === 0} className="min-h-[48px] px-4 bg-surface-container rounded-2xl font-semibold text-[14px] text-muted-foreground active:scale-[0.97] transition-all disabled:opacity-30 flex items-center gap-1.5">
+            <span className="material-symbols-rounded text-[18px]">arrow_back</span>
+            Vorige
+          </button>
+          <button onClick={goNext} className="flex-1 min-h-[48px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-2xl font-display text-[15px] font-bold active:scale-[0.97] transition-all flex items-center justify-center gap-1.5">
+            {currentIndex < CATEGORIES.length - 1 ? (
+              <>Volgende <span className="material-symbols-rounded text-[18px]">arrow_forward</span></>
+            ) : (
+              <>Afronden <span className="material-symbols-rounded text-[18px]">check</span></>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ==================== MAIN COMPONENT ==================== */
 export default function StationDetail() {
   const { id } = useParams<{ id: string }>();
@@ -166,11 +498,12 @@ export default function StationDetail() {
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [editOpen, setEditOpen] = useState(false);
   const [openSections, setOpenSections] = useState<string[]>([]);
-  const [openCategory, setOpenCategory] = useState<Category | null>(null);
   const [tipOpen, setTipOpen] = useState<Record<number, boolean>>({});
   const [highlightCatId, setHighlightCatId] = useState<number | null>(null);
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [wizardStartIndex, setWizardStartIndex] = useState(0);
   const { data: voorbeelden } = useVoorbeelden();
-  const { skipped, toggleSkip, isSkipped } = useSkippedCategories(id);
+  const { skipped, addSkip, removeSkip, isSkipped } = useSkippedCategories(id);
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const toggleSection = useCallback((sectionId: string) => {
@@ -274,6 +607,12 @@ export default function StationDetail() {
     if (w) { w.document.write(html); w.document.close(); }
   };
 
+  const openWizardAt = useCallback((cat: Category) => {
+    const idx = CATEGORIES.findIndex(c => c.id === cat.id);
+    setWizardStartIndex(idx);
+    setWizardOpen(true);
+  }, []);
+
   // Find next incomplete category across ALL sections
   const nextIncomplete = useMemo(() => {
     for (const cat of CATEGORIES) {
@@ -321,29 +660,31 @@ export default function StationDetail() {
       <Lightbox open={lightboxOpen} close={() => setLightboxOpen(false)} slides={lightboxSlides} index={lightboxIndex} />
       <EditStationDialog station={station} open={editOpen} onOpenChange={setEditOpen} onSaved={() => { queryClient.invalidateQueries({ queryKey: ["station", id] }); queryClient.invalidateQueries({ queryKey: ["stations"] }); }} />
 
-      {/* ── Category Detail Overlay ── */}
-      {openCategory && (
-        <CategoryDetailView
+      {/* ── Wizard Overlay ── */}
+      {wizardOpen && (
+        <WizardView
+          startIndex={wizardStartIndex}
+          onClose={() => setWizardOpen(false)}
+          onSkip={addSkip}
+          onUnskip={removeSkip}
+          skipped={skipped}
           station={station}
-          category={openCategory}
-          fotos={fotosByCategorie(openCategory.name)}
-          isUploading={uploadingCat === openCategory.name}
-          uploadProgress={uploadProgress[openCategory.name]}
-          tipOpen={!!tipOpen[openCategory.id]}
-          onToggleTip={() => setTipOpen(prev => ({ ...prev, [openCategory.id]: !prev[openCategory.id] }))}
-          onUpload={(files) => handleUpload(openCategory.name, files)}
+          fotos={fotos ?? []}
+          fotosByCategorie={fotosByCategorie}
+          isUploading={uploadingCat}
+          uploadProgress={uploadProgress}
+          onUpload={handleUpload}
           onDelete={handleDelete}
-          onClickThumb={(idx) => openLightbox(openCategory.name, idx)}
-          onClose={() => setOpenCategory(null)}
-          onSkip={() => { toggleSkip(openCategory.name); setOpenCategory(null); toast("Overgeslagen"); }}
-          voorbeelden={voorbeelden?.filter(v => v.categorie === openCategory.name) ?? []}
+          onClickThumb={openLightbox}
+          onOpenPdf={openPdf}
+          filledCount={filledCount}
+          voorbeelden={voorbeelden ?? []}
         />
       )}
 
       <main className="pt-20 pb-0 px-4 max-w-3xl mx-auto animate-fade-up">
         {/* ── 1. HERO CARD ── */}
         <div className="bg-card rounded-3xl p-5 shadow-sm border border-outline-variant/10 mb-4">
-          {/* Top row: station name + type badge + actions */}
           <div className="flex items-start justify-between gap-3 mb-4">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1.5">
@@ -362,19 +703,12 @@ export default function StationDetail() {
                   </span>
                 )}
                 {station.behuizingsnummer && (
-                  <span className="text-xs text-muted-foreground font-mono">
-                    {station.behuizingsnummer}
-                  </span>
+                  <span className="text-xs text-muted-foreground font-mono">{station.behuizingsnummer}</span>
                 )}
               </div>
-              <h2 className="font-display text-[22px] font-extrabold tracking-tight text-on-surface leading-tight">
-                {station.naam_msr}
-              </h2>
-              <p className="text-xs text-muted-foreground mt-1">
-                {station.datum} · {station.ingevuld_door}
-              </p>
+              <h2 className="font-display text-[22px] font-extrabold tracking-tight text-on-surface leading-tight">{station.naam_msr}</h2>
+              <p className="text-xs text-muted-foreground mt-1">{station.datum} · {station.ingevuld_door}</p>
             </div>
-            {/* Actions */}
             <div className="flex gap-1.5 flex-shrink-0">
               <button onClick={openPdf} className="p-2.5 bg-surface-white border border-outline-variant/20 rounded-xl shadow-sm hover:shadow-md hover:border-primary/20 transition-all active:scale-95 text-text-secondary hover:text-primary">
                 <span className="material-symbols-rounded text-lg">picture_as_pdf</span>
@@ -384,25 +718,17 @@ export default function StationDetail() {
               </button>
             </div>
           </div>
-          {/* Progress bar */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-xs font-semibold text-muted-foreground">Voortgang</span>
               <span className="text-xs font-extrabold text-primary font-mono">{filledCount} / {CATEGORIES.length}</span>
             </div>
             <div className="h-2 bg-surface-container rounded-full overflow-hidden">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-primary to-primary-light transition-all duration-700 ease-out"
-                style={{ width: `${pct}%` }}
-              />
+              <div className="h-full rounded-full bg-gradient-to-r from-primary to-primary-light transition-all duration-700 ease-out" style={{ width: `${pct}%` }} />
             </div>
             <div className="flex justify-between mt-1.5">
-              <span className="text-[11px] text-muted-foreground">
-                {pct === 100 ? "✓ Volledig afgerond" : `${pct}% compleet`}
-              </span>
-              <span className="text-[11px] text-muted-foreground">
-                {fotos?.length ?? 0} foto's
-              </span>
+              <span className="text-[11px] text-muted-foreground">{pct === 100 ? "✓ Volledig afgerond" : `${pct}% compleet`}</span>
+              <span className="text-[11px] text-muted-foreground">{fotos?.length ?? 0} foto's</span>
             </div>
           </div>
         </div>
@@ -413,7 +739,7 @@ export default function StationDetail() {
             const doneCats = cats.filter(c => fotosByCategorie(c.name).length > 0);
             const openCats = cats.filter(c => fotosByCategorie(c.name).length === 0 && !isSkipped(c.name));
             const skippedCats = cats.filter(c => fotosByCategorie(c.name).length === 0 && isSkipped(c.name));
-            const isComplete = doneCats.length === cats.length;
+            const isComplete = openCats.length === 0 && skippedCats.length === 0;
             const isSectionOpen = openSections.includes(section.id);
             const totalFotosInSection = cats.reduce((sum, c) => sum + fotosByCategorie(c.name).length, 0);
             const openCount = openCats.length;
@@ -428,11 +754,7 @@ export default function StationDetail() {
                     : 'bg-card border border-outline-variant/15 shadow-sm'
                 }`}
               >
-                {/* Section header */}
-                <button
-                  onClick={() => toggleSection(section.id)}
-                  className="w-full flex items-center gap-3 px-4 py-4 text-left"
-                >
+                <button onClick={() => toggleSection(section.id)} className="w-full flex items-center gap-3 px-4 py-4 text-left">
                   <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${
                     isComplete
                       ? 'bg-primary shadow-sm shadow-primary/30'
@@ -441,17 +763,18 @@ export default function StationDetail() {
                     {isComplete ? (
                       <span className="material-symbols-rounded text-lg text-primary-foreground" style={{ fontVariationSettings: "'FILL' 1" }}>check</span>
                     ) : (
-                      <span className="text-sm font-extrabold text-on-surface">{openCount}</span>
+                      <span className="text-sm font-extrabold text-on-surface">{openCount + skippedCats.length}</span>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className={`font-display font-extrabold text-[15px] ${isComplete ? 'text-primary' : 'text-on-surface'}`}>
-                      {section.label}
-                    </div>
+                    <div className={`font-display font-extrabold text-[15px] ${isComplete ? 'text-primary' : 'text-on-surface'}`}>{section.label}</div>
                     <div className={`text-xs font-semibold mt-0.5 ${isComplete ? 'text-primary/60' : 'text-muted-foreground'}`}>
                       {doneCats.length} / {cats.length} klaar
                       {!isComplete && openCount > 0 && (
                         <span className="text-orange font-bold ml-2">· {openCount} open</span>
+                      )}
+                      {!isComplete && skippedCats.length > 0 && (
+                        <span className="text-text-faint ml-2">· {skippedCats.length} NVT</span>
                       )}
                       {isComplete && <span> · {totalFotosInSection} foto's</span>}
                     </div>
@@ -461,55 +784,45 @@ export default function StationDetail() {
                   </span>
                 </button>
 
-                {/* Expanded content */}
                 {isSectionOpen && (
                   <div className={`border-t ${isComplete ? 'border-primary/15 bg-primary/[0.03]' : 'border-outline-variant/10'}`}>
-                    {/* Open items first */}
                     {openCats.length > 0 && (
                       <>
                         <div className="px-4 pt-3 pb-1.5 flex items-center gap-1.5">
                           <div className="w-1.5 h-1.5 rounded-full bg-orange flex-shrink-0" />
-                          <span className="text-[11px] font-black uppercase tracking-wider text-orange">
-                            Nog te doen ({openCats.length})
-                          </span>
+                          <span className="text-[11px] font-black uppercase tracking-wider text-orange">Nog te doen ({openCats.length})</span>
                         </div>
                         {openCats.map((cat, idx) => (
-                          <CategoryRow key={cat.id} cat={cat} fotos={[]} isLast={idx === openCats.length - 1 && doneCats.length === 0 && skippedCats.length === 0} onOpen={() => setOpenCategory(cat)} highlight={highlightCatId === cat.id} />
+                          <CategoryRow key={cat.id} cat={cat} fotos={[]} isLast={idx === openCats.length - 1 && doneCats.length === 0 && skippedCats.length === 0} onOpen={() => openWizardAt(cat)} highlight={highlightCatId === cat.id} />
                         ))}
                       </>
                     )}
 
-                    {/* Divider */}
                     {openCats.length > 0 && (doneCats.length > 0 || skippedCats.length > 0) && (
                       <div className="mx-4 my-1 h-px bg-outline-variant/20" />
                     )}
 
-                    {/* Done items */}
                     {doneCats.length > 0 && (
                       <>
                         <div className="px-4 pt-2 pb-1.5 flex items-center gap-1.5">
                           <div className="w-1.5 h-1.5 rounded-full bg-primary/60 flex-shrink-0" />
-                          <span className="text-[11px] font-black uppercase tracking-wider text-primary/60">
-                            Klaar ({doneCats.length})
-                          </span>
+                          <span className="text-[11px] font-black uppercase tracking-wider text-primary/60">Klaar ({doneCats.length})</span>
                         </div>
                         {doneCats.map((cat, idx) => (
-                          <CategoryRow key={cat.id} cat={cat} fotos={fotosByCategorie(cat.name)} isLast={idx === doneCats.length - 1 && skippedCats.length === 0} onOpen={() => setOpenCategory(cat)} highlight={highlightCatId === cat.id} />
+                          <CategoryRow key={cat.id} cat={cat} fotos={fotosByCategorie(cat.name)} isLast={idx === doneCats.length - 1 && skippedCats.length === 0} onOpen={() => openWizardAt(cat)} highlight={highlightCatId === cat.id} />
                         ))}
                       </>
                     )}
 
-                    {/* Skipped items */}
                     {skippedCats.length > 0 && (
                       <>
                         {(openCats.length > 0 || doneCats.length > 0) && <div className="mx-4 my-1 h-px bg-outline-variant/15" />}
-                        <div className="px-4 pt-2 pb-1.5">
-                          <span className="text-[10px] font-black uppercase tracking-wider text-text-faint">
-                            Overgeslagen ({skippedCats.length})
-                          </span>
+                        <div className="px-4 pt-2 pb-1.5 flex items-center gap-1.5">
+                          <div className="w-1.5 h-1.5 rounded-full bg-text-faint flex-shrink-0" />
+                          <span className="text-[11px] font-black uppercase tracking-wider text-text-faint">Overgeslagen ({skippedCats.length})</span>
                         </div>
                         {skippedCats.map((cat, idx) => (
-                          <CategoryRow key={cat.id} cat={cat} fotos={[]} isLast={idx === skippedCats.length - 1} isSkipped onOpen={() => setOpenCategory(cat)} highlight={highlightCatId === cat.id} />
+                          <CategoryRow key={cat.id} cat={cat} fotos={[]} isLast={idx === skippedCats.length - 1} isSkipped onOpen={() => openWizardAt(cat)} highlight={highlightCatId === cat.id} />
                         ))}
                       </>
                     )}
@@ -521,18 +834,11 @@ export default function StationDetail() {
         </div>
       </main>
 
-      {/* ── 5. BOTTOM CTA ── */}
-      {nextIncomplete && !openCategory && (
+      {/* ── BOTTOM CTA ── */}
+      {nextIncomplete && !wizardOpen && (
         <div className="fixed bottom-0 left-0 right-0 z-[50] p-4 bg-surface-white/95 backdrop-blur-xl border-t border-outline-variant/10 pb-[max(16px,env(safe-area-inset-bottom))]">
           <button
-            onClick={() => {
-              setOpenSections(prev => prev.includes(nextIncomplete.section) ? prev : [...prev, nextIncomplete.section]);
-              setHighlightCatId(nextIncomplete.id);
-              setTimeout(() => {
-                setHighlightCatId(null);
-                setOpenCategory(nextIncomplete);
-              }, 300);
-            }}
+            onClick={() => openWizardAt(nextIncomplete)}
             className="w-full max-w-3xl mx-auto min-h-[52px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-2xl font-display font-bold text-[15px] shadow-[0_6px_20px_-4px_rgba(0,100,47,0.35)] active:scale-[0.97] transition-all flex items-center justify-center gap-2.5"
           >
             <span className="material-symbols-rounded text-[20px]">arrow_forward</span>
@@ -540,220 +846,17 @@ export default function StationDetail() {
           </button>
         </div>
       )}
-      {allDone && !openCategory && (
+      {allDone && !wizardOpen && (
         <div className="fixed bottom-0 left-0 right-0 z-[50] p-4 bg-surface-white/95 backdrop-blur-xl border-t border-outline-variant/10 pb-[max(16px,env(safe-area-inset-bottom))]">
           <button
             onClick={openPdf}
             className="w-full max-w-3xl mx-auto min-h-[52px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-2xl font-display font-bold text-[15px] shadow-[0_6px_20px_-4px_rgba(0,100,47,0.35)] active:scale-[0.97] transition-all flex items-center justify-center gap-2.5"
           >
             <span className="material-symbols-rounded text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>picture_as_pdf</span>
-            Alles klaar — PDF downloaden
+            ✓ Alles klaar — PDF downloaden
           </button>
         </div>
       )}
-    </div>
-  );
-}
-
-/* ==================== CATEGORY DETAIL VIEW (Full-screen overlay) ==================== */
-
-interface CategoryDetailViewProps {
-  station: { vermogensveld: boolean | null; da_kast: boolean | null; naam_msr: string };
-  category: Category;
-  fotos: FotoRow[];
-  isUploading: boolean;
-  uploadProgress?: number;
-  tipOpen: boolean;
-  onToggleTip: () => void;
-  onUpload: (files: FileList) => void;
-  onDelete: (id: string, path: string) => void;
-  onClickThumb: (idx: number) => void;
-  onClose: () => void;
-  onSkip: () => void;
-  voorbeelden: { id: string; url: string }[];
-}
-
-function CategoryDetailView({ station, category, fotos, isUploading, uploadProgress, tipOpen, onToggleTip, onUpload, onDelete, onClickThumb, onClose, onSkip, voorbeelden }: CategoryDetailViewProps) {
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [showVoorbeeld, setShowVoorbeeld] = useState(false);
-  const [voorbeeldLightbox, setVoorbeeldLightbox] = useState<number | null>(null);
-  const isVermogensveld = category.id === 14;
-  const isDaKast = category.id === 15;
-  const hasPhotos = fotos.length > 0;
-  const section = SECTIONS.find(s => s.id === category.section);
-
-  return (
-    <div className="fixed inset-0 z-[70] bg-background flex flex-col animate-fade-up">
-      {/* Header */}
-      <div className="shrink-0 bg-surface px-5 pt-[max(16px,env(safe-area-inset-top))] pb-3 border-b border-outline-variant/10">
-        <div className="flex items-center gap-3 mb-2">
-          <button onClick={onClose} className="flex items-center gap-1 text-text-muted hover:text-primary-hover text-[13px] font-medium active:scale-95 transition-all">
-            <span className="material-symbols-rounded text-[20px]">close</span>
-          </button>
-          <div className="flex-1" />
-          <button
-            onClick={onSkip}
-            className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-text-faint hover:text-text-muted active:scale-[0.97] transition-all"
-          >
-            NVT
-          </button>
-        </div>
-
-        {/* Section + category label */}
-        {section && (
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-2 h-2 rounded-full" style={{ background: section.color }} />
-            <span className="text-[11px] font-bold uppercase tracking-[0.15em]" style={{ color: section.color }}>
-              {section.label}
-            </span>
-          </div>
-        )}
-        <h2 className="font-display text-[20px] font-extrabold tracking-tight leading-tight text-text-primary">
-          {category.name}
-        </h2>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-24 space-y-3" style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
-        {/* Instruction */}
-        <div className="bg-primary/[0.06] rounded-2xl border border-primary/12">
-          <button
-            onClick={onToggleTip}
-            className="w-full flex items-center gap-3 px-5 py-4 text-left active:scale-[0.99] transition-transform"
-          >
-            <div className="w-8 h-8 rounded-xl bg-primary/8 flex items-center justify-center flex-shrink-0">
-              <span className="material-symbols-rounded text-primary text-[18px]">info</span>
-            </div>
-            <span className="text-[13px] font-semibold text-on-surface-variant/70 flex-1">Instructie bekijken</span>
-            <span className="material-symbols-rounded text-[18px] text-on-surface-variant/40">{tipOpen ? 'expand_less' : 'expand_more'}</span>
-          </button>
-          {tipOpen && (
-            <div className="px-5 pb-4 pt-0">
-              <p className="text-[13px] leading-[1.7] text-on-surface-variant">{category.instruction}</p>
-              {category.tip && (
-                <p className="mt-3 text-[12px] leading-[1.6] text-on-surface-variant/50 border-t border-primary/5 pt-3">
-                  {category.tip}
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Conditional warnings */}
-        {isVermogensveld && (
-          <div className="rounded-2xl px-5 py-4 flex gap-3 items-start bg-amber-50/60 border border-amber-200/30">
-            <span className="material-symbols-rounded text-amber-500/70 text-[20px] flex-shrink-0 mt-0.5">error</span>
-            <span className="text-[13px] text-on-surface-variant leading-relaxed">Alleen fotograferen als <strong>vermogensveld aanwezig</strong> is.</span>
-          </div>
-        )}
-        {isDaKast && (
-          <div className="rounded-2xl px-5 py-4 flex gap-3 items-start bg-amber-50/60 border border-amber-200/30">
-            <span className="material-symbols-rounded text-amber-500/70 text-[20px] flex-shrink-0 mt-0.5">error</span>
-            <span className="text-[13px] text-on-surface-variant leading-relaxed">Alleen fotograferen als <strong>DA-kast aanwezig</strong> is.</span>
-          </div>
-        )}
-
-        {/* Example photos */}
-        {voorbeelden.length > 0 && (
-          <div>
-            <button
-              onClick={() => setShowVoorbeeld(!showVoorbeeld)}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-[12px] font-semibold transition-all active:scale-95 ${
-                showVoorbeeld ? 'bg-primary/8 text-primary' : 'bg-surface-high text-text-muted hover:text-primary hover:bg-primary/[0.06]'
-              }`}
-            >
-              <span className="material-symbols-rounded text-[16px]">{showVoorbeeld ? 'visibility_off' : 'visibility'}</span>
-              {showVoorbeeld ? 'Verberg voorbeeld' : 'Voorbeeld bekijken'}
-            </button>
-            {showVoorbeeld && (
-              <div className="flex gap-2.5 overflow-x-auto pb-2 mt-3 -mx-1 px-1 snap-x snap-mandatory">
-                {voorbeelden.map((v, i) => (
-                  <button key={v.id} onClick={() => setVoorbeeldLightbox(i)} className="flex-shrink-0 snap-start w-28 h-28 rounded-2xl overflow-hidden border border-outline-variant/10 active:scale-95 transition-transform">
-                    <img src={v.url} alt="Voorbeeld" className="w-full h-full object-cover" />
-                  </button>
-                ))}
-              </div>
-            )}
-            <Lightbox open={voorbeeldLightbox !== null} close={() => setVoorbeeldLightbox(null)} slides={voorbeelden.map(v => ({ src: v.url }))} index={voorbeeldLightbox ?? 0} />
-          </div>
-        )}
-
-        {/* Hidden file input */}
-        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/heic,image/webp" multiple className="hidden"
-          onChange={(e) => { if (e.target.files) onUpload(e.target.files); e.target.value = ""; }} />
-
-        {/* Upload zone */}
-        {!hasPhotos && (
-          <DropZone onFiles={onUpload} disabled={isUploading} onClick={() => fileRef.current?.click()}>
-            <div className="flex flex-col items-center justify-center py-6">
-              <div className="w-16 h-16 rounded-full bg-primary/6 flex items-center justify-center mb-5">
-                <span className="material-symbols-rounded text-[32px] text-primary/70">photo_camera</span>
-              </div>
-              <div className="font-display text-[17px] font-extrabold text-text-primary mb-1.5">Tik om foto's te maken</div>
-              <div className="text-[13px] text-text-muted leading-relaxed text-center max-w-[240px]">
-                Hoge resolutie aanbevolen voor verificatie.
-              </div>
-            </div>
-          </DropZone>
-        )}
-
-        {/* Upload progress */}
-        {isUploading && uploadProgress !== undefined && (
-          <div className="h-[3px] overflow-hidden rounded-full bg-on-surface/6">
-            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${uploadProgress}%` }} />
-          </div>
-        )}
-
-        {/* Photos */}
-        {hasPhotos && (
-          <>
-            <div className="flex items-center gap-2.5 px-5 py-3 rounded-2xl bg-primary/5">
-              <span className="material-symbols-rounded text-[18px] text-primary/70">check_circle</span>
-              <span className="text-[13px] font-semibold text-primary/80">{fotos.length} foto{fotos.length > 1 ? "'s" : ""} geüpload</span>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2">
-              {fotos.map((foto, i) => (
-                <div key={foto.id} className="relative aspect-square rounded-2xl bg-surface-container overflow-hidden">
-                  <button onClick={() => onClickThumb(i)} className="w-full h-full">
-                    <img src={foto.url} alt="" className="w-full h-full object-cover" />
-                  </button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <button className="absolute top-1.5 right-1.5 w-6 h-6 bg-on-surface/60 backdrop-blur-sm rounded-full text-white flex items-center justify-center active:scale-90 transition-transform">
-                        <span className="material-symbols-rounded text-[14px]">close</span>
-                      </button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader><AlertDialogTitle>Foto verwijderen?</AlertDialogTitle><AlertDialogDescription>Deze actie kan niet ongedaan worden gemaakt.</AlertDialogDescription></AlertDialogHeader>
-                      <AlertDialogFooter><AlertDialogCancel>Annuleren</AlertDialogCancel><AlertDialogAction onClick={() => onDelete(foto.id, foto.storage_path)}>Verwijderen</AlertDialogAction></AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              ))}
-              <button
-                onClick={() => fileRef.current?.click()}
-                disabled={isUploading}
-                className="aspect-square rounded-2xl border-2 border-dashed border-outline-variant/20 bg-transparent flex flex-col items-center justify-center gap-1.5 text-text-faint hover:border-primary/30 hover:text-primary hover:bg-primary/[0.04] active:scale-95 transition-all"
-              >
-                <span className="material-symbols-rounded text-[24px]">add</span>
-                <span className="text-[10px] font-semibold">Meer</span>
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Bottom bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-[75] bg-surface-white/90 backdrop-blur-2xl border-t border-outline-variant/10 px-5 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
-        <button
-          onClick={onClose}
-          className="w-full min-h-[48px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-2xl font-display text-[15px] font-bold active:scale-[0.97] transition-all flex items-center justify-center gap-1.5"
-        >
-          <span className="material-symbols-rounded text-[18px]">check</span>
-          Klaar
-        </button>
-      </div>
     </div>
   );
 }
