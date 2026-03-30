@@ -24,7 +24,7 @@ export default function AppHeader() {
             </button>
           </div>
           <nav className="hidden md:flex items-center gap-7">
-            <button onClick={() => navigate("/")} className={`text-sm font-medium transition-all ${isActive("/") && !isActive("/stations") ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground"}`}>
+            <button onClick={() => navigate("/")} className={`text-sm font-medium transition-all ${isActive("/") && !isActive("/stations") ? "text-primary font-bold" : "text-text-muted hover:text-primary-hover"}`}>
               Dashboard
             </button>
           </nav>
