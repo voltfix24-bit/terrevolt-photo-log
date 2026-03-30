@@ -109,7 +109,7 @@ export default function NewStation() {
 
           {/* Type ruimte */}
           <div>
-            <label className="block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant mb-3">Type ruimte</label>
+            <label className="block text-[11px] font-bold uppercase tracking-widest text-accent-gold mb-3">Type ruimte</label>
             <div className="space-y-3">
               <button
                 type="button"
