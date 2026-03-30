@@ -341,123 +341,119 @@ export default function StationDetail() {
           </div>
         </div>
 
-        {/* ── 2. SECTION TABS ── */}
-        <div ref={tabsRef} className="flex gap-2 overflow-x-auto snap-x snap-mandatory pb-3 -mx-4 px-4 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
-          {SECTIONS.map(section => {
-            const cats = CATEGORIES.filter(c => c.section === section.id);
-            const filled = cats.filter(c => fotosByCategorie(c.name).length > 0).length;
-            const skippedCount = cats.filter(c => isSkipped(c.name)).length;
-            const complete = filled + skippedCount === cats.length && filled > 0;
-            const isActive = activeSection === section.id;
+        {/* ── 2. SECTION ACCORDION ── */}
+        <div className="space-y-3 mb-8">
+          {sectionGroups.map(({ section, categories: cats }) => {
+            const doneCats = cats.filter(c => fotosByCategorie(c.name).length > 0);
+            const openCats = cats.filter(c => fotosByCategorie(c.name).length === 0 && !isSkipped(c.name));
+            const skippedCats = cats.filter(c => fotosByCategorie(c.name).length === 0 && isSkipped(c.name));
+            const isComplete = doneCats.length === cats.length;
+            const isSectionOpen = openSections.includes(section.id);
+            const totalFotosInSection = cats.reduce((sum, c) => sum + fotosByCategorie(c.name).length, 0);
+            const openCount = openCats.length;
 
             return (
-              <button
+              <div
                 key={section.id}
-                data-section={section.id}
-                onClick={() => setActiveSection(section.id)}
-                className={`flex-shrink-0 snap-start flex items-center gap-2 px-4 py-2.5 rounded-full text-[13px] font-bold transition-all active:scale-[0.97] whitespace-nowrap ${
-                  isActive
-                    ? 'bg-primary text-primary-foreground shadow-md shadow-primary/25'
-                    : complete
-                    ? 'bg-primary/10 text-primary border border-primary/20'
-                    : 'bg-surface-low text-on-surface-variant border border-outline-variant/20'
+                className={`rounded-2xl overflow-hidden transition-all ${
+                  isComplete
+                    ? 'bg-primary/[0.06] border border-primary/20'
+                    : 'bg-card border border-outline-variant/15 shadow-sm'
                 }`}
               >
-                {complete && <span className="material-symbols-rounded text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>}
-                {section.label}
-                <span className={`text-[11px] font-mono ${isActive ? 'opacity-70' : 'text-text-faint'}`}>
-                  {filled}/{cats.length}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* ── 3. SECTION COMPLETION BANNER ── */}
-        {(() => {
-          const cats = CATEGORIES.filter(c => c.section === activeSection);
-          const filled = cats.filter(c => fotosByCategorie(c.name).length > 0).length;
-          const totalFotos = cats.reduce((sum, c) => sum + fotosByCategorie(c.name).length, 0);
-          const sectionComplete = filled === cats.length;
-
-          if (sectionComplete) {
-            return (
-              <div className="p-4 bg-primary/[0.06] border border-primary/15 rounded-2xl flex items-center gap-3 mb-4">
-                <span className="material-symbols-rounded text-primary text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
-                <div>
-                  <div className="font-bold text-sm text-primary">Sectie volledig afgerond</div>
-                  <div className="text-xs text-text-muted">{cats.length} categorieën · {totalFotos} foto's</div>
-                </div>
-              </div>
-            );
-          }
-          return null;
-        })()}
-
-        {/* ── 4. CATEGORY LIST ── */}
-        <div className="bg-card rounded-2xl overflow-hidden border border-outline-variant/10 shadow-sm mb-6">
-          {activeSectionData.categories.map((cat, idx) => {
-            const catFotos = fotosByCategorie(cat.name);
-            const isDone = catFotos.length > 0;
-            const catIsSkipped = isSkipped(cat.name);
-
-            return (
-              <div key={cat.id}>
-                {idx > 0 && <div className="h-px bg-outline-variant/10 mx-4" />}
+                {/* Section header */}
                 <button
-                  onClick={() => setOpenCategory(cat)}
-                  className="w-full flex items-center gap-3 px-4 py-4 text-left active:bg-surface-low transition-colors"
+                  onClick={() => toggleSection(section.id)}
+                  className="w-full flex items-center gap-3 px-4 py-4 text-left"
                 >
-                  {/* Status icon */}
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                    isDone
-                      ? 'bg-primary text-primary-foreground'
-                      : catIsSkipped
-                      ? 'bg-surface-high text-text-faint'
-                      : 'bg-accent-gold/10 border-2 border-accent-gold/30'
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${
+                    isComplete
+                      ? 'bg-primary shadow-sm shadow-primary/30'
+                      : 'bg-surface-container relative'
                   }`}>
-                    <span className="material-symbols-rounded text-[16px]" style={{ fontVariationSettings: isDone ? "'FILL' 1" : "'FILL' 0" }}>
-                      {isDone ? 'check' : catIsSkipped ? 'remove' : 'photo_camera'}
+                    <span className={`material-symbols-rounded text-lg ${
+                      isComplete ? 'text-primary-foreground' : 'text-muted-foreground'
+                    }`} style={{ fontVariationSettings: isComplete ? "'FILL' 1" : "'FILL' 0" }}>
+                      {isComplete ? 'check' : 'folder_open'}
                     </span>
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className={`text-sm font-bold ${isDone ? 'text-text-primary' : catIsSkipped ? 'text-text-faint line-through' : 'text-text-primary'}`}>
-                      {cat.name}
-                    </div>
-                    {/* Photo thumbnails */}
-                    {isDone && (
-                      <div className="flex gap-1.5 mt-1.5">
-                        {catFotos.slice(0, 4).map(f => (
-                          <img key={f.id} src={f.url} className="w-10 h-10 rounded-lg object-cover border border-outline-variant/20" alt="" />
-                        ))}
-                        {catFotos.length > 4 && (
-                          <div className="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-xs font-bold text-text-faint">
-                            +{catFotos.length - 4}
-                          </div>
-                        )}
+                    {!isComplete && openCount > 0 && (
+                      <div className="absolute -top-1 -right-1 w-5 h-5 bg-accent-gold rounded-full flex items-center justify-center">
+                        <span className="text-[9px] font-black text-white">{openCount}</span>
                       </div>
                     )}
-                    {/* Status text */}
-                    {!isDone && !catIsSkipped && (
-                      <div className="text-xs text-accent-gold font-semibold mt-0.5">Nog geen foto's</div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className={`font-display font-extrabold text-[15px] ${isComplete ? 'text-primary' : 'text-on-surface'}`}>
+                      {section.label}
+                    </div>
+                    <div className={`text-xs font-semibold mt-0.5 ${isComplete ? 'text-primary/60' : 'text-muted-foreground'}`}>
+                      {doneCats.length} / {cats.length} klaar
+                      {!isComplete && openCount > 0 && (
+                        <span className="text-accent-gold ml-2">· {openCount} open</span>
+                      )}
+                      {isComplete && <span> · {totalFotosInSection} foto's</span>}
+                    </div>
+                  </div>
+                  <span className={`material-symbols-rounded text-xl ${isComplete ? 'text-primary/40' : 'text-muted-foreground/40'}`}>
+                    {isSectionOpen ? 'expand_less' : 'expand_more'}
+                  </span>
+                </button>
+
+                {/* Expanded content */}
+                {isSectionOpen && (
+                  <div className={`border-t ${isComplete ? 'border-primary/15 bg-primary/[0.03]' : 'border-outline-variant/10'}`}>
+                    {/* Open items first */}
+                    {openCats.length > 0 && (
+                      <>
+                        <div className="px-4 pt-3 pb-1.5">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-accent-gold">
+                            Nog te doen ({openCats.length})
+                          </span>
+                        </div>
+                        {openCats.map((cat, idx) => (
+                          <CategoryRow key={cat.id} cat={cat} fotos={[]} isLast={idx === openCats.length - 1 && doneCats.length === 0 && skippedCats.length === 0} onOpen={() => setOpenCategory(cat)} />
+                        ))}
+                      </>
                     )}
-                    {catIsSkipped && (
-                      <div className="text-xs text-text-faint mt-0.5">Overgeslagen (NVT)</div>
+
+                    {/* Divider */}
+                    {openCats.length > 0 && (doneCats.length > 0 || skippedCats.length > 0) && (
+                      <div className="mx-4 my-1 h-px bg-outline-variant/15" />
+                    )}
+
+                    {/* Done items */}
+                    {doneCats.length > 0 && (
+                      <>
+                        <div className="px-4 pt-2 pb-1.5">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-primary/60">
+                            Klaar ({doneCats.length})
+                          </span>
+                        </div>
+                        {doneCats.map((cat, idx) => (
+                          <CategoryRow key={cat.id} cat={cat} fotos={fotosByCategorie(cat.name)} isLast={idx === doneCats.length - 1 && skippedCats.length === 0} onOpen={() => setOpenCategory(cat)} />
+                        ))}
+                      </>
+                    )}
+
+                    {/* Skipped items */}
+                    {skippedCats.length > 0 && (
+                      <>
+                        {(openCats.length > 0 || doneCats.length > 0) && <div className="mx-4 my-1 h-px bg-outline-variant/15" />}
+                        <div className="px-4 pt-2 pb-1.5">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-text-faint">
+                            Overgeslagen ({skippedCats.length})
+                          </span>
+                        </div>
+                        {skippedCats.map((cat, idx) => (
+                          <CategoryRow key={cat.id} cat={cat} fotos={[]} isLast={idx === skippedCats.length - 1} isSkipped onOpen={() => setOpenCategory(cat)} />
+                        ))}
+                      </>
                     )}
                   </div>
-
-                  <span className="material-symbols-rounded text-text-faint/40">chevron_right</span>
-                </button>
+                )}
               </div>
             );
           })}
-        </div>
-
-        {/* Section description */}
-        <div className="px-1 mb-8">
-          <p className="text-[12px] text-text-faint leading-relaxed">{activeSectionData.section.description}</p>
         </div>
       </main>
 
