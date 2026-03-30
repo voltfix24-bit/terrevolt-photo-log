@@ -606,6 +606,7 @@ export default function StationDetail() {
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardStartIndex, setWizardStartIndex] = useState(0);
   const { data: voorbeelden } = useVoorbeelden();
+  const { data: instellingenData } = useInstellingen();
   const { skipped, addSkip, removeSkip, isSkipped } = useSkippedCategories(id);
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
