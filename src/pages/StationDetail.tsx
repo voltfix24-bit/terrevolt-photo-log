@@ -648,18 +648,18 @@ function CompletionScreen({ filledCount, total, stationName, fotos, onReset, onB
       </div>
 
       {/* Progress card */}
-      <div className="bg-primary-container/8 rounded-3xl px-6 py-5 border border-primary/5 mb-4">
+      <div className="bg-surface-low rounded-3xl px-6 py-5 border border-outline-variant/10 mb-4">
         <div className="flex items-center justify-between mb-4">
-          <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-on-surface-variant/50">Voortgang</span>
+          <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-accent-gold">Voortgang</span>
           <div className="flex items-baseline gap-0.5">
-            <span className="font-display text-[28px] font-extrabold text-on-surface leading-none">{pct}</span>
-            <span className="font-display text-[14px] font-medium text-on-surface-variant/40">%</span>
+            <span className="font-display text-[28px] font-extrabold text-text-primary leading-none">{pct}</span>
+            <span className="font-display text-[14px] font-medium text-text-faint">%</span>
           </div>
         </div>
-        <div className="h-[3px] bg-on-surface/6 rounded-full overflow-hidden mb-4">
+        <div className="h-[3px] bg-surface-high rounded-full overflow-hidden mb-4">
           <div className="h-full rounded-full bg-primary transition-all duration-700" style={{ width: `${pct}%` }} />
         </div>
-        <p className="text-[13px] text-on-surface-variant/50 leading-relaxed">
+        <p className="text-[13px] text-text-muted leading-relaxed">
           {filledCount} van de {total} categorieën gevalideerd.
         </p>
       </div>
