@@ -311,17 +311,16 @@ export default function StationDetail() {
             </div>
 
             {/* Hero card */}
-            <div className="bg-card rounded-3xl p-6 shadow-sm border border-outline-variant/10 mb-6">
+            <div className="bg-surface-white rounded-3xl p-6 shadow-sm border border-outline-variant/10 mb-6">
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full"
-                  style={isCS ? { background: "rgba(232,84,26,0.1)", color: "#E8541A" } : { background: "rgba(107,45,139,0.1)", color: "#6B2D8B" }}
+                <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-accent-gold/[0.08] text-accent-gold"
                 >{station.type_ruimte}</span>
               </div>
-              <h2 className="font-display text-2xl font-extrabold tracking-tight mb-1 text-foreground">{station.naam_msr}</h2>
+              <h2 className="font-display text-2xl font-extrabold tracking-tight mb-1 text-text-primary">{station.naam_msr}</h2>
               <div className="mt-4">
                 <div className="flex justify-between items-center mb-1.5">
-                  <span className="text-xs font-semibold text-on-surface-variant">Categorieën ingevuld</span>
-                  <span className="text-xs font-black text-primary">{filledCount} / {FOTO_CATEGORIEEN.length}</span>
+                  <span className="text-xs font-semibold text-text-secondary">Categorieën ingevuld</span>
+                  <span className="text-xs font-black text-accent-gold">{filledCount} / {FOTO_CATEGORIEEN.length}</span>
                 </div>
                 <div className="h-2 bg-surface-high rounded-full overflow-hidden">
                   <div className="h-full rounded-full bg-gradient-to-r from-primary to-primary-light transition-all duration-800" style={{ width: `${pct}%` }} />
