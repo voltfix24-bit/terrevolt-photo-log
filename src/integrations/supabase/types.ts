@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      categorie_instellingen: {
+        Row: {
+          categorie_id: number
+          created_at: string | null
+          id: string
+          instructie: string | null
+          naam: string | null
+          tip: string | null
+          updated_at: string | null
+          volgorde: number | null
+        }
+        Insert: {
+          categorie_id: number
+          created_at?: string | null
+          id?: string
+          instructie?: string | null
+          naam?: string | null
+          tip?: string | null
+          updated_at?: string | null
+          volgorde?: number | null
+        }
+        Update: {
+          categorie_id?: number
+          created_at?: string | null
+          id?: string
+          instructie?: string | null
+          naam?: string | null
+          tip?: string | null
+          updated_at?: string | null
+          volgorde?: number | null
+        }
+        Relationships: []
+      }
       categorie_voorbeelden: {
         Row: {
           categorie: string
