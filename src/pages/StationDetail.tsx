@@ -652,7 +652,7 @@ function CompletionScreen({ filledCount, total, stationName, fotos, onReset, onB
 
         <div className="flex items-center justify-between mb-2">
           <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Voortgang</span>
-          <span className="text-[22px] font-extrabold text-primary">{pct}%</span>
+          <span className="font-display text-[24px] font-extrabold text-primary">{pct}%</span>
         </div>
 
         <div className="h-2 bg-primary-container/30 rounded-full overflow-hidden mb-3">
