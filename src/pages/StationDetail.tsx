@@ -869,11 +869,9 @@ export default function StationDetail() {
                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm ${
                       isComplete
                         ? 'bg-primary text-primary-foreground shadow-primary/30'
-                        : isSectionOpen
-                        ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
                         : 'bg-primary/10 text-primary'
                     }`}>
-                      <span className="material-symbols-rounded text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+                      <span className={`material-symbols-rounded text-xl ${isComplete ? '' : ''}`} style={isComplete ? { fontVariationSettings: "'FILL' 1" } : undefined}>
                         {isComplete ? 'check' : getSectionIcon(section.id)}
                       </span>
                     </div>
