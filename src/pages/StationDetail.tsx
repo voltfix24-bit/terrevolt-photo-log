@@ -415,9 +415,6 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
             <span className="truncate max-w-[120px]">{station.naam_msr}</span>
           </button>
           <span className="text-xs font-extrabold text-primary">{filledCount}/{totalCategories}</span>
-          <button onClick={onSkip} className="text-[13px] font-semibold text-muted-foreground active:bg-surface-low px-3 py-2 rounded-xl transition-colors min-h-[44px]">
-            Sla over
-          </button>
         </div>
 
         {/* Progress bar */}
