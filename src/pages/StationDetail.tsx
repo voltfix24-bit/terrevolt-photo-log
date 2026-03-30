@@ -427,7 +427,7 @@ export default function StationDetail() {
                   <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${
                     isComplete
                       ? 'bg-primary shadow-sm shadow-primary/30'
-                      : 'bg-surface-container'
+                      : 'bg-surface-high border border-outline-variant/40'
                   }`}>
                     {isComplete ? (
                       <span className="material-symbols-rounded text-lg text-primary-foreground" style={{ fontVariationSettings: "'FILL' 1" }}>check</span>
