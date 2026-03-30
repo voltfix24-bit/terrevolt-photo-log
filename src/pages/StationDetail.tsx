@@ -636,14 +636,14 @@ function CompletionScreen({ filledCount, total, stationName, fotos, onReset, onB
 
       {/* Heading area */}
       <div className="text-center mb-10">
-        <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/50 mb-3">
+        <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-accent-gold mb-3">
           Oplevering voltooid
         </div>
-        <h2 className="font-display text-[36px] font-extrabold tracking-tight text-on-surface leading-none mb-3">
+        <h2 className="font-display text-[36px] font-extrabold tracking-tight text-text-primary leading-none mb-3">
           Klaar!
         </h2>
-        <p className="text-[14px] text-on-surface-variant/60 leading-relaxed max-w-[260px] mx-auto">
-          Alle gegevens en foto's voor <strong className="text-on-surface font-semibold">{stationName}</strong> zijn verwerkt.
+        <p className="text-[14px] text-text-muted leading-relaxed max-w-[260px] mx-auto">
+          Alle gegevens en foto's voor <strong className="text-text-primary font-semibold">{stationName}</strong> zijn verwerkt.
         </p>
       </div>
 
