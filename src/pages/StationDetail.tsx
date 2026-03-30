@@ -113,12 +113,19 @@ export default function StationDetail() {
   const [lightboxSlides, setLightboxSlides] = useState<{ src: string }[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [editOpen, setEditOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState(SECTIONS[0].id);
+  const [openSections, setOpenSections] = useState<string[]>([]);
   const [openCategory, setOpenCategory] = useState<Category | null>(null);
   const [tipOpen, setTipOpen] = useState<Record<number, boolean>>({});
   const { data: voorbeelden } = useVoorbeelden();
   const { skipped, toggleSkip, isSkipped } = useSkippedCategories(id);
-  const tabsRef = useRef<HTMLDivElement>(null);
+
+  const toggleSection = useCallback((sectionId: string) => {
+    setOpenSections(prev =>
+      prev.includes(sectionId)
+        ? prev.filter(s => s !== sectionId)
+        : [...prev, sectionId]
+    );
+  }, []);
 
   const sectionGroups = useMemo(() => getCategoriesBySection(), []);
 
