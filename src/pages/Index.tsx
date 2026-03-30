@@ -144,9 +144,31 @@ export default function Dashboard() {
                         : "bg-surface-white hover:shadow-[0_12px_40px_-10px_rgba(19,30,18,0.10)] shadow-[0_4px_24px_-6px_rgba(19,30,18,0.06)] rounded-[28px]"
                     }`}
                   >
-                    {/* Decorative background shapes */}
-                    <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-primary/[0.03]" />
-                    <div className="absolute bottom-0 right-16 w-24 h-24 rounded-full bg-accent-gold-soft/15" />
+                    {/* SVG progress ring */}
+                    {(() => {
+                      const radius = 26;
+                      const circ = 2 * Math.PI * radius;
+                      const offset = circ - (pct / 100) * circ;
+                      return (
+                        <div className="absolute top-4 right-6 w-16 h-16">
+                          <svg className="w-full h-full -rotate-90" viewBox="0 0 64 64">
+                            <circle cx="32" cy="32" r={radius} fill="none" className="stroke-primary/[0.08]" strokeWidth="5" />
+                            <circle
+                              cx="32" cy="32" r={radius} fill="none"
+                              className={complete ? "stroke-accent-gold" : "stroke-primary"}
+                              strokeWidth="5"
+                              strokeLinecap="round"
+                              strokeDasharray={circ}
+                              strokeDashoffset={offset}
+                              style={{ transition: "stroke-dashoffset 0.7s ease-out" }}
+                            />
+                          </svg>
+                          <span className="absolute inset-0 flex items-center justify-center font-display text-[13px] font-extrabold text-text-primary">
+                            {pct}<span className="text-[9px] text-text-faint font-medium">%</span>
+                          </span>
+                        </div>
+                      );
+                    })()}
 
                     <div className="relative px-7 py-7">
                       {/* Top row: type label + completion badge */}
