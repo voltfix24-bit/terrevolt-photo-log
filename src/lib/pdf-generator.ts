@@ -57,12 +57,15 @@ export function generatePdfHtml(station: Station, fotos: Foto[], branding?: PdfB
     <div class="deco-arc deco-arc-3"></div>
 
     <div class="cover-logo">
-      <div class="logo-icon">
+      ${logoUrl 
+        ? `<img src="${logoUrl}" alt="Logo" style="height:44px;max-width:180px;object-fit:contain;" />`
+        : `<div class="logo-icon">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
           <path d="M7 2L3 14h7l-2 8 11-12h-7l2-8z"/>
         </svg>
       </div>
-      <span class="logo-text">TerreVolt</span>
+      <span class="logo-text">${bedrijfsnaam}</span>`
+      }
     </div>
 
     <div class="cover-center">
