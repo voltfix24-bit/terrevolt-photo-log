@@ -695,7 +695,7 @@ function CompletionScreen({ filledCount, total, stationName, fotos, onReset, onB
           <span className="material-symbols-outlined text-xl">folder_zip</span>
           {zipProgress !== null ? `Downloaden… ${zipProgress}%` : "Foto's als ZIP"}
         </button>
-        <button onClick={onBack} className="w-full flex items-center justify-center gap-2 py-4 text-[13px] font-bold text-primary active:scale-[0.97] transition-transform">
+        <button onClick={onBack} className="w-full flex items-center justify-center gap-2 py-4 font-display text-[14px] font-bold text-primary active:scale-[0.97] transition-transform">
           <span className="material-symbols-outlined text-lg">arrow_back</span>Terug naar overzicht
         </button>
       </div>
