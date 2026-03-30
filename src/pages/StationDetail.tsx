@@ -120,7 +120,7 @@ function CategoryRow({ cat, fotos, isLast, isSkipped, onOpen, highlight }: {
           ? 'bg-primary'
           : isSkipped
           ? 'bg-surface-high'
-          : 'border-2 border-accent-gold/40 bg-accent-gold/5'
+          : 'bg-orange/10 border border-orange/25'
       }`}>
         <span className={`material-symbols-rounded text-sm ${
           isDone ? 'text-primary-foreground' : isSkipped ? 'text-text-faint' : 'text-accent-gold'
@@ -427,12 +427,12 @@ export default function StationDetail() {
                   <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${
                     isComplete
                       ? 'bg-primary shadow-sm shadow-primary/30'
-                      : 'bg-surface-container'
+                      : 'bg-surface-high border border-outline-variant/40'
                   }`}>
                     {isComplete ? (
                       <span className="material-symbols-rounded text-lg text-primary-foreground" style={{ fontVariationSettings: "'FILL' 1" }}>check</span>
                     ) : (
-                      <span className="text-sm font-black text-muted-foreground">{openCount}</span>
+                      <span className="text-sm font-extrabold text-on-surface">{openCount}</span>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -447,7 +447,7 @@ export default function StationDetail() {
                       {isComplete && <span> · {totalFotosInSection} foto's</span>}
                     </div>
                   </div>
-                  <span className={`material-symbols-rounded text-xl ${isComplete ? 'text-primary/40' : 'text-muted-foreground/40'}`}>
+                  <span className={`material-symbols-rounded text-xl ${isComplete ? 'text-primary/60' : 'text-muted-foreground/40'}`}>
                     {isSectionOpen ? 'expand_less' : 'expand_more'}
                   </span>
                 </button>
@@ -527,7 +527,7 @@ export default function StationDetail() {
             className="w-full max-w-3xl mx-auto min-h-[52px] bg-gradient-to-r from-primary to-primary-light text-primary-foreground rounded-2xl font-display font-bold text-[15px] shadow-lg shadow-primary/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
           >
             <span className="material-symbols-rounded text-[20px]">arrow_forward</span>
-            Doorgaan: {nextIncomplete.name}
+            Doorgaan: <span className="truncate max-w-[220px]">{nextIncomplete.name}</span>
           </button>
         </div>
       )}
