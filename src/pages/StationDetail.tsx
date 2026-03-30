@@ -447,7 +447,7 @@ export default function StationDetail() {
                       {isComplete && <span> · {totalFotosInSection} foto's</span>}
                     </div>
                   </div>
-                  <span className={`material-symbols-rounded text-xl ${isComplete ? 'text-primary/40' : 'text-muted-foreground/40'}`}>
+                  <span className={`material-symbols-rounded text-xl ${isComplete ? 'text-primary/60' : 'text-muted-foreground/40'}`}>
                     {isSectionOpen ? 'expand_less' : 'expand_more'}
                   </span>
                 </button>
