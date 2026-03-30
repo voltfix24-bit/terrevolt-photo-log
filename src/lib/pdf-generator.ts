@@ -341,7 +341,7 @@ body {
   width: 450px; height: 450px;
   bottom: -100px; left: -150px;
   border-width: 4px;
-  border-color: rgba(28,176,80,0.18);
+  border-color: ${arcColor3};
 }
 .cover-logo {
   position: absolute;
