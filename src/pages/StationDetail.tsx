@@ -561,19 +561,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
           </>
         )}
 
-        {/* Document details card — like Saudia's "Document Details" link */}
-        {hasPhotos && (
-          <button className="w-full bg-card rounded-2xl p-3.5 flex items-center gap-3 border border-outline-variant/10 shadow-sm active:scale-[0.98] transition-transform">
-            <div className="w-10 h-10 rounded-xl bg-primary-container/30 flex items-center justify-center flex-shrink-0">
-              <span className="material-symbols-outlined fill text-primary text-xl">description</span>
-            </div>
-            <div className="flex-1 text-left">
-              <div className="font-display text-[14px] font-bold text-foreground">Categorie details</div>
-              <div className="text-[12px] text-muted-foreground">{fotos.length} foto{fotos.length > 1 ? "'s" : ""} · Categorie {String(category.id).padStart(2, "0")}</div>
-            </div>
-            <span className="material-symbols-outlined text-muted-foreground/40">chevron_right</span>
-          </button>
-        )}
+        {/* Removed verbose "Document details" card to reduce scrolling */}
       </div>
 
       {/* ── FIXED BOTTOM NAV — 3 buttons like Saudia ── */}
