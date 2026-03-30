@@ -404,43 +404,49 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
 
   return (
     <div className="flex flex-col" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{ minHeight: "calc(100dvh - 80px)" }}>
-      {/* ── Compact sticky header ── */}
-      <div className="sticky top-14 z-30 bg-primary-container/15 backdrop-blur-xl -mx-4 px-5 pt-2 pb-3 md:rounded-2xl md:mx-0 md:border md:border-outline-variant/20 md:bg-card md:backdrop-blur-none md:mb-4">
-        {/* Top row */}
-        <div className="flex items-center justify-between mb-1">
+      {/* ── Sticky header — Saudia style ── */}
+      <div className="sticky top-14 z-30 bg-surface backdrop-blur-xl -mx-4 px-5 pt-3 pb-4 md:rounded-2xl md:mx-0 md:border md:border-outline-variant/20 md:bg-card md:backdrop-blur-none md:mb-4">
+        {/* Top row: back + station name + close */}
+        <div className="flex items-center justify-between mb-3">
           <button onClick={onBackToList} className="flex items-center gap-1 text-on-surface-variant font-semibold text-sm active:scale-95 transition-transform min-h-[40px]">
             <span className="material-symbols-outlined text-lg">arrow_back_ios</span>
           </button>
-          <span className="font-display text-[14px] font-extrabold text-foreground truncate max-w-[160px]">{station.naam_msr}</span>
-          <button onClick={onBackToList} className="w-8 h-8 rounded-full bg-on-surface/5 flex items-center justify-center active:scale-90 transition-transform">
+          <span className="font-display text-[13px] font-bold text-on-surface-variant uppercase tracking-widest">Technische oplevering</span>
+          <button onClick={onBackToList} className="w-9 h-9 rounded-full bg-on-surface/8 flex items-center justify-center active:scale-90 transition-transform">
             <span className="material-symbols-outlined text-lg text-on-surface-variant">close</span>
           </button>
         </div>
 
-        {/* Category name + count */}
-        <div className="flex items-end justify-between mb-2">
-          <h3 className="font-display text-[20px] font-extrabold tracking-tight leading-tight text-foreground">{category.name}</h3>
+        {/* Category name + large counter */}
+        <div className="flex items-end justify-between mb-3">
+          <h3 className="font-display text-[26px] font-extrabold tracking-tight leading-[1.1] text-primary max-w-[65%]">{category.name}</h3>
           <div className="text-right flex items-baseline gap-0.5">
-            <span className="font-display text-[20px] font-extrabold text-foreground">{filledCount}</span>
-            <span className="font-display text-[14px] text-muted-foreground font-medium">/{totalCategories}</span>
+            <span className="font-display text-[28px] font-extrabold text-on-surface">{filledCount}</span>
+            <span className="font-display text-[16px] text-on-surface-variant font-medium">/{totalCategories}</span>
           </div>
         </div>
 
-        {/* Progress bar */}
-        <div className="h-2 bg-surface-container rounded-full overflow-hidden">
-          <div className="h-full rounded-full bg-gradient-to-r from-primary to-primary-light transition-all duration-500" style={{ width: `${progressPct}%` }} />
+        {/* Progress bar with bolt */}
+        <div className="relative">
+          <div className="h-2 bg-on-surface/8 rounded-full overflow-hidden">
+            <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${progressPct}%` }} />
+          </div>
+          <div
+            className="absolute -top-1.5 w-5 h-5 rounded-full bg-primary flex items-center justify-center transition-all duration-500"
+            style={{ left: `calc(${Math.max(progressPct, 3)}% - 10px)` }}
+          >
+            <span className="text-primary-foreground text-[10px]">⚡</span>
+          </div>
         </div>
       </div>
 
-      {/* ── Content area — compact ── */}
-      <div className="flex-1 py-2 space-y-2 pb-[80px]">
-        {/* Instruction */}
-        <div className="bg-card rounded-2xl p-3 shadow-sm border border-outline-variant/10">
-          <div className="flex gap-2.5 items-start">
-            <div className="w-8 h-8 rounded-lg bg-primary-container/30 flex items-center justify-center flex-shrink-0">
-              <span className="material-symbols-outlined fill text-primary text-lg">info</span>
-            </div>
-            <p className="text-[12px] leading-relaxed text-on-surface-variant pt-1">{category.instruction}</p>
+      {/* ── Content area ── */}
+      <div className="flex-1 py-3 space-y-3 pb-[80px]">
+        {/* Instruction card — lightbulb style */}
+        <div className="bg-primary-container/10 rounded-2xl p-4 border border-primary/8">
+          <div className="flex gap-3 items-start">
+            <span className="text-xl flex-shrink-0 mt-0.5">💡</span>
+            <p className="text-[13px] leading-relaxed text-on-surface-variant">{category.instruction}</p>
           </div>
         </div>
 
