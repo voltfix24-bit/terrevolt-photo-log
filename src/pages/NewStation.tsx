@@ -116,106 +116,119 @@ export default function NewStation() {
             />
           </div>
 
-          {/* Ingevuld door — Monteur picker */}
-          <div>
+          {/* Ingevuld door — Typeahead monteur picker */}
+          <div className="relative">
             <label className="block text-[11px] font-bold uppercase tracking-widest text-accent-gold mb-2">
               Ingevuld door *
             </label>
-            {/* Monteur list */}
-            <div className="space-y-2 mb-3">
-              {monteurs?.map(monteur => (
-                <button
-                  key={monteur.id}
-                  type="button"
-                  onClick={() => setSelectedMonteur(monteur.naam)}
-                  className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl
-                              border-2 text-left transition-all active:scale-[0.98] ${
-                    selectedMonteur === monteur.naam
-                      ? 'border-primary bg-primary/[0.08] text-primary'
-                      : 'border-outline-variant/30 bg-surface-low text-on-surface hover:border-primary/40'
-                  }`}
-                >
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center
-                                   text-sm font-black flex-shrink-0 ${
-                    selectedMonteur === monteur.naam
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-surface-container text-on-surface-variant'
-                  }`}>
-                    {monteur.naam.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
-                  </div>
-                  <span className="font-display font-semibold text-[15px] flex-1">
-                    {monteur.naam}
-                  </span>
-                  {selectedMonteur === monteur.naam && (
-                    <span className="material-symbols-rounded text-primary text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>
-                      check_circle
-                    </span>
-                  )}
-                </button>
-              ))}
-              {monteurs?.length === 0 && !showAddNew && (
-                <div className="text-center py-4 text-sm text-muted-foreground">
-                  Nog geen monteurs. Voeg er een toe hieronder.
-                </div>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Typ naam monteur..."
+                value={monteurInput}
+                onChange={(e) => {
+                  setMonteurInput(e.target.value);
+                  setSelectedMonteur('');
+                }}
+                onFocus={() => setMonteurFocused(true)}
+                onBlur={() => setTimeout(() => setMonteurFocused(false), 200)}
+                className={`w-full px-4 py-3.5 bg-surface-low rounded-2xl text-sm text-text-primary placeholder:text-text-faint focus:outline-none focus:ring-2 transition ${
+                  selectedMonteur ? 'ring-2 ring-primary/30 border-0' : 'border-0 focus:ring-primary/30'
+                }`}
+              />
+              {selectedMonteur && (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 material-symbols-rounded text-primary text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+                  check_circle
+                </span>
               )}
             </div>
-            {/* Add new monteur */}
-            {showAddNew ? (
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Naam monteur"
-                  value={newNaam}
-                  onChange={e => setNewNaam(e.target.value)}
-                  autoFocus
-                  className="flex-1 px-4 py-3 bg-surface-low border border-outline-variant/30
-                             rounded-xl text-sm focus:outline-none focus:ring-2
-                             focus:ring-primary/25 transition"
-                />
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (!newNaam.trim()) return;
-                    const { error } = await supabase
-                      .from('monteurs' as any)
-                      .insert({ naam: newNaam.trim() } as any);
-                    if (!error) {
-                      setSelectedMonteur(newNaam.trim());
-                      setNewNaam('');
-                      setShowAddNew(false);
-                      queryClient.invalidateQueries({ queryKey: ['monteurs'] });
-                      toast.success(`${newNaam.trim()} toegevoegd`);
-                    }
-                  }}
-                  className="px-4 py-3 bg-primary text-primary-foreground rounded-xl
-                             font-bold text-sm active:scale-95 transition-transform
-                             shadow-md shadow-primary/25"
-                >
-                  Toevoegen
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setShowAddNew(false); setNewNaam(''); }}
-                  className="px-3 py-3 bg-surface-container rounded-xl text-sm
-                             text-muted-foreground active:scale-95 transition-transform"
-                >
-                  ✕
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setShowAddNew(true)}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3
-                           rounded-xl border-2 border-dashed border-outline-variant/40
-                           text-sm font-semibold text-muted-foreground
-                           hover:border-primary/40 hover:text-primary transition-all
-                           active:scale-[0.98]"
-              >
-                <span className="material-symbols-rounded text-lg">person_add</span>
-                Voeg monteur toe
-              </button>
-            )}
+
+            {/* Dropdown */}
+            {monteurFocused && monteurInput.trim().length > 0 && !selectedMonteur && (() => {
+              const query = monteurInput.trim().toLowerCase();
+              const filtered = monteurs?.filter(m => m.naam.toLowerCase().includes(query)) ?? [];
+              const exactMatch = monteurs?.some(m => m.naam.toLowerCase() === query);
+
+              if (filtered.length === 0 && !exactMatch) {
+                return (
+                  <div className="absolute z-20 left-0 right-0 mt-1.5 bg-card border border-outline-variant/20 rounded-xl shadow-lg overflow-hidden">
+                    <button
+                      type="button"
+                      onMouseDown={async (e) => {
+                        e.preventDefault();
+                        const naam = monteurInput.trim();
+                        const { error } = await supabase
+                          .from('monteurs' as any)
+                          .insert({ naam } as any);
+                        if (!error) {
+                          setSelectedMonteur(naam);
+                          setMonteurFocused(false);
+                          queryClient.invalidateQueries({ queryKey: ['monteurs'] });
+                          toast.success(`${naam} toegevoegd`);
+                        }
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-primary/[0.06] transition-colors"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <span className="material-symbols-rounded text-primary text-base">person_add</span>
+                      </div>
+                      <span className="text-sm font-semibold text-primary">
+                        "{monteurInput.trim()}" toevoegen
+                      </span>
+                    </button>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="absolute z-20 left-0 right-0 mt-1.5 bg-card border border-outline-variant/20 rounded-xl shadow-lg overflow-hidden max-h-[220px] overflow-y-auto">
+                  {filtered.map(m => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setSelectedMonteur(m.naam);
+                        setMonteurInput(m.naam);
+                        setMonteurFocused(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-primary/[0.06] transition-colors border-b border-outline-variant/10 last:border-0"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-xs font-black text-on-surface-variant flex-shrink-0">
+                        {m.naam.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                      </div>
+                      <span className="text-sm font-semibold text-on-surface">{m.naam}</span>
+                    </button>
+                  ))}
+                  {!exactMatch && (
+                    <button
+                      type="button"
+                      onMouseDown={async (e) => {
+                        e.preventDefault();
+                        const naam = monteurInput.trim();
+                        const { error } = await supabase
+                          .from('monteurs' as any)
+                          .insert({ naam } as any);
+                        if (!error) {
+                          setSelectedMonteur(naam);
+                          setMonteurFocused(false);
+                          queryClient.invalidateQueries({ queryKey: ['monteurs'] });
+                          toast.success(`${naam} toegevoegd`);
+                        }
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-primary/[0.06] transition-colors border-t border-outline-variant/15"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <span className="material-symbols-rounded text-primary text-sm">person_add</span>
+                      </div>
+                      <span className="text-sm font-semibold text-primary">
+                        "{monteurInput.trim()}" toevoegen
+                      </span>
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Type ruimte */}
