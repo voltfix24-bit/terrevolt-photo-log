@@ -680,7 +680,7 @@ function CompletionScreen({ filledCount, total, stationName, fotos, onReset, onB
           <button
             onClick={handleZip}
             disabled={zipProgress !== null || fotos.length === 0}
-            className="w-full min-h-[48px] bg-surface-high rounded-2xl font-display text-[14px] font-semibold text-text-primary active:scale-[0.97] transition-all flex items-center justify-center gap-2.5 disabled:opacity-40"
+            className="w-full min-h-[48px] bg-surface-high hover:bg-surface-highest rounded-2xl font-display text-[14px] font-semibold text-text-primary active:scale-[0.97] transition-all flex items-center justify-center gap-2.5 disabled:opacity-40"
           >
             <span className="material-symbols-rounded text-[18px] text-text-muted">folder_zip</span>
             {zipProgress !== null ? `Downloaden… ${zipProgress}%` : "Foto's als ZIP"}
