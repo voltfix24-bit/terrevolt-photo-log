@@ -120,7 +120,7 @@ function CategoryRow({ cat, fotos, isLast, isSkipped, onOpen, highlight }: {
           ? 'bg-primary'
           : isSkipped
           ? 'bg-surface-high'
-          : 'border-2 border-accent-gold/40 bg-accent-gold/5'
+          : 'bg-orange/10 border border-orange/25'
       }`}>
         <span className={`material-symbols-rounded text-sm ${
           isDone ? 'text-primary-foreground' : isSkipped ? 'text-text-faint' : 'text-accent-gold'
