@@ -148,7 +148,7 @@ export function generatePdfHtml(station: Station, fotos: Foto[], branding?: PdfB
     <div class="toc-footer">
       <span class="toc-footer-left">
         <span class="footer-dot"></span>
-        TO Fotorapport · Terrevolt B.V.
+        TO Fotorapport · ${bedrijfsnaam}
       </span>
       <span class="toc-footer-right">p. 2</span>
     </div>
