@@ -631,77 +631,82 @@ function CompletionScreen({ filledCount, total, stationName, fotos, onReset, onB
   };
 
   return (
-    <div className="max-w-lg mx-auto flex flex-col items-center py-6 animate-pop min-h-[calc(100dvh-120px)]">
-      {/* Big checkmark circle */}
-      <div className="w-28 h-28 bg-gradient-to-br from-primary to-primary-light rounded-full flex items-center justify-center mb-5 shadow-xl shadow-primary/30">
-        <span className="material-symbols-rounded text-primary-foreground text-[56px]">task_alt</span>
+    <div className="max-w-lg mx-auto flex flex-col px-2 pt-8 pb-10 animate-fade-up min-h-[calc(100dvh-120px)]">
+
+      {/* Success icon */}
+      <div className="flex justify-center mb-8">
+        <div className="w-20 h-20 rounded-full bg-primary/8 flex items-center justify-center">
+          <span className="material-symbols-rounded text-primary text-[40px]">check_circle</span>
+        </div>
       </div>
 
-      <div className="text-[11px] font-display font-extrabold uppercase tracking-[0.18em] text-muted-foreground mb-1">Aanvraag voltooid</div>
-      <h2 className="font-display text-[40px] font-extrabold tracking-tight text-primary mb-2">Klaar!</h2>
-      <p className="text-[15px] text-muted-foreground text-center mb-6 max-w-[280px] leading-relaxed">
-        Uw foto's en gegevens zijn succesvol verwerkt.
-      </p>
-
-      {/* Status overview card */}
-      <div className="w-full bg-card rounded-3xl p-5 shadow-sm border border-outline-variant/10 mb-5">
-        <h3 className="font-display text-lg font-extrabold text-foreground mb-3">Status overzicht</h3>
-
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Voortgang</span>
-          <span className="font-display text-[24px] font-extrabold text-primary">{pct}%</span>
+      {/* Heading area */}
+      <div className="text-center mb-10">
+        <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/50 mb-3">
+          Oplevering voltooid
         </div>
-
-        <div className="h-2 bg-primary-container/30 rounded-full overflow-hidden mb-3">
-          <div className="h-full bg-gradient-to-r from-primary to-primary-light rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
-        </div>
-
-        <p className="text-[13px] text-muted-foreground italic">
-          {filledCount} van de {total} categorieën succesvol gevalideerd.
+        <h2 className="font-display text-[36px] font-extrabold tracking-tight text-on-surface leading-none mb-3">
+          Klaar!
+        </h2>
+        <p className="text-[14px] text-on-surface-variant/60 leading-relaxed max-w-[260px] mx-auto">
+          Alle gegevens en foto's voor <strong className="text-on-surface font-semibold">{stationName}</strong> zijn verwerkt.
         </p>
       </div>
 
-      {/* Generated files card */}
-      <div className="w-full bg-card rounded-3xl p-5 shadow-sm border border-outline-variant/10 mb-5">
-        <div className="flex items-center justify-center gap-3 mb-3">
-          <div className="w-12 h-12 rounded-2xl bg-primary-container/30 flex items-center justify-center">
-            <span className="material-symbols-rounded text-primary text-2xl">description</span>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-primary-container/40 flex items-center justify-center">
-            <span className="material-symbols-rounded text-primary text-2xl">photo_library</span>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-surface-container flex items-center justify-center">
-            <span className="material-symbols-rounded text-muted-foreground text-2xl">verified</span>
+      {/* Progress card */}
+      <div className="bg-primary-container/8 rounded-3xl px-6 py-5 border border-primary/5 mb-4">
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-on-surface-variant/50">Voortgang</span>
+          <div className="flex items-baseline gap-0.5">
+            <span className="font-display text-[28px] font-extrabold text-on-surface leading-none">{pct}</span>
+            <span className="font-display text-[14px] font-medium text-on-surface-variant/40">%</span>
           </div>
         </div>
-        <div className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground text-center">
-          Bestanden gegenereerd
+        <div className="h-[3px] bg-on-surface/6 rounded-full overflow-hidden mb-4">
+          <div className="h-full rounded-full bg-primary transition-all duration-700" style={{ width: `${pct}%` }} />
+        </div>
+        <p className="text-[13px] text-on-surface-variant/50 leading-relaxed">
+          {filledCount} van de {total} categorieën gevalideerd.
+        </p>
+      </div>
+
+      {/* Downloads card */}
+      <div className="bg-primary-container/8 rounded-3xl px-6 py-5 border border-primary/5 mb-8">
+        <div className="text-[11px] font-bold uppercase tracking-[0.15em] text-on-surface-variant/50 mb-4">
+          Bestanden downloaden
+        </div>
+        <div className="flex flex-col gap-2.5">
+          <button
+            onClick={onPdf}
+            className="w-full min-h-[48px] bg-primary text-primary-foreground rounded-2xl font-display text-[14px] font-bold active:scale-[0.97] transition-all flex items-center justify-center gap-2.5"
+          >
+            <span className="material-symbols-rounded text-[18px]">description</span>
+            PDF rapport
+          </button>
+          <button
+            onClick={handleZip}
+            disabled={zipProgress !== null || fotos.length === 0}
+            className="w-full min-h-[48px] bg-on-surface/4 rounded-2xl font-display text-[14px] font-semibold text-on-surface active:scale-[0.97] transition-all flex items-center justify-center gap-2.5 disabled:opacity-40"
+          >
+            <span className="material-symbols-rounded text-[18px] text-on-surface-variant/60">folder_zip</span>
+            {zipProgress !== null ? `Downloaden… ${zipProgress}%` : "Foto's als ZIP"}
+          </button>
         </div>
       </div>
 
-      {/* Action buttons */}
-      <div className="flex flex-col gap-2.5 w-full">
-        <button onClick={onPdf} className="w-full min-h-[56px] bg-gradient-to-r from-primary to-primary-light text-primary-foreground rounded-2xl font-display text-[16px] font-bold shadow-lg shadow-primary/25 active:scale-[0.97] transition-transform flex items-center justify-center gap-2.5">
-          <span className="material-symbols-rounded text-xl">picture_as_pdf</span>PDF downloaden
-        </button>
-        <button
-          onClick={handleZip}
-          disabled={zipProgress !== null || fotos.length === 0}
-          className="w-full min-h-[52px] bg-card border border-outline-variant/15 rounded-2xl font-display text-[15px] font-bold text-foreground shadow-sm active:scale-[0.97] transition-transform flex items-center justify-center gap-2.5 disabled:opacity-50"
-        >
-          <span className="material-symbols-rounded text-xl">folder_zip</span>
-          {zipProgress !== null ? `Downloaden… ${zipProgress}%` : "Foto's als ZIP"}
-        </button>
-        <button onClick={onBack} className="w-full flex items-center justify-center gap-2 py-4 font-display text-[14px] font-bold text-primary active:scale-[0.97] transition-transform">
-          <span className="material-symbols-rounded text-lg">arrow_back</span>Terug naar overzicht
-        </button>
-      </div>
+      {/* Back link */}
+      <button
+        onClick={onBack}
+        className="flex items-center justify-center gap-1.5 py-3 font-display text-[13px] font-semibold text-on-surface-variant/50 hover:text-primary active:scale-[0.97] transition-all mx-auto"
+      >
+        <span className="material-symbols-rounded text-[16px]">chevron_left</span>
+        Terug naar overzicht
+      </button>
 
       {/* Brand footer */}
-      <div className="mt-auto pt-8 text-center">
-        <div className="w-16 h-px bg-outline-variant/20 mx-auto mb-3"></div>
-        <span className="font-display text-sm font-extrabold text-primary/30 tracking-tighter">TerreVolt</span>
-        <div className="text-[9px] font-bold uppercase tracking-[0.15em] text-muted-foreground/40 mt-0.5">Technische Oplevering</div>
+      <div className="mt-auto pt-12 text-center">
+        <span className="font-display text-[13px] font-extrabold text-primary/20 tracking-tight">TerreVolt</span>
+        <div className="text-[9px] font-medium uppercase tracking-[0.18em] text-on-surface-variant/25 mt-0.5">Technische Oplevering</div>
       </div>
     </div>
   );
