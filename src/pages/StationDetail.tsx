@@ -578,7 +578,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
           <button
             onClick={onPrev}
             disabled={step === 0}
-            className="min-h-[48px] px-4 flex items-center gap-1.5 font-display text-[14px] font-semibold text-on-surface-variant/60 active:scale-[0.97] transition-all disabled:opacity-20"
+            className="min-h-[48px] px-4 flex items-center gap-1.5 font-display text-[14px] font-semibold text-text-muted active:scale-[0.97] transition-all disabled:opacity-20"
           >
             <span className="material-symbols-rounded text-[18px]">chevron_left</span>
             Vorige
