@@ -12,6 +12,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [zipProgress, setZipProgress] = useState<number | null>(null);
 
   const { data: stations, isLoading } = useQuery({
     queryKey: ["stations"],
