@@ -407,13 +407,13 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
       {/* ── Premium sticky header ── */}
       <div className="relative z-10 shrink-0 bg-surface -mx-4 px-6 pt-4 pb-3 border-b border-outline-variant/10">
         {/* Back affordance */}
-        <button onClick={onBackToList} className="flex items-center gap-1 text-on-surface-variant/60 text-[13px] font-medium mb-3 active:scale-95 transition-transform">
+        <button onClick={onBackToList} className="flex items-center gap-1 text-text-muted text-[13px] font-medium mb-3 active:scale-95 transition-transform">
           <span className="material-symbols-rounded text-[18px]">arrow_back_ios</span>
           <span>Terug</span>
         </button>
 
         {/* Section label */}
-        <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/50 mb-1">
+        <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-accent-gold mb-1">
           Technische oplevering
         </div>
 
