@@ -407,7 +407,7 @@ function StepByStepView({ station, category, step, total, fotos, tipOpen, onTogg
       {/* ── Premium sticky header ── */}
       <div className="relative z-10 shrink-0 bg-surface -mx-4 px-6 pt-4 pb-3 border-b border-outline-variant/10">
         {/* Back affordance */}
-        <button onClick={onBackToList} className="flex items-center gap-1 text-text-muted text-[13px] font-medium mb-3 active:scale-95 transition-transform">
+        <button onClick={onBackToList} className="flex items-center gap-1 text-text-muted hover:text-primary-hover text-[13px] font-medium mb-3 active:scale-95 transition-all">
           <span className="material-symbols-rounded text-[18px]">arrow_back_ios</span>
           <span>Terug</span>
         </button>
