@@ -254,6 +254,47 @@ function WizardView({
   const [showVoorbeeld, setShowVoorbeeld] = useState(false);
   const [voorbeeldLightbox, setVoorbeeldLightbox] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [opmerkingText, setOpmerkingText] = useState('');
+  const [savingOpmerking, setSavingOpmerking] = useState(false);
+
+  const { data: opmerkingData } = useQuery({
+    queryKey: ['opmerking', stationId, cat?.name],
+    queryFn: async () => {
+      if (!cat) return null;
+      const { data } = await supabase
+        .from('categorie_opmerkingen')
+        .select('*')
+        .eq('station_id', stationId)
+        .eq('categorie', cat.name)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!cat,
+  });
+
+  useEffect(() => {
+    setOpmerkingText(opmerkingData?.opmerking || '');
+  }, [opmerkingData, currentIndex]);
+
+  const saveOpmerking = async () => {
+    if (!cat) return;
+    if (!opmerkingText.trim()) {
+      await supabase.from('categorie_opmerkingen').delete().eq('station_id', stationId).eq('categorie', cat.name);
+      queryClient.invalidateQueries({ queryKey: ['opmerking', stationId, cat.name] });
+      queryClient.invalidateQueries({ queryKey: ['opmerkingen', stationId] });
+      return;
+    }
+    setSavingOpmerking(true);
+    await supabase.from('categorie_opmerkingen').upsert({
+      station_id: stationId,
+      categorie: cat.name,
+      opmerking: opmerkingText.trim(),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'station_id,categorie' });
+    setSavingOpmerking(false);
+    queryClient.invalidateQueries({ queryKey: ['opmerking', stationId, cat.name] });
+    queryClient.invalidateQueries({ queryKey: ['opmerkingen', stationId] });
+  };
 
   const cat = applicableCategories[currentIndex];
   const catFotos = cat ? fotosByCategorie(cat.name) : [];
