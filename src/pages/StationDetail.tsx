@@ -294,7 +294,7 @@ function WizardView({
   };
 
   const openAt = (c: Category) => {
-    const idx = CATEGORIES.findIndex(x => x.id === c.id);
+    const idx = applicableCategories.findIndex(x => x.id === c.id);
     setCurrentIndex(idx);
     setShowComplete(false);
     setTipOpen(false);
