@@ -269,7 +269,7 @@ function WizardView({
   );
 
   const goNext = () => {
-    if (currentIndex < CATEGORIES.length - 1) {
+    if (currentIndex < applicableCategories.length - 1) {
       setCurrentIndex(currentIndex + 1);
       setTipOpen(false);
       setShowVoorbeeld(false);
