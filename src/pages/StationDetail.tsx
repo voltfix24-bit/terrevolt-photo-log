@@ -484,15 +484,29 @@ function WizardView({
 
         {/* Conditional warnings */}
         {isVermogensveld && (
-          <div className="rounded-2xl px-5 py-4 flex gap-3 items-start bg-amber-50/60 border border-amber-200/30">
-            <span className="material-symbols-rounded text-amber-500/70 text-[20px] flex-shrink-0 mt-0.5">error</span>
-            <span className="text-[13px] text-on-surface-variant leading-relaxed">Alleen fotograferen als <strong>vermogensveld aanwezig</strong> is.</span>
+          <div className="rounded-2xl px-5 py-4 bg-amber-50/60 border border-amber-200/30">
+            <div className="flex gap-3 items-start">
+              <span className="material-symbols-rounded text-amber-500/70 text-[20px] flex-shrink-0 mt-0.5">error</span>
+              <span className="text-[13px] text-on-surface-variant leading-relaxed">Alleen fotograferen als <strong>vermogensveld aanwezig</strong> is.</span>
+            </div>
+            {!isCatSkipped && !hasPhotos && (
+              <button onClick={() => { onSkip(cat.name); goNext(); }} className="mt-3 ml-8 text-[12px] font-semibold text-primary underline underline-offset-2 active:scale-95 transition-transform">
+                Niet aanwezig, overslaan →
+              </button>
+            )}
           </div>
         )}
         {isDaKast && (
-          <div className="rounded-2xl px-5 py-4 flex gap-3 items-start bg-amber-50/60 border border-amber-200/30">
-            <span className="material-symbols-rounded text-amber-500/70 text-[20px] flex-shrink-0 mt-0.5">error</span>
-            <span className="text-[13px] text-on-surface-variant leading-relaxed">Alleen fotograferen als <strong>DA-kast aanwezig</strong> is.</span>
+          <div className="rounded-2xl px-5 py-4 bg-amber-50/60 border border-amber-200/30">
+            <div className="flex gap-3 items-start">
+              <span className="material-symbols-rounded text-amber-500/70 text-[20px] flex-shrink-0 mt-0.5">error</span>
+              <span className="text-[13px] text-on-surface-variant leading-relaxed">Alleen fotograferen als <strong>DA-kast aanwezig</strong> is.</span>
+            </div>
+            {!isCatSkipped && !hasPhotos && (
+              <button onClick={() => { onSkip(cat.name); goNext(); }} className="mt-3 ml-8 text-[12px] font-semibold text-primary underline underline-offset-2 active:scale-95 transition-transform">
+                Niet aanwezig, overslaan →
+              </button>
+            )}
           </div>
         )}
 
