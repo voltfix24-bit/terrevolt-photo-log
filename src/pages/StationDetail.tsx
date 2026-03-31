@@ -127,8 +127,8 @@ function getSectionIcon(sectionId: string): string {
 }
 
 /* ==================== CATEGORY ROW ==================== */
-function CategoryRow({ cat, fotos, isSkipped, onOpen }: {
-  cat: Category; fotos: FotoRow[]; isSkipped?: boolean; onOpen: () => void;
+function CategoryRow({ cat, fotos, isSkipped, hasOpmerking, onOpen }: {
+  cat: Category; fotos: FotoRow[]; isSkipped?: boolean; hasOpmerking?: boolean; onOpen: () => void;
 }) {
   const hasPhotos = fotos.length > 0;
 
@@ -202,7 +202,10 @@ function CategoryRow({ cat, fotos, isSkipped, onOpen }: {
           <span className="material-symbols-rounded text-base" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
         </div>
         <div>
-          <h4 className="font-display font-bold text-on-surface text-sm">{cat.name}</h4>
+          <h4 className="font-display font-bold text-on-surface text-sm flex items-center gap-1.5">
+            {cat.name}
+            {hasOpmerking && <span className="material-symbols-rounded text-accent-gold text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>sticky_note_2</span>}
+          </h4>
           <div className="flex items-center gap-2 mt-0.5">
             <span className="text-[10px] uppercase tracking-wider text-primary font-bold">
               {fotos.length} foto{fotos.length > 1 ? "'s" : ""} ✓
@@ -222,6 +225,7 @@ function CategoryRow({ cat, fotos, isSkipped, onOpen }: {
 /* ==================== WIZARD VIEW ==================== */
 interface WizardViewProps {
   startIndex: number;
+  stationId: string;
   onClose: () => void;
   onSkip: (catName: string) => void;
   onUnskip: (catName: string) => void;
@@ -241,17 +245,20 @@ interface WizardViewProps {
 }
 
 function WizardView({
-  startIndex, onClose, onSkip, onUnskip, skipped, station,
+  startIndex, stationId, onClose, onSkip, onUnskip, skipped, station,
   fotosByCategorie, isUploading, uploadProgress,
   onUpload, onDelete, onClickThumb, onOpenPdf, filledCount, voorbeelden,
   applicableCategories,
 }: WizardViewProps) {
+  const queryClient = useQueryClient();
   const [currentIndex, setCurrentIndex] = useState(startIndex);
   const [showComplete, setShowComplete] = useState(false);
   const [tipOpen, setTipOpen] = useState(false);
   const [showVoorbeeld, setShowVoorbeeld] = useState(false);
   const [voorbeeldLightbox, setVoorbeeldLightbox] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [opmerkingText, setOpmerkingText] = useState('');
+  const [savingOpmerking, setSavingOpmerking] = useState(false);
 
   const cat = applicableCategories[currentIndex];
   const catFotos = cat ? fotosByCategorie(cat.name) : [];
@@ -263,6 +270,45 @@ function WizardView({
   const isVermogensveld = cat?.id === 14;
   const isDaKast = cat?.id === 15;
   const isTypeplaatje = cat?.id === 1 && station.type_ruimte === 'Betreedbaar station';
+
+  const { data: opmerkingData } = useQuery({
+    queryKey: ['opmerking', stationId, cat?.name],
+    queryFn: async () => {
+      if (!cat) return null;
+      const { data } = await supabase
+        .from('categorie_opmerkingen')
+        .select('*')
+        .eq('station_id', stationId)
+        .eq('categorie', cat.name)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!cat,
+  });
+
+  useEffect(() => {
+    setOpmerkingText(opmerkingData?.opmerking || '');
+  }, [opmerkingData, currentIndex]);
+
+  const saveOpmerking = async () => {
+    if (!cat) return;
+    if (!opmerkingText.trim()) {
+      await supabase.from('categorie_opmerkingen').delete().eq('station_id', stationId).eq('categorie', cat.name);
+      queryClient.invalidateQueries({ queryKey: ['opmerking', stationId, cat.name] });
+      queryClient.invalidateQueries({ queryKey: ['opmerkingen', stationId] });
+      return;
+    }
+    setSavingOpmerking(true);
+    await supabase.from('categorie_opmerkingen').upsert({
+      station_id: stationId,
+      categorie: cat.name,
+      opmerking: opmerkingText.trim(),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'station_id,categorie' });
+    setSavingOpmerking(false);
+    queryClient.invalidateQueries({ queryKey: ['opmerking', stationId, cat.name] });
+    queryClient.invalidateQueries({ queryKey: ['opmerkingen', stationId] });
+  };
 
   const incompleteCategories = applicableCategories.filter(c =>
     fotosByCategorie(c.name).length === 0 && !skipped.includes(c.name)
@@ -552,6 +598,31 @@ function WizardView({
         )}
       </div>
 
+      {/* Opmerking field */}
+      <div className="bg-card rounded-2xl border border-outline-variant/15 shadow-sm overflow-hidden">
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-outline-variant/10">
+          <span className="material-symbols-rounded text-muted-foreground text-lg">edit_note</span>
+          <span className="text-sm font-bold text-on-surface">Opmerking</span>
+          {opmerkingData?.opmerking && (
+            <span className="ml-auto text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">Opgeslagen</span>
+          )}
+        </div>
+        <div className="p-4">
+          <textarea
+            value={opmerkingText}
+            onChange={e => setOpmerkingText(e.target.value)}
+            onBlur={saveOpmerking}
+            placeholder="Bijv: Beschadiging aan de rechterzijde, kabelmarkeringen ontbreken..."
+            rows={3}
+            className="w-full px-3 py-2.5 bg-surface-low border border-outline-variant/20 rounded-xl text-sm text-on-surface placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none transition"
+          />
+          <div className="flex items-center justify-between mt-2">
+            <span className="text-[11px] text-muted-foreground">Wordt opgeslagen bij verlaten veld · Verschijnt in PDF</span>
+            {savingOpmerking && <span className="text-[11px] text-muted-foreground">Opslaan...</span>}
+          </div>
+        </div>
+      </div>
+
       {/* Bottom navigation */}
       <div className="fixed bottom-0 left-0 right-0 z-[75] bg-surface-white/90 backdrop-blur-2xl border-t border-outline-variant/10 px-5 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
         <div className="flex items-center gap-3 max-w-3xl mx-auto">
@@ -591,6 +662,13 @@ export default function StationDetail() {
   const { data: voorbeelden } = useVoorbeelden();
   const { data: instellingenData } = useInstellingen();
   const { skipped, addSkip, removeSkip, isSkipped } = useSkippedCategories(id);
+  const { data: opmerkingen } = useQuery({
+    queryKey: ['opmerkingen', id],
+    queryFn: async () => {
+      const { data } = await supabase.from('categorie_opmerkingen').select('categorie, opmerking').eq('station_id', id!);
+      return data ?? [];
+    },
+  });
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const toggleSection = useCallback((sectionId: string) => {
@@ -690,7 +768,7 @@ export default function StationDetail() {
 
   const openPdf = () => {
     if (!station || !fotos) return;
-    const html = generatePdfHtml(station, fotos, instellingenData ?? undefined);
+    const html = generatePdfHtml(station, fotos, instellingenData ?? undefined, opmerkingen ?? undefined);
     const w = window.open("", "_blank");
     if (w) { w.document.write(html); w.document.close(); }
   };
@@ -752,6 +830,7 @@ export default function StationDetail() {
       {wizardOpen && (
         <WizardView
           startIndex={wizardStartIndex}
+          stationId={id!}
           onClose={() => setWizardOpen(false)}
           onSkip={addSkip}
           onUnskip={removeSkip}
@@ -909,6 +988,7 @@ export default function StationDetail() {
                         cat={cat}
                         fotos={fotosByCategorie(cat.name)}
                         isSkipped={isSkipped(cat.name)}
+                        hasOpmerking={!!opmerkingen?.some(o => o.categorie === cat.name)}
                         onOpen={() => openWizardAt(cat)}
                       />
                     ))}

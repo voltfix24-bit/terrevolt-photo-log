@@ -22,7 +22,7 @@ export interface PdfBranding {
   primary_light_color?: string;
 }
 
-export function generatePdfHtml(station: Station, fotos: Foto[], branding?: PdfBranding): string {
+export function generatePdfHtml(station: Station, fotos: Foto[], branding?: PdfBranding, opmerkingen?: { categorie: string; opmerking: string }[]): string {
   const bedrijfsnaam = branding?.bedrijfsnaam || 'Terrevolt B.V.';
   const regio = branding?.regio || 'Liander Zuidoost';
   const logoUrl = branding?.logo_url;
@@ -254,6 +254,15 @@ export function generatePdfHtml(station: Station, fotos: Foto[], branding?: PdfB
               </div>
             `).join("")}
           </div>
+
+          ${(() => {
+            const opmerking = opmerkingen?.find(o => o.categorie === catData.name);
+            if (!opmerking) return '';
+            return `<div style="margin:8px 10px 0;padding:8px 12px;background:#fffbf0;border:1px solid #f0e0a0;border-left:3px solid #d4a017;border-radius:8px;font-size:10px;color:#5a4a00;line-height:1.5;">
+              <div style="font-weight:700;font-size:9px;text-transform:uppercase;letter-spacing:0.5px;color:#8a6a00;margin-bottom:3px;">📝 Opmerking</div>
+              ${opmerking.opmerking}
+            </div>`;
+          })()}
 
           <div class="photo-footer">
             <span class="pf-left">

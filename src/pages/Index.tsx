@@ -41,9 +41,10 @@ export default function Dashboard() {
 
   const { data: instellingenData } = useInstellingen();
 
-  const openPdf = (station: any) => {
+  const openPdf = async (station: any) => {
     const fotos = station.fotos ?? [];
-    const html = generatePdfHtml(station, fotos, instellingenData ?? undefined);
+    const { data: opmerkingen } = await supabase.from('categorie_opmerkingen').select('categorie, opmerking').eq('station_id', station.id);
+    const html = generatePdfHtml(station, fotos, instellingenData ?? undefined, opmerkingen ?? undefined);
     const w = window.open("", "_blank");
     if (w) { w.document.write(html); w.document.close(); }
   };
