@@ -905,7 +905,6 @@ export default function StationDetail() {
                         cat={cat}
                         fotos={fotosByCategorie(cat.name)}
                         isSkipped={isSkipped(cat.name)}
-                        sectionComplete={isComplete}
                         onOpen={() => openWizardAt(cat)}
                       />
                     ))}
