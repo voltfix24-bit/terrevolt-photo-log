@@ -828,7 +828,7 @@ export default function StationDetail() {
             </div>
             <div className="text-right pb-1">
               <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Categorieën</div>
-              <div className="font-display text-[20px] font-extrabold text-primary">{filledCount} / {CATEGORIES.length}</div>
+              <div className="font-display text-[20px] font-extrabold text-primary">{filledCount} / {applicableCategories.length}</div>
               <div className="text-xs text-muted-foreground">{fotos?.length ?? 0} foto's</div>
             </div>
           </div>
