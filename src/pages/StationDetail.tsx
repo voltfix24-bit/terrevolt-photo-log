@@ -222,6 +222,7 @@ function CategoryRow({ cat, fotos, isSkipped, onOpen }: {
 /* ==================== WIZARD VIEW ==================== */
 interface WizardViewProps {
   startIndex: number;
+  stationId: string;
   onClose: () => void;
   onSkip: (catName: string) => void;
   onUnskip: (catName: string) => void;
