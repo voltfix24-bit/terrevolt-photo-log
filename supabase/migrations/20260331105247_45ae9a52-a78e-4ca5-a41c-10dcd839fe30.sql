@@ -1,0 +1,1 @@
+alter table fotos add column if not exists uploaded_at timestamptz default now();
