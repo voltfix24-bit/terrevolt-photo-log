@@ -659,6 +659,13 @@ export default function StationDetail() {
   const { data: voorbeelden } = useVoorbeelden();
   const { data: instellingenData } = useInstellingen();
   const { skipped, addSkip, removeSkip, isSkipped } = useSkippedCategories(id);
+  const { data: opmerkingen } = useQuery({
+    queryKey: ['opmerkingen', id],
+    queryFn: async () => {
+      const { data } = await supabase.from('categorie_opmerkingen').select('categorie, opmerking').eq('station_id', id!);
+      return data ?? [];
+    },
+  });
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const toggleSection = useCallback((sectionId: string) => {
