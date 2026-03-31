@@ -182,7 +182,7 @@ export default function Instellingen() {
     const { error } = await supabase.storage.from('branding').upload(path, file);
     if (!error) {
       const { data } = supabase.storage.from('branding').getPublicUrl(path);
-      await supabase.from('instellingen' as any).update({ profielfoto_url: data.publicUrl } as any).eq('id', instellingen.id);
+      await supabase.from('instellingen').update({ profielfoto_url: data.publicUrl }).eq('id', instellingen.id);
       queryClient.invalidateQueries({ queryKey: ['instellingen'] });
       toast.success('Profielfoto opgeslagen ✓');
     } else {
