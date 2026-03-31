@@ -12,6 +12,7 @@ interface Foto {
   id: string;
   categorie: string;
   url: string;
+  uploaded_at?: string;
 }
 
 export interface PdfBranding {
