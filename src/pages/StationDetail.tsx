@@ -202,7 +202,10 @@ function CategoryRow({ cat, fotos, isSkipped, hasOpmerking, onOpen }: {
           <span className="material-symbols-rounded text-base" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
         </div>
         <div>
-          <h4 className="font-display font-bold text-on-surface text-sm">{cat.name}</h4>
+          <h4 className="font-display font-bold text-on-surface text-sm flex items-center gap-1.5">
+            {cat.name}
+            {hasOpmerking && <span className="material-symbols-rounded text-accent-gold text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>sticky_note_2</span>}
+          </h4>
           <div className="flex items-center gap-2 mt-0.5">
             <span className="text-[10px] uppercase tracking-wider text-primary font-bold">
               {fotos.length} foto{fotos.length > 1 ? "'s" : ""} ✓
