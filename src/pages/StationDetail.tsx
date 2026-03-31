@@ -24,7 +24,7 @@ import { useInstellingen } from "@/hooks/use-theme";
 const MAX_SIZE = 10 * 1024 * 1024;
 const ACCEPTED = ["image/jpeg", "image/png", "image/heic", "image/webp"];
 
-type FotoRow = { id: string; url: string; storage_path: string; categorie: string };
+type FotoRow = { id: string; url: string; storage_path: string; categorie: string; uploaded_at?: string };
 
 /* ==================== DROP ZONE COMPONENT ==================== */
 function DropZone({ onFiles, disabled, onClick, children }: {
