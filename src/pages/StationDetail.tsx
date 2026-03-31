@@ -796,6 +796,8 @@ export default function StationDetail() {
     const html = generatePdfHtml(station, fotos, instellingenData ?? undefined, opmerkingen ?? undefined);
     const w = window.open("", "_blank");
     if (w) { w.document.write(html); w.document.close(); }
+    setShareStation(station.naam_msr);
+    setTimeout(() => setShareOpen(true), 500);
   };
 
   const openWizardAt = useCallback((cat: Category) => {
