@@ -353,7 +353,7 @@ export default function Instellingen() {
                   { key: 'orange_color' as const, label: 'Accent oranje', desc: 'OPEN badges, waarschuwingen' },
                 ]).map(({ key, label, desc }) => (
                   <div key={key} className="flex items-center gap-3 px-3 py-2.5 bg-surface-low rounded-xl">
-                    <div className="w-8 h-8 rounded-lg border border-outline-variant/30 flex-shrink-0" style={{ background: `hsl(${(current as any)?.[key] || ''})` }} />
+                    <div className="w-8 h-8 rounded-lg border border-outline-variant/30 flex-shrink-0" style={{ background: `hsl(${current?.[key] || ''})` }} />
                     <div className="flex-1 min-w-0">
                       <div className="text-xs font-bold text-on-surface">{label}</div>
                       <div className="text-[10px] text-muted-foreground">{desc}</div>
