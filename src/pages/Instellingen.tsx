@@ -359,7 +359,7 @@ export default function Instellingen() {
                       <div className="text-[10px] text-muted-foreground">{desc}</div>
                     </div>
                     <input
-                      value={(current as any)?.[key] || ''}
+                      value={current?.[key] || ''}
                       onChange={e => updateField(key, e.target.value)}
                       placeholder="150 100% 20%"
                       className="w-28 px-2.5 py-2 bg-card border border-outline-variant/30 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-primary/25 transition"
