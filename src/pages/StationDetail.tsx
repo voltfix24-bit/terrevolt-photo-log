@@ -24,7 +24,7 @@ import { useInstellingen } from "@/hooks/use-theme";
 const MAX_SIZE = 10 * 1024 * 1024;
 const ACCEPTED = ["image/jpeg", "image/png", "image/heic", "image/webp"];
 
-type FotoRow = { id: string; url: string; storage_path: string; categorie: string };
+type FotoRow = { id: string; url: string; storage_path: string; categorie: string; uploaded_at?: string };
 
 /* ==================== DROP ZONE COMPONENT ==================== */
 function DropZone({ onFiles, disabled, onClick, children }: {
@@ -579,6 +579,11 @@ function WizardView({
                 <button onClick={() => onClickThumb(cat.name, i)} className="w-full h-full">
                   <img src={foto.url} alt="" className="w-full h-full object-cover" />
                 </button>
+                {foto.uploaded_at && (
+                  <div className="absolute bottom-0 left-0 right-0 bg-on-surface/50 backdrop-blur-sm px-2 py-1 text-[9px] text-white font-mono text-center">
+                    {new Date(foto.uploaded_at).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
+                  </div>
+                )}
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <button className="absolute top-1.5 right-1.5 w-6 h-6 bg-on-surface/60 backdrop-blur-sm rounded-full text-white flex items-center justify-center active:scale-90 transition-transform">
@@ -756,7 +761,7 @@ export default function StationDetail() {
       if (uploadError) { toast.error(`Upload mislukt: ${uploadError.message}`); continue; }
 
       const { data: urlData } = supabase.storage.from("to-fotos").getPublicUrl(storagePath);
-      await supabase.from("fotos").insert({ station_id: id!, categorie, storage_path: storagePath, url: urlData.publicUrl, volgorde: fotosByCategorie(categorie).length + done });
+      await supabase.from("fotos").insert({ station_id: id!, categorie, storage_path: storagePath, url: urlData.publicUrl, volgorde: fotosByCategorie(categorie).length + done, uploaded_at: new Date().toISOString() });
 
       done++;
       setUploadProgress((p) => ({ ...p, [categorie]: Math.round((done / total) * 100) }));

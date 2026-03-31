@@ -113,6 +113,7 @@ export type Database = {
           id: string
           station_id: string
           storage_path: string
+          uploaded_at: string | null
           url: string
           volgorde: number | null
         }
@@ -122,6 +123,7 @@ export type Database = {
           id?: string
           station_id: string
           storage_path: string
+          uploaded_at?: string | null
           url: string
           volgorde?: number | null
         }
@@ -131,6 +133,7 @@ export type Database = {
           id?: string
           station_id?: string
           storage_path?: string
+          uploaded_at?: string | null
           url?: string
           volgorde?: number | null
         }

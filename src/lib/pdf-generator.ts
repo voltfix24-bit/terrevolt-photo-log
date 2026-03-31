@@ -12,6 +12,7 @@ interface Foto {
   id: string;
   categorie: string;
   url: string;
+  uploaded_at?: string;
 }
 
 export interface PdfBranding {
@@ -251,6 +252,7 @@ export function generatePdfHtml(station: Station, fotos: Foto[], branding?: PdfB
             ${chunk.map((foto, i) => `
               <div class="photo-cell">
                 <img src="${foto.url}" alt="Foto ${i + 1}" loading="eager"/>
+                ${foto.uploaded_at ? `<div class="photo-timestamp">${new Date(foto.uploaded_at).toLocaleDateString('nl-NL')} ${new Date(foto.uploaded_at).toLocaleTimeString('nl-NL', {hour:'2-digit', minute:'2-digit'})}</div>` : ''}
               </div>
             `).join("")}
           </div>
@@ -730,6 +732,19 @@ body {
   border: 1px solid #e5e7eb;
   position: relative;
   min-height: 0;
+}
+.photo-timestamp {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  background: rgba(0,0,0,0.55);
+  color: white;
+  font-size: 7px;
+  font-weight: 600;
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.2px;
 }
 .photo-cell img {
   width: 100%;
