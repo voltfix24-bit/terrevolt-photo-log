@@ -316,7 +316,7 @@ function WizardView({
             </div>
             <h2 className="font-display text-2xl font-black mb-2">Doorlopen!</h2>
             <p className="text-muted-foreground text-sm mb-6">
-              {filledCount} van {CATEGORIES.length} categorieën ingevuld
+              {filledCount} van {applicableCategories.length} categorieën ingevuld
             </p>
 
             {incompleteCategories.length > 0 && (
