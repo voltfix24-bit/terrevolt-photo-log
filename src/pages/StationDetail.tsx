@@ -510,8 +510,20 @@ function WizardView({
             )}
           </div>
         )}
+        {isTypeplaatje && (
+          <div className="rounded-2xl px-5 py-4 bg-amber-50/60 border border-amber-200/30">
+            <div className="flex gap-3 items-start">
+              <span className="material-symbols-rounded text-amber-500/70 text-[20px] flex-shrink-0 mt-0.5">error</span>
+              <span className="text-[13px] text-on-surface-variant leading-relaxed">Bij een <strong>betreedbaar station</strong> kan deze vraag worden overgeslagen.</span>
+            </div>
+            {!isCatSkipped && !hasPhotos && (
+              <button onClick={() => { onSkip(cat.name); goNext(); }} className="mt-3 ml-8 text-[12px] font-semibold text-primary underline underline-offset-2 active:scale-95 transition-transform">
+                Overslaan →
+              </button>
+            )}
+          </div>
+        )}
 
-        {/* Example photos */}
         {catVoorbeelden.length > 0 && (
           <div>
             <button onClick={() => setShowVoorbeeld(!showVoorbeeld)} className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-[12px] font-semibold transition-all active:scale-95 ${showVoorbeeld ? 'bg-primary/8 text-primary' : 'bg-surface-high text-text-muted hover:text-primary hover:bg-primary/[0.06]'}`}>
