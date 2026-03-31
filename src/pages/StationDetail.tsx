@@ -666,6 +666,8 @@ export default function StationDetail() {
   const [highlightCatId, setHighlightCatId] = useState<number | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardStartIndex, setWizardStartIndex] = useState(0);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareStation, setShareStation] = useState('');
   const { data: voorbeelden } = useVoorbeelden();
   const { data: instellingenData } = useInstellingen();
   const { skipped, addSkip, removeSkip, isSkipped } = useSkippedCategories(id);
