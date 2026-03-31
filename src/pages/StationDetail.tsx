@@ -127,16 +127,12 @@ function getSectionIcon(sectionId: string): string {
 }
 
 /* ==================== CATEGORY ROW ==================== */
-function CategoryRow({ cat, fotos, isSkipped, sectionComplete, onOpen }: {
-  cat: Category; fotos: FotoRow[]; isSkipped?: boolean; sectionComplete?: boolean; onOpen: () => void;
+function CategoryRow({ cat, fotos, isSkipped, onOpen }: {
+  cat: Category; fotos: FotoRow[]; isSkipped?: boolean; onOpen: () => void;
 }) {
   const hasPhotos = fotos.length > 0;
-  // "In progress" = has photos but section not yet complete
-  const isInProgress = hasPhotos && !sectionComplete;
-  // "Voltooid" = has photos and entire section is complete
-  const isDone = hasPhotos && sectionComplete;
 
-  // OPEN — dashed border, camera icon
+  // OPEN — no photos, not skipped
   if (!hasPhotos && !isSkipped) {
     return (
       <button
@@ -190,77 +186,35 @@ function CategoryRow({ cat, fotos, isSkipped, sectionComplete, onOpen }: {
     );
   }
 
-  // IN PROGRESS — has photos, section not complete → orange accent bar
-  if (isInProgress) {
-    return (
-      <button
-        data-cat-id={cat.id}
-        onClick={onOpen}
-        className="flex items-center justify-between w-full p-4 rounded-xl
-                   bg-primary/[0.04] border border-primary/15
-                   relative overflow-hidden text-left active:scale-[0.98] group"
-      >
-        <div className="absolute left-0 top-0 bottom-0 w-1 bg-orange" />
-        <div className="flex items-center gap-4 ml-2">
-          <div className="w-9 h-9 rounded-full bg-orange/10 flex items-center
-                          justify-center text-orange flex-shrink-0">
-            <span className="material-symbols-rounded text-base" style={{ fontVariationSettings: "'FILL' 1" }}>photo_camera</span>
-          </div>
-          <div>
-            <h4 className="font-display font-bold text-on-surface text-sm">{cat.name}</h4>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-[10px] uppercase tracking-wider text-orange font-bold">
-                {fotos.length} foto{fotos.length > 1 ? "'s" : ""}
-              </span>
-              <span className="w-1 h-1 rounded-full bg-outline-variant" />
-              <span className="text-[11px] text-on-surface-variant">Tik voor meer</span>
-            </div>
-          </div>
-        </div>
-        <span className="material-symbols-rounded text-orange group-hover:translate-x-1 transition-transform">
-          arrow_forward
-        </span>
-      </button>
-    );
-  }
-
-  // VOLTOOID — section complete, strikethrough
+  // VOLTOOID — has photos (always green/completed per individual category)
   return (
     <button
       data-cat-id={cat.id}
       onClick={onOpen}
       className="flex items-center justify-between w-full p-4 rounded-xl
-                 bg-surface/50 opacity-80 hover:opacity-100 transition-opacity
-                 text-left active:scale-[0.98]"
+                 bg-primary/[0.04] border border-primary/15
+                 relative overflow-hidden text-left active:scale-[0.98] group"
     >
-      <div className="flex items-center gap-4">
+      <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />
+      <div className="flex items-center gap-4 ml-2">
         <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center
                         justify-center text-primary flex-shrink-0">
           <span className="material-symbols-rounded text-base" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
         </div>
         <div>
-          <h4 className="font-display font-semibold text-on-surface/60 line-through text-sm">{cat.name}</h4>
+          <h4 className="font-display font-bold text-on-surface text-sm">{cat.name}</h4>
           <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-[10px] uppercase tracking-wider text-primary font-bold">Voltooid</span>
-            {fotos.length > 0 && (
-              <>
-                <span className="w-1 h-1 rounded-full bg-outline-variant" />
-                <div className="flex gap-1">
-                  {fotos.slice(0, 3).map(f => (
-                    <img key={f.id} src={f.url} className="w-6 h-6 rounded-md object-cover border border-outline-variant/20" alt="" />
-                  ))}
-                  {fotos.length > 3 && (
-                    <div className="w-6 h-6 rounded-md bg-surface-container flex items-center justify-center text-[9px] font-bold text-muted-foreground">
-                      +{fotos.length - 3}
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
+            <span className="text-[10px] uppercase tracking-wider text-primary font-bold">
+              {fotos.length} foto{fotos.length > 1 ? "'s" : ""} ✓
+            </span>
+            <span className="w-1 h-1 rounded-full bg-outline-variant" />
+            <span className="text-[11px] text-on-surface-variant">Tik voor meer</span>
           </div>
         </div>
       </div>
-      <span className="material-symbols-rounded text-muted-foreground/40">chevron_right</span>
+      <span className="material-symbols-rounded text-primary/60 group-hover:translate-x-1 transition-transform">
+        chevron_right
+      </span>
     </button>
   );
 }
