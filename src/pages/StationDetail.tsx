@@ -988,6 +988,7 @@ export default function StationDetail() {
                         cat={cat}
                         fotos={fotosByCategorie(cat.name)}
                         isSkipped={isSkipped(cat.name)}
+                        hasOpmerking={!!opmerkingen?.some(o => o.categorie === cat.name)}
                         onOpen={() => openWizardAt(cat)}
                       />
                     ))}
