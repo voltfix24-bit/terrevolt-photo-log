@@ -699,15 +699,15 @@ export default function StationDetail() {
     setWizardOpen(true);
   }, []);
 
-  // Find next incomplete category across ALL sections
+  // Find next incomplete category across applicable categories
   const nextIncomplete = useMemo(() => {
-    for (const cat of CATEGORIES) {
+    for (const cat of applicableCategories) {
       if (fotosByCategorie(cat.name).length === 0 && !isSkipped(cat.name)) {
         return cat;
       }
     }
     return null;
-  }, [fotosByCategorie, isSkipped]);
+  }, [fotosByCategorie, isSkipped, applicableCategories]);
 
   const allDone = !nextIncomplete;
 
