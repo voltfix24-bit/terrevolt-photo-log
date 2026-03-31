@@ -733,6 +733,19 @@ body {
   position: relative;
   min-height: 0;
 }
+.photo-timestamp {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  background: rgba(0,0,0,0.55);
+  color: white;
+  font-size: 7px;
+  font-weight: 600;
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.2px;
+}
 .photo-cell img {
   width: 100%;
   height: 100%;

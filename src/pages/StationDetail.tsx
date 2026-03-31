@@ -579,6 +579,11 @@ function WizardView({
                 <button onClick={() => onClickThumb(cat.name, i)} className="w-full h-full">
                   <img src={foto.url} alt="" className="w-full h-full object-cover" />
                 </button>
+                {foto.uploaded_at && (
+                  <div className="absolute bottom-0 left-0 right-0 bg-on-surface/50 backdrop-blur-sm px-2 py-1 text-[9px] text-white font-mono text-center">
+                    {new Date(foto.uploaded_at).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
+                  </div>
+                )}
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <button className="absolute top-1.5 right-1.5 w-6 h-6 bg-on-surface/60 backdrop-blur-sm rounded-full text-white flex items-center justify-center active:scale-90 transition-transform">
