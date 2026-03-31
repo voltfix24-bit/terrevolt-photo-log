@@ -252,6 +252,7 @@ export function generatePdfHtml(station: Station, fotos: Foto[], branding?: PdfB
             ${chunk.map((foto, i) => `
               <div class="photo-cell">
                 <img src="${foto.url}" alt="Foto ${i + 1}" loading="eager"/>
+                ${foto.uploaded_at ? `<div class="photo-timestamp">${new Date(foto.uploaded_at).toLocaleDateString('nl-NL')} ${new Date(foto.uploaded_at).toLocaleTimeString('nl-NL', {hour:'2-digit', minute:'2-digit'})}</div>` : ''}
               </div>
             `).join("")}
           </div>
