@@ -129,12 +129,13 @@ export default function Dashboard() {
         ) : (
           <div className="space-y-5">
             {filtered?.map((station, idx) => {
+              const applicable = getApplicableCategories(station);
               const uniqueCategories = new Set(
-                station.fotos?.map((f: { categorie: string }) => f.categorie)
+                station.fotos?.map((f: { categorie: string }) => f.categorie).filter((c: string) => applicable.some(ac => ac.name === c))
               );
               const cats = uniqueCategories.size;
-              const pct = Math.round((cats / FOTO_CATEGORIEEN.length) * 100);
-              const complete = cats === FOTO_CATEGORIEEN.length;
+              const pct = Math.round((cats / applicable.length) * 100);
+              const complete = cats === applicable.length;
               const isExpanded = expandedId === station.id;
 
               return (
