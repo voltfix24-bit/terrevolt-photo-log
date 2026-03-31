@@ -22,7 +22,7 @@ export interface PdfBranding {
   primary_light_color?: string;
 }
 
-export function generatePdfHtml(station: Station, fotos: Foto[], branding?: PdfBranding): string {
+export function generatePdfHtml(station: Station, fotos: Foto[], branding?: PdfBranding, opmerkingen?: { categorie: string; opmerking: string }[]): string {
   const bedrijfsnaam = branding?.bedrijfsnaam || 'Terrevolt B.V.';
   const regio = branding?.regio || 'Liander Zuidoost';
   const logoUrl = branding?.logo_url;
