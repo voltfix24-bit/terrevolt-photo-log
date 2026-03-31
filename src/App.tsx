@@ -10,11 +10,39 @@ import Instellingen from "./pages/Instellingen";
 import CategorieenBeheren from "./pages/CategorieenBeheren";
 import NotFound from "./pages/NotFound";
 import { useInstellingen } from "@/hooks/use-theme";
+import { useOnline } from "@/hooks/use-online";
+import { syncPendingPhotos } from "@/lib/sync-service";
+import { getQueueCount } from "@/lib/offline-queue";
+import { toast } from "sonner";
+import { useEffect } from "react";
 
 const queryClient = new QueryClient();
 
 function AppContent() {
-  useInstellingen(); // Apply theme globally on load
+  useInstellingen();
+  const isOnline = useOnline();
+
+  useEffect(() => {
+    if (isOnline) {
+      getQueueCount().then(count => {
+        if (count > 0) {
+          toast.loading(`Verbinding hersteld — ${count} foto's uploaden...`, { id: 'sync-toast' });
+          syncPendingPhotos((done, total) => {
+            toast.loading(`${done}/${total} foto's uploaden...`, { id: 'sync-toast' });
+          }).then(done => {
+            if (done > 0) {
+              toast.success(`${done} foto's gesynchroniseerd ✓`, { id: 'sync-toast' });
+              queryClient.invalidateQueries({ queryKey: ["fotos"] });
+              queryClient.invalidateQueries({ queryKey: ["stations"] });
+            } else {
+              toast.dismiss('sync-toast');
+            }
+          });
+        }
+      });
+    }
+  }, [isOnline]);
+
   return (
     <>
       <AppHeader />

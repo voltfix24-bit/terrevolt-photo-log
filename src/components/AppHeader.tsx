@@ -53,6 +53,16 @@ export default function AppHeader() {
         </div>
       </header>
 
+      {!isOnline && (
+        <div className="fixed top-14 left-0 right-0 z-40 bg-orange/90 text-white px-4 py-2 flex items-center justify-center gap-2 text-sm font-medium">
+          <span className="material-symbols-rounded text-base">wifi_off</span>
+          <span>Offline — foto's worden opgeslagen en later geüpload</span>
+          {queueCount > 0 && (
+            <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs font-bold">{queueCount} wachtend</span>
+          )}
+        </div>
+      )}
+
       <button
         onClick={() => navigate("/stations/new")}
         className={`fixed bottom-24 md:bottom-8 right-5 z-50 w-14 h-14 rounded-full bg-primary hover:bg-primary-hover text-primary-foreground shadow-[0_6px_24px_-4px_rgba(0,100,47,0.4)] flex items-center justify-center active:scale-90 transition-all ${
