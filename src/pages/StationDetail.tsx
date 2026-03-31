@@ -272,7 +272,7 @@ interface WizardViewProps {
   onSkip: (catName: string) => void;
   onUnskip: (catName: string) => void;
   skipped: string[];
-  station: { vermogensveld: boolean | null; da_kast: boolean | null; naam_msr: string };
+  station: { vermogensveld: boolean | null; da_kast: boolean | null; naam_msr: string; type_ruimte: string | null };
   fotos: FotoRow[];
   fotosByCategorie: (cat: string) => FotoRow[];
   isUploading: string | null;
