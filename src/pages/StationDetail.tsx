@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { CATEGORIES, FOTO_CATEGORIEEN, SECTIONS, getCategoriesBySection, slugify, type Category, type Section } from "@/lib/categories";
+import { CATEGORIES, SECTIONS, getCategoriesBySection, getApplicableCategories, slugify, type Category, type Section } from "@/lib/categories";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -237,12 +237,14 @@ interface WizardViewProps {
   onOpenPdf: () => void;
   filledCount: number;
   voorbeelden: { id: string; categorie: string; url: string }[];
+  applicableCategories: Category[];
 }
 
 function WizardView({
   startIndex, onClose, onSkip, onUnskip, skipped, station,
   fotosByCategorie, isUploading, uploadProgress,
   onUpload, onDelete, onClickThumb, onOpenPdf, filledCount, voorbeelden,
+  applicableCategories,
 }: WizardViewProps) {
   const [currentIndex, setCurrentIndex] = useState(startIndex);
   const [showComplete, setShowComplete] = useState(false);
@@ -251,7 +253,7 @@ function WizardView({
   const [voorbeeldLightbox, setVoorbeeldLightbox] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const cat = CATEGORIES[currentIndex];
+  const cat = applicableCategories[currentIndex];
   const catFotos = cat ? fotosByCategorie(cat.name) : [];
   const isCatSkipped = cat ? skipped.includes(cat.name) : false;
   const hasPhotos = catFotos.length > 0;
@@ -262,12 +264,12 @@ function WizardView({
   const isDaKast = cat?.id === 15;
   const isTypeplaatje = cat?.id === 1 && station.type_ruimte === 'Betreedbaar station';
 
-  const incompleteCategories = CATEGORIES.filter(c =>
+  const incompleteCategories = applicableCategories.filter(c =>
     fotosByCategorie(c.name).length === 0 && !skipped.includes(c.name)
   );
 
   const goNext = () => {
-    if (currentIndex < CATEGORIES.length - 1) {
+    if (currentIndex < applicableCategories.length - 1) {
       setCurrentIndex(currentIndex + 1);
       setTipOpen(false);
       setShowVoorbeeld(false);
@@ -292,7 +294,7 @@ function WizardView({
   };
 
   const openAt = (c: Category) => {
-    const idx = CATEGORIES.findIndex(x => x.id === c.id);
+    const idx = applicableCategories.findIndex(x => x.id === c.id);
     setCurrentIndex(idx);
     setShowComplete(false);
     setTipOpen(false);
@@ -314,7 +316,7 @@ function WizardView({
             </div>
             <h2 className="font-display text-2xl font-black mb-2">Doorlopen!</h2>
             <p className="text-muted-foreground text-sm mb-6">
-              {filledCount} van {CATEGORIES.length} categorieën ingevuld
+              {filledCount} van {applicableCategories.length} categorieën ingevuld
             </p>
 
             {incompleteCategories.length > 0 && (
@@ -336,7 +338,7 @@ function WizardView({
                 {skipped.map(catName => (
                   <button key={catName} onClick={() => {
                     onUnskip(catName);
-                    const c = CATEGORIES.find(x => x.name === catName);
+                    const c = applicableCategories.find(x => x.name === catName);
                     if (c) openAt(c);
                   }} className="w-full flex items-center gap-3 py-2.5 text-left border-b border-outline-variant/10 last:border-0">
                     <span className="material-symbols-rounded text-muted-foreground text-lg">remove</span>
@@ -378,7 +380,7 @@ function WizardView({
             <span className="material-symbols-rounded text-[20px]">close</span>
           </button>
           <div className="flex-1 text-center">
-            <span className="text-xs font-bold text-muted-foreground">{currentIndex + 1} / {CATEGORIES.length}</span>
+            <span className="text-xs font-bold text-muted-foreground">{currentIndex + 1} / {applicableCategories.length}</span>
           </div>
           {!hasPhotos && !isCatSkipped && (
             <button onClick={handleSkip} className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-text-faint hover:text-text-muted active:scale-[0.97] transition-all">
@@ -390,7 +392,7 @@ function WizardView({
 
         {/* Progress bar */}
         <div className="h-1 bg-surface-container rounded-full overflow-hidden mb-3">
-          <div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${((currentIndex + 1) / CATEGORIES.length) * 100}%` }} />
+          <div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${((currentIndex + 1) / applicableCategories.length) * 100}%` }} />
         </div>
 
         {section && (
@@ -558,7 +560,7 @@ function WizardView({
             Vorige
           </button>
           <button onClick={goNext} className="flex-1 min-h-[48px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-2xl font-display text-[15px] font-bold active:scale-[0.97] transition-all flex items-center justify-center gap-1.5">
-            {currentIndex < CATEGORIES.length - 1 ? (
+            {currentIndex < applicableCategories.length - 1 ? (
               <>Volgende <span className="material-symbols-rounded text-[18px]">arrow_forward</span></>
             ) : (
               <>Afronden <span className="material-symbols-rounded text-[18px]">check</span></>
@@ -606,8 +608,6 @@ export default function StationDetail() {
     }, 50);
   }, [openSections]);
 
-  const sectionGroups = useMemo(() => getCategoriesBySection(), []);
-
   const { data: station, isLoading } = useQuery({
     queryKey: ["station", id],
     queryFn: async () => {
@@ -616,6 +616,9 @@ export default function StationDetail() {
       return data;
     },
   });
+
+  const applicableCategories = useMemo(() => getApplicableCategories(station), [station]);
+  const sectionGroups = useMemo(() => getCategoriesBySection(station), [station]);
 
   const { data: fotos } = useQuery({
     queryKey: ["fotos", id],
@@ -631,8 +634,8 @@ export default function StationDetail() {
     [fotos]
   );
 
-  const filledCount = new Set(fotos?.map((f) => f.categorie)).size;
-  const pct = Math.round((filledCount / CATEGORIES.length) * 100);
+  const filledCount = new Set(fotos?.map((f) => f.categorie).filter(c => applicableCategories.some(ac => ac.name === c))).size;
+  const pct = Math.round((filledCount / applicableCategories.length) * 100);
 
   const compressImage = async (file: File): Promise<File> => {
     if (file.type === "image/heic") return file;
@@ -693,20 +696,20 @@ export default function StationDetail() {
   };
 
   const openWizardAt = useCallback((cat: Category) => {
-    const idx = CATEGORIES.findIndex(c => c.id === cat.id);
-    setWizardStartIndex(idx);
+    const idx = applicableCategories.findIndex(c => c.id === cat.id);
+    setWizardStartIndex(idx >= 0 ? idx : 0);
     setWizardOpen(true);
-  }, []);
+  }, [applicableCategories]);
 
-  // Find next incomplete category across ALL sections
+  // Find next incomplete category across applicable categories
   const nextIncomplete = useMemo(() => {
-    for (const cat of CATEGORIES) {
+    for (const cat of applicableCategories) {
       if (fotosByCategorie(cat.name).length === 0 && !isSkipped(cat.name)) {
         return cat;
       }
     }
     return null;
-  }, [fotosByCategorie, isSkipped]);
+  }, [fotosByCategorie, isSkipped, applicableCategories]);
 
   const allDone = !nextIncomplete;
 
@@ -714,7 +717,7 @@ export default function StationDetail() {
   useEffect(() => {
     if (!fotos) return;
     const firstIncomplete = SECTIONS.find(s => {
-      const cats = CATEGORIES.filter(c => c.section === s.id);
+      const cats = applicableCategories.filter(c => c.section === s.id);
       return cats.some(c => fotosByCategorie(c.name).length === 0 && !isSkipped(c.name));
     });
     if (firstIncomplete && openSections.length === 0) {
@@ -763,7 +766,8 @@ export default function StationDetail() {
           onClickThumb={openLightbox}
           onOpenPdf={openPdf}
           filledCount={filledCount}
-          voorbeelden={voorbeelden ?? []}
+           voorbeelden={voorbeelden ?? []}
+           applicableCategories={applicableCategories}
         />
       )}
 
@@ -827,7 +831,7 @@ export default function StationDetail() {
             </div>
             <div className="text-right pb-1">
               <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Categorieën</div>
-              <div className="font-display text-[20px] font-extrabold text-primary">{filledCount} / {CATEGORIES.length}</div>
+              <div className="font-display text-[20px] font-extrabold text-primary">{filledCount} / {applicableCategories.length}</div>
               <div className="text-xs text-muted-foreground">{fotos?.length ?? 0} foto's</div>
             </div>
           </div>

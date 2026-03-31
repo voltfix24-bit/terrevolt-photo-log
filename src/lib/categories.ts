@@ -136,10 +136,32 @@ export function slugify(str: string): string {
     .replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 }
 
+/** Filter categories based on station properties */
+export function getApplicableCategories(station?: {
+  type_ruimte?: string | null;
+  vermogensveld?: boolean | null;
+  da_kast?: boolean | null;
+} | null): Category[] {
+  return CATEGORIES.filter(c => {
+    // Cat 1: Typeplaatje — skip for betreedbaar stations
+    if (c.id === 1 && station?.type_ruimte === 'Betreedbaar station') return false;
+    // Cat 14: Stroomtrafo's vermogensveld — only if vermogensveld
+    if (c.id === 14 && !station?.vermogensveld) return false;
+    // Cat 15: DA-kast — only if da_kast
+    if (c.id === 15 && !station?.da_kast) return false;
+    return true;
+  });
+}
+
 /** Group categories by section */
-export function getCategoriesBySection(): { section: Section; categories: Category[] }[] {
+export function getCategoriesBySection(station?: {
+  type_ruimte?: string | null;
+  vermogensveld?: boolean | null;
+  da_kast?: boolean | null;
+} | null): { section: Section; categories: Category[] }[] {
+  const applicable = getApplicableCategories(station);
   return SECTIONS.map((section) => ({
     section,
-    categories: CATEGORIES.filter((c) => c.section === section.id),
-  }));
+    categories: applicable.filter((c) => c.section === section.id),
+  })).filter(g => g.categories.length > 0);
 }
