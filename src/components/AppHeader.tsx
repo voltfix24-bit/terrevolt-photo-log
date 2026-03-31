@@ -1,5 +1,8 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { useInstellingen } from "@/hooks/use-theme";
+import { useOnline } from "@/hooks/use-online";
+import { getQueueCount } from "@/lib/offline-queue";
+import { useState, useEffect } from "react";
 
 export default function AppHeader() {
   const navigate = useNavigate();
