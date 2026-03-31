@@ -237,12 +237,14 @@ interface WizardViewProps {
   onOpenPdf: () => void;
   filledCount: number;
   voorbeelden: { id: string; categorie: string; url: string }[];
+  applicableCategories: Category[];
 }
 
 function WizardView({
   startIndex, onClose, onSkip, onUnskip, skipped, station,
   fotosByCategorie, isUploading, uploadProgress,
   onUpload, onDelete, onClickThumb, onOpenPdf, filledCount, voorbeelden,
+  applicableCategories,
 }: WizardViewProps) {
   const [currentIndex, setCurrentIndex] = useState(startIndex);
   const [showComplete, setShowComplete] = useState(false);
@@ -251,7 +253,7 @@ function WizardView({
   const [voorbeeldLightbox, setVoorbeeldLightbox] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const cat = CATEGORIES[currentIndex];
+  const cat = applicableCategories[currentIndex];
   const catFotos = cat ? fotosByCategorie(cat.name) : [];
   const isCatSkipped = cat ? skipped.includes(cat.name) : false;
   const hasPhotos = catFotos.length > 0;
@@ -262,7 +264,7 @@ function WizardView({
   const isDaKast = cat?.id === 15;
   const isTypeplaatje = cat?.id === 1 && station.type_ruimte === 'Betreedbaar station';
 
-  const incompleteCategories = CATEGORIES.filter(c =>
+  const incompleteCategories = applicableCategories.filter(c =>
     fotosByCategorie(c.name).length === 0 && !skipped.includes(c.name)
   );
 
