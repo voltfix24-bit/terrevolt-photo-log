@@ -306,6 +306,7 @@ function WizardView({
 
   const isVermogensveld = cat?.id === 14;
   const isDaKast = cat?.id === 15;
+  const isTypeplaatje = cat?.id === 1 && station.type_ruimte === 'Betreedbaar station';
 
   const incompleteCategories = CATEGORIES.filter(c =>
     fotosByCategorie(c.name).length === 0 && !skipped.includes(c.name)
