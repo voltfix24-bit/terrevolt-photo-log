@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +19,10 @@ export default function Dashboard() {
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [zipProgress, setZipProgress] = useState<number | null>(null);
+  const [filterType, setFilterType] = useState<string>('all');
+  const [filterMonteur, setFilterMonteur] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'datum_desc' | 'datum_asc' | 'naam'>('datum_desc');
+  const [showFilters, setShowFilters] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: stations, isLoading } = useQuery({
@@ -33,11 +37,30 @@ export default function Dashboard() {
     },
   });
 
-  const filtered = stations?.filter(
-    (s) =>
-      s.naam_msr.toLowerCase().includes(search.toLowerCase()) ||
-      s.behuizingsnummer?.toLowerCase().includes(search.toLowerCase())
-  );
+  const uniqueMonteurs = useMemo(() => {
+    const names = stations?.map(s => s.ingevuld_door).filter(Boolean) as string[] ?? [];
+    return [...new Set(names)].sort();
+  }, [stations]);
+
+  const hasActiveFilters = filterType !== 'all' || filterMonteur !== 'all' || sortBy !== 'datum_desc';
+
+  const filtered = useMemo(() => {
+    if (!stations) return [];
+    let result = stations.filter(s => {
+      const matchSearch = !search ||
+        s.naam_msr.toLowerCase().includes(search.toLowerCase()) ||
+        s.behuizingsnummer?.toLowerCase().includes(search.toLowerCase());
+      const matchType = filterType === 'all' || s.type_ruimte === filterType;
+      const matchMonteur = filterMonteur === 'all' || s.ingevuld_door === filterMonteur;
+      return matchSearch && matchType && matchMonteur;
+    });
+    result = [...result].sort((a, b) => {
+      if (sortBy === 'naam') return a.naam_msr.localeCompare(b.naam_msr);
+      if (sortBy === 'datum_asc') return (a.datum || '').localeCompare(b.datum || '');
+      return (b.datum || '').localeCompare(a.datum || '');
+    });
+    return result;
+  }, [stations, search, filterType, filterMonteur, sortBy]);
 
   const { data: instellingenData } = useInstellingen();
 
