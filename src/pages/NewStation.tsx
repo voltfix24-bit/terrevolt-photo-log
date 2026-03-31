@@ -158,8 +158,8 @@ export default function NewStation() {
                         e.preventDefault();
                         const naam = monteurInput.trim();
                         const { error } = await supabase
-                          .from('monteurs' as any)
-                          .insert({ naam } as any);
+                          .from('monteurs')
+                          .insert({ naam });
                         if (!error) {
                           setSelectedMonteur(naam);
                           setMonteurFocused(false);
