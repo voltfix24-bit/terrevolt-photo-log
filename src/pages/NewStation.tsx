@@ -25,11 +25,11 @@ export default function NewStation() {
     queryKey: ['monteurs'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('monteurs' as any)
+        .from('monteurs')
         .select('*')
         .order('naam', { ascending: true });
       if (error) throw error;
-      return (data as any) as { id: string; naam: string; created_at: string }[];
+      return data as { id: string; naam: string; created_at: string }[];
     }
   });
 
