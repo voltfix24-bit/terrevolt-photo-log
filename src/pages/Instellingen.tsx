@@ -128,8 +128,8 @@ export default function Instellingen() {
     if (!instellingen?.id) return;
     setSaving(true);
     const { error } = await supabase
-      .from('instellingen' as any)
-      .update({ ...form, updated_at: new Date().toISOString() } as any)
+      .from('instellingen')
+      .update({ ...form, updated_at: new Date().toISOString() })
       .eq('id', instellingen.id);
     setSaving(false);
     if (error) { toast.error('Opslaan mislukt'); return; }
