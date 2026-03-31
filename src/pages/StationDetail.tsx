@@ -696,10 +696,10 @@ export default function StationDetail() {
   };
 
   const openWizardAt = useCallback((cat: Category) => {
-    const idx = CATEGORIES.findIndex(c => c.id === cat.id);
-    setWizardStartIndex(idx);
+    const idx = applicableCategories.findIndex(c => c.id === cat.id);
+    setWizardStartIndex(idx >= 0 ? idx : 0);
     setWizardOpen(true);
-  }, []);
+  }, [applicableCategories]);
 
   // Find next incomplete category across applicable categories
   const nextIncomplete = useMemo(() => {
