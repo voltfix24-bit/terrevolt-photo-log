@@ -148,8 +148,8 @@ export default function Instellingen() {
       orange_color: DEFAULT_THEME.orange_color,
     };
     const { error } = await supabase
-      .from('instellingen' as any)
-      .update(resetData as any)
+      .from('instellingen')
+      .update(resetData)
       .eq('id', instellingen.id);
     if (!error) {
       setForm({});
