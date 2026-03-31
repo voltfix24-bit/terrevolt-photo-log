@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +19,10 @@ export default function Dashboard() {
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [zipProgress, setZipProgress] = useState<number | null>(null);
+  const [filterType, setFilterType] = useState<string>('all');
+  const [filterMonteur, setFilterMonteur] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'datum_desc' | 'datum_asc' | 'naam'>('datum_desc');
+  const [showFilters, setShowFilters] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: stations, isLoading } = useQuery({
@@ -33,11 +37,30 @@ export default function Dashboard() {
     },
   });
 
-  const filtered = stations?.filter(
-    (s) =>
-      s.naam_msr.toLowerCase().includes(search.toLowerCase()) ||
-      s.behuizingsnummer?.toLowerCase().includes(search.toLowerCase())
-  );
+  const uniqueMonteurs = useMemo(() => {
+    const names = stations?.map(s => s.ingevuld_door).filter(Boolean) as string[] ?? [];
+    return [...new Set(names)].sort();
+  }, [stations]);
+
+  const hasActiveFilters = filterType !== 'all' || filterMonteur !== 'all' || sortBy !== 'datum_desc';
+
+  const filtered = useMemo(() => {
+    if (!stations) return [];
+    let result = stations.filter(s => {
+      const matchSearch = !search ||
+        s.naam_msr.toLowerCase().includes(search.toLowerCase()) ||
+        s.behuizingsnummer?.toLowerCase().includes(search.toLowerCase());
+      const matchType = filterType === 'all' || s.type_ruimte === filterType;
+      const matchMonteur = filterMonteur === 'all' || s.ingevuld_door === filterMonteur;
+      return matchSearch && matchType && matchMonteur;
+    });
+    result = [...result].sort((a, b) => {
+      if (sortBy === 'naam') return a.naam_msr.localeCompare(b.naam_msr);
+      if (sortBy === 'datum_asc') return (a.datum || '').localeCompare(b.datum || '');
+      return (b.datum || '').localeCompare(a.datum || '');
+    });
+    return result;
+  }, [stations, search, filterType, filterMonteur, sortBy]);
 
   const { data: instellingenData } = useInstellingen();
 
@@ -94,18 +117,124 @@ export default function Dashboard() {
 
       <main className="px-5 max-w-lg mx-auto animate-fade-up">
 
-        {/* ── Search — editorial floating bar ── */}
-        <div className="relative -mt-3 mb-9">
-          <div className="relative bg-surface-white rounded-[22px] shadow-[0_8px_32px_-8px_rgba(19,30,18,0.08)] border border-outline-variant/6 overflow-hidden">
-            <span className="material-symbols-rounded absolute left-5 top-1/2 -translate-y-1/2 text-primary/35 text-[22px]">search</span>
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Zoek op naam of behuizingsnummer..."
-              className="w-full bg-transparent border-none rounded-[22px] py-[18px] pl-14 pr-5 text-[15px] focus:ring-0 focus:outline-none transition-all placeholder:text-text-faint font-display font-medium text-text-primary"
-            />
+        {/* ── Search + Filter ── */}
+        <div className="relative -mt-3 mb-5">
+          <div className="flex gap-2">
+            <div className="relative flex-1 bg-surface-white rounded-[22px] shadow-[0_8px_32px_-8px_rgba(19,30,18,0.08)] border border-outline-variant/6 overflow-hidden">
+              <span className="material-symbols-rounded absolute left-5 top-1/2 -translate-y-1/2 text-primary/35 text-[22px]">search</span>
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Zoek op naam of behuizingsnummer..."
+                className="w-full bg-transparent border-none rounded-[22px] py-[18px] pl-14 pr-5 text-[15px] focus:ring-0 focus:outline-none transition-all placeholder:text-text-faint font-display font-medium text-text-primary"
+              />
+            </div>
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`w-[52px] h-[52px] rounded-[18px] flex items-center justify-center flex-shrink-0 border transition-all active:scale-95 ${
+                showFilters || hasActiveFilters
+                  ? 'bg-primary text-primary-foreground border-primary shadow-md shadow-primary/25'
+                  : 'bg-surface-white text-muted-foreground border-outline-variant/20 shadow-sm'
+              }`}
+            >
+              <span className="material-symbols-rounded text-xl">tune</span>
+            </button>
           </div>
+
+          {showFilters && (
+            <div className="mt-2 bg-card rounded-2xl border border-outline-variant/15 shadow-sm p-4 space-y-4 animate-fade-up">
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-wider text-muted-foreground mb-2">Type station</div>
+                <div className="flex gap-2">
+                  {[
+                    { value: 'all', label: 'Alle' },
+                    { value: 'Compact Station', label: 'Compact' },
+                    { value: 'Betreedbaar station', label: 'Betreedbaar' },
+                  ].map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setFilterType(opt.value)}
+                      className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
+                        filterType === opt.value
+                          ? 'bg-primary text-primary-foreground shadow-sm'
+                          : 'bg-surface-low text-muted-foreground hover:bg-surface-container'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {uniqueMonteurs.length > 0 && (
+                <div>
+                  <div className="text-[10px] font-black uppercase tracking-wider text-muted-foreground mb-2">Monteur</div>
+                  <div className="flex gap-2 flex-wrap">
+                    <button
+                      onClick={() => setFilterMonteur('all')}
+                      className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${
+                        filterMonteur === 'all'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-surface-low text-muted-foreground'
+                      }`}
+                    >
+                      Alle
+                    </button>
+                    {uniqueMonteurs.map(monteur => (
+                      <button
+                        key={monteur}
+                        onClick={() => setFilterMonteur(monteur)}
+                        className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${
+                          filterMonteur === monteur
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-surface-low text-muted-foreground'
+                        }`}
+                      >
+                        {monteur}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-wider text-muted-foreground mb-2">Sortering</div>
+                <div className="flex gap-2">
+                  {[
+                    { value: 'datum_desc', label: 'Nieuwste eerst' },
+                    { value: 'datum_asc', label: 'Oudste eerst' },
+                    { value: 'naam', label: 'Naam A-Z' },
+                  ].map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setSortBy(opt.value as typeof sortBy)}
+                      className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
+                        sortBy === opt.value
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-surface-low text-muted-foreground'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {hasActiveFilters && (
+                <button
+                  onClick={() => { setFilterType('all'); setFilterMonteur('all'); setSortBy('datum_desc'); }}
+                  className="w-full py-2.5 rounded-xl text-xs font-bold text-muted-foreground bg-surface-container hover:bg-surface-high transition-all flex items-center justify-center gap-2"
+                >
+                  <span className="material-symbols-rounded text-base">filter_alt_off</span>
+                  Filters wissen
+                </button>
+              )}
+            </div>
+          )}
         </div>
+
+        {(search || hasActiveFilters) && filtered && (
+          <div className="text-xs text-muted-foreground mb-4 px-1">
+            <span className="font-bold text-on-surface">{filtered.length}</span> station{filtered.length !== 1 ? 's' : ''} gevonden
+          </div>
+        )}
 
         {/* ── Station list ── */}
         {isLoading ? (
