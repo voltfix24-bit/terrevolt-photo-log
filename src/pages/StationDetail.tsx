@@ -380,7 +380,7 @@ function WizardView({
             <span className="material-symbols-rounded text-[20px]">close</span>
           </button>
           <div className="flex-1 text-center">
-            <span className="text-xs font-bold text-muted-foreground">{currentIndex + 1} / {CATEGORIES.length}</span>
+            <span className="text-xs font-bold text-muted-foreground">{currentIndex + 1} / {applicableCategories.length}</span>
           </div>
           {!hasPhotos && !isCatSkipped && (
             <button onClick={handleSkip} className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-text-faint hover:text-text-muted active:scale-[0.97] transition-all">
