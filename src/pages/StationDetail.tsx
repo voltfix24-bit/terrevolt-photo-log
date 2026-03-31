@@ -664,6 +664,7 @@ export default function StationDetail() {
   const { data: voorbeelden } = useVoorbeelden();
   const { data: instellingenData } = useInstellingen();
   const { skipped, addSkip, removeSkip, isSkipped } = useSkippedCategories(id);
+  const isOnline = useOnline();
   const { data: opmerkingen } = useQuery({
     queryKey: ['opmerkingen', id],
     queryFn: async () => {
