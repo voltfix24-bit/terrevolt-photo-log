@@ -606,9 +606,6 @@ export default function StationDetail() {
     }, 50);
   }, [openSections]);
 
-  const applicableCategories = useMemo(() => station ? getApplicableCategories(station) : CATEGORIES, [station]);
-  const sectionGroups = useMemo(() => getCategoriesBySection(station), [station]);
-
   const { data: station, isLoading } = useQuery({
     queryKey: ["station", id],
     queryFn: async () => {
@@ -617,6 +614,9 @@ export default function StationDetail() {
       return data;
     },
   });
+
+  const applicableCategories = useMemo(() => getApplicableCategories(station), [station]);
+  const sectionGroups = useMemo(() => getCategoriesBySection(station), [station]);
 
   const { data: fotos } = useQuery({
     queryKey: ["fotos", id],
@@ -632,8 +632,8 @@ export default function StationDetail() {
     [fotos]
   );
 
-  const filledCount = new Set(fotos?.map((f) => f.categorie)).size;
-  const pct = Math.round((filledCount / CATEGORIES.length) * 100);
+  const filledCount = new Set(fotos?.map((f) => f.categorie).filter(c => applicableCategories.some(ac => ac.name === c))).size;
+  const pct = Math.round((filledCount / applicableCategories.length) * 100);
 
   const compressImage = async (file: File): Promise<File> => {
     if (file.type === "image/heic") return file;
