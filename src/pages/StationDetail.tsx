@@ -13,6 +13,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useRef, useState, useCallback, useMemo, useEffect } from "react";
 import imageCompression from "browser-image-compression";
+import { useOnline } from "@/hooks/use-online";
+import { queuePhoto } from "@/lib/offline-queue";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { generatePdfHtml } from "@/lib/pdf-generator";
@@ -662,6 +664,7 @@ export default function StationDetail() {
   const { data: voorbeelden } = useVoorbeelden();
   const { data: instellingenData } = useInstellingen();
   const { skipped, addSkip, removeSkip, isSkipped } = useSkippedCategories(id);
+  const isOnline = useOnline();
   const { data: opmerkingen } = useQuery({
     queryKey: ['opmerkingen', id],
     queryFn: async () => {
@@ -723,6 +726,21 @@ export default function StationDetail() {
   };
 
   const handleUpload = async (categorie: string, files: FileList) => {
+    if (!isOnline) {
+      let queued = 0;
+      for (const file of Array.from(files)) {
+        if (file.size > MAX_SIZE) { toast.error(`${file.name} is groter dan 10MB`); continue; }
+        await queuePhoto(id!, categorie, file);
+        queued++;
+      }
+      if (queued > 0) {
+        toast.success(`${queued} foto${queued > 1 ? "'s" : ""} opgeslagen — wordt geüpload zodra je online bent`, {
+          duration: 4000,
+        });
+      }
+      return;
+    }
+
     setUploadingCat(categorie);
     const catSlug = slugify(categorie);
     const total = files.length;
