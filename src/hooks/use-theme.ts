@@ -50,11 +50,11 @@ export function useInstellingen() {
     queryKey: ['instellingen'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('instellingen' as any)
+        .from('instellingen')
         .select('*')
         .single();
       if (error) throw error;
-      return data as unknown as AppInstellingen;
+      return data as AppInstellingen;
     },
   });
 

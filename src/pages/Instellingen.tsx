@@ -128,8 +128,8 @@ export default function Instellingen() {
     if (!instellingen?.id) return;
     setSaving(true);
     const { error } = await supabase
-      .from('instellingen' as any)
-      .update({ ...form, updated_at: new Date().toISOString() } as any)
+      .from('instellingen')
+      .update({ ...form, updated_at: new Date().toISOString() })
       .eq('id', instellingen.id);
     setSaving(false);
     if (error) { toast.error('Opslaan mislukt'); return; }
@@ -148,8 +148,8 @@ export default function Instellingen() {
       orange_color: DEFAULT_THEME.orange_color,
     };
     const { error } = await supabase
-      .from('instellingen' as any)
-      .update(resetData as any)
+      .from('instellingen')
+      .update(resetData)
       .eq('id', instellingen.id);
     if (!error) {
       setForm({});
@@ -166,7 +166,7 @@ export default function Instellingen() {
     const { error } = await supabase.storage.from('branding').upload(path, file);
     if (!error) {
       const { data } = supabase.storage.from('branding').getPublicUrl(path);
-      await supabase.from('instellingen' as any).update({ logo_url: data.publicUrl } as any).eq('id', instellingen.id);
+      await supabase.from('instellingen').update({ logo_url: data.publicUrl }).eq('id', instellingen.id);
       queryClient.invalidateQueries({ queryKey: ['instellingen'] });
       toast.success('Logo opgeslagen ✓');
     } else {
@@ -182,7 +182,7 @@ export default function Instellingen() {
     const { error } = await supabase.storage.from('branding').upload(path, file);
     if (!error) {
       const { data } = supabase.storage.from('branding').getPublicUrl(path);
-      await supabase.from('instellingen' as any).update({ profielfoto_url: data.publicUrl } as any).eq('id', instellingen.id);
+      await supabase.from('instellingen').update({ profielfoto_url: data.publicUrl }).eq('id', instellingen.id);
       queryClient.invalidateQueries({ queryKey: ['instellingen'] });
       toast.success('Profielfoto opgeslagen ✓');
     } else {
@@ -353,13 +353,13 @@ export default function Instellingen() {
                   { key: 'orange_color' as const, label: 'Accent oranje', desc: 'OPEN badges, waarschuwingen' },
                 ]).map(({ key, label, desc }) => (
                   <div key={key} className="flex items-center gap-3 px-3 py-2.5 bg-surface-low rounded-xl">
-                    <div className="w-8 h-8 rounded-lg border border-outline-variant/30 flex-shrink-0" style={{ background: `hsl(${(current as any)?.[key] || ''})` }} />
+                    <div className="w-8 h-8 rounded-lg border border-outline-variant/30 flex-shrink-0" style={{ background: `hsl(${current?.[key] || ''})` }} />
                     <div className="flex-1 min-w-0">
                       <div className="text-xs font-bold text-on-surface">{label}</div>
                       <div className="text-[10px] text-muted-foreground">{desc}</div>
                     </div>
                     <input
-                      value={(current as any)?.[key] || ''}
+                      value={current?.[key] || ''}
                       onChange={e => updateField(key, e.target.value)}
                       placeholder="150 100% 20%"
                       className="w-28 px-2.5 py-2 bg-card border border-outline-variant/30 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-primary/25 transition"

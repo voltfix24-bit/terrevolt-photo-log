@@ -154,11 +154,24 @@ export default function Dashboard() {
                     <div className="relative px-7 py-7">
                       {/* Top row: type label + completion badge */}
                       <div className="flex items-center justify-between mb-4">
-                        <div className="inline-flex items-center gap-1.5 bg-accent-gold/[0.07] rounded-full px-3 py-1">
-                          <span className="material-symbols-rounded text-accent-gold text-[12px]">person</span>
-                          <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-accent-gold font-display">
-                            {station.ingevuld_door || "Monteur"}
-                          </span>
+                        <div className="flex items-center gap-2">
+                          {station.type_ruimte && (
+                            <span className={`text-[9px] font-bold uppercase tracking-[0.12em] px-3 py-1 rounded-full font-display ${
+                              station.type_ruimte === 'Compact Station'
+                                ? 'bg-orange/10 text-orange'
+                                : 'bg-purple-100 text-purple-700'
+                            }`}>
+                              {station.type_ruimte}
+                            </span>
+                          )}
+                          {station.ingevuld_door && (
+                            <div className="inline-flex items-center gap-1.5 bg-accent-gold/[0.07] rounded-full px-3 py-1">
+                              <span className="material-symbols-rounded text-accent-gold text-[12px]">person</span>
+                              <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-accent-gold font-display">
+                                {station.ingevuld_door}
+                              </span>
+                            </div>
+                          )}
                         </div>
                         {complete && (
                           <div className="w-9 h-9 rounded-full bg-accent-gold-bright/15 flex items-center justify-center">
