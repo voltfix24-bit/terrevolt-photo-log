@@ -8,6 +8,12 @@ export default function AppHeader() {
   const navigate = useNavigate();
   const location = useLocation();
   const { data: instellingen } = useInstellingen();
+  const isOnline = useOnline();
+  const [queueCount, setQueueCount] = useState(0);
+
+  useEffect(() => {
+    getQueueCount().then(setQueueCount);
+  }, [isOnline]);
 
   const isActive = (path: string) => {
     if (path === "/" && location.pathname === "/") return true;
