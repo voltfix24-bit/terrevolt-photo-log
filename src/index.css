@@ -127,6 +127,15 @@
   }
 }
 
+html, body, #root {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+* {
+  min-width: 0;
+}
+
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
