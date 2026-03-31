@@ -392,7 +392,7 @@ function WizardView({
 
         {/* Progress bar */}
         <div className="h-1 bg-surface-container rounded-full overflow-hidden mb-3">
-          <div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${((currentIndex + 1) / CATEGORIES.length) * 100}%` }} />
+          <div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${((currentIndex + 1) / applicableCategories.length) * 100}%` }} />
         </div>
 
         {section && (
