@@ -560,7 +560,7 @@ function WizardView({
             Vorige
           </button>
           <button onClick={goNext} className="flex-1 min-h-[48px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-2xl font-display text-[15px] font-bold active:scale-[0.97] transition-all flex items-center justify-center gap-1.5">
-            {currentIndex < CATEGORIES.length - 1 ? (
+            {currentIndex < applicableCategories.length - 1 ? (
               <>Volgende <span className="material-symbols-rounded text-[18px]">arrow_forward</span></>
             ) : (
               <>Afronden <span className="material-symbols-rounded text-[18px]">check</span></>
