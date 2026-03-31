@@ -765,7 +765,7 @@ export default function StationDetail() {
 
   const openPdf = () => {
     if (!station || !fotos) return;
-    const html = generatePdfHtml(station, fotos, instellingenData ?? undefined);
+    const html = generatePdfHtml(station, fotos, instellingenData ?? undefined, opmerkingen ?? undefined);
     const w = window.open("", "_blank");
     if (w) { w.document.write(html); w.document.close(); }
   };
