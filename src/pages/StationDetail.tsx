@@ -606,7 +606,8 @@ export default function StationDetail() {
     }, 50);
   }, [openSections]);
 
-  const sectionGroups = useMemo(() => getCategoriesBySection(), []);
+  const applicableCategories = useMemo(() => station ? getApplicableCategories(station) : CATEGORIES, [station]);
+  const sectionGroups = useMemo(() => getCategoriesBySection(station), [station]);
 
   const { data: station, isLoading } = useQuery({
     queryKey: ["station", id],
