@@ -715,7 +715,7 @@ export default function StationDetail() {
   useEffect(() => {
     if (!fotos) return;
     const firstIncomplete = SECTIONS.find(s => {
-      const cats = CATEGORIES.filter(c => c.section === s.id);
+      const cats = applicableCategories.filter(c => c.section === s.id);
       return cats.some(c => fotosByCategorie(c.name).length === 0 && !isSkipped(c.name));
     });
     if (firstIncomplete && openSections.length === 0) {
