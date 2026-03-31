@@ -766,7 +766,8 @@ export default function StationDetail() {
           onClickThumb={openLightbox}
           onOpenPdf={openPdf}
           filledCount={filledCount}
-          voorbeelden={voorbeelden ?? []}
+           voorbeelden={voorbeelden ?? []}
+           applicableCategories={applicableCategories}
         />
       )}
 
