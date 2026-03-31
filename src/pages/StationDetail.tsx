@@ -257,6 +257,17 @@ function WizardView({
   const [opmerkingText, setOpmerkingText] = useState('');
   const [savingOpmerking, setSavingOpmerking] = useState(false);
 
+  const cat = applicableCategories[currentIndex];
+  const catFotos = cat ? fotosByCategorie(cat.name) : [];
+  const isCatSkipped = cat ? skipped.includes(cat.name) : false;
+  const hasPhotos = catFotos.length > 0;
+  const section = cat ? SECTIONS.find(s => s.id === cat.section) : null;
+  const catVoorbeelden = cat ? voorbeelden.filter(v => v.categorie === cat.name) : [];
+
+  const isVermogensveld = cat?.id === 14;
+  const isDaKast = cat?.id === 15;
+  const isTypeplaatje = cat?.id === 1 && station.type_ruimte === 'Betreedbaar station';
+
   const { data: opmerkingData } = useQuery({
     queryKey: ['opmerking', stationId, cat?.name],
     queryFn: async () => {
@@ -295,17 +306,6 @@ function WizardView({
     queryClient.invalidateQueries({ queryKey: ['opmerking', stationId, cat.name] });
     queryClient.invalidateQueries({ queryKey: ['opmerkingen', stationId] });
   };
-
-  const cat = applicableCategories[currentIndex];
-  const catFotos = cat ? fotosByCategorie(cat.name) : [];
-  const isCatSkipped = cat ? skipped.includes(cat.name) : false;
-  const hasPhotos = catFotos.length > 0;
-  const section = cat ? SECTIONS.find(s => s.id === cat.section) : null;
-  const catVoorbeelden = cat ? voorbeelden.filter(v => v.categorie === cat.name) : [];
-
-  const isVermogensveld = cat?.id === 14;
-  const isDaKast = cat?.id === 15;
-  const isTypeplaatje = cat?.id === 1 && station.type_ruimte === 'Betreedbaar station';
 
   const incompleteCategories = applicableCategories.filter(c =>
     fotosByCategorie(c.name).length === 0 && !skipped.includes(c.name)
