@@ -595,6 +595,31 @@ function WizardView({
         )}
       </div>
 
+      {/* Opmerking field */}
+      <div className="bg-card rounded-2xl border border-outline-variant/15 shadow-sm overflow-hidden">
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-outline-variant/10">
+          <span className="material-symbols-rounded text-muted-foreground text-lg">edit_note</span>
+          <span className="text-sm font-bold text-on-surface">Opmerking</span>
+          {opmerkingData?.opmerking && (
+            <span className="ml-auto text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">Opgeslagen</span>
+          )}
+        </div>
+        <div className="p-4">
+          <textarea
+            value={opmerkingText}
+            onChange={e => setOpmerkingText(e.target.value)}
+            onBlur={saveOpmerking}
+            placeholder="Bijv: Beschadiging aan de rechterzijde, kabelmarkeringen ontbreken..."
+            rows={3}
+            className="w-full px-3 py-2.5 bg-surface-low border border-outline-variant/20 rounded-xl text-sm text-on-surface placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none transition"
+          />
+          <div className="flex items-center justify-between mt-2">
+            <span className="text-[11px] text-muted-foreground">Wordt opgeslagen bij verlaten veld · Verschijnt in PDF</span>
+            {savingOpmerking && <span className="text-[11px] text-muted-foreground">Opslaan...</span>}
+          </div>
+        </div>
+      </div>
+
       {/* Bottom navigation */}
       <div className="fixed bottom-0 left-0 right-0 z-[75] bg-surface-white/90 backdrop-blur-2xl border-t border-outline-variant/10 px-5 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
         <div className="flex items-center gap-3 max-w-3xl mx-auto">
