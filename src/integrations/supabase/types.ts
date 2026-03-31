@@ -210,6 +210,33 @@ export type Database = {
         }
         Relationships: []
       }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string | null
+          endpoint: string
+          id: string
+          p256dh: string
+          user_label: string | null
+        }
+        Insert: {
+          auth: string
+          created_at?: string | null
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_label?: string | null
+        }
+        Update: {
+          auth?: string
+          created_at?: string | null
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_label?: string | null
+        }
+        Relationships: []
+      }
       stations: {
         Row: {
           behuizingsnummer: string | null
@@ -219,6 +246,7 @@ export type Database = {
           id: string
           ingevuld_door: string | null
           naam_msr: string
+          status: string | null
           type_ruimte: string | null
           updated_at: string | null
           vermogensveld: boolean | null
@@ -231,6 +259,7 @@ export type Database = {
           id?: string
           ingevuld_door?: string | null
           naam_msr: string
+          status?: string | null
           type_ruimte?: string | null
           updated_at?: string | null
           vermogensveld?: boolean | null
@@ -243,6 +272,7 @@ export type Database = {
           id?: string
           ingevuld_door?: string | null
           naam_msr?: string
+          status?: string | null
           type_ruimte?: string | null
           updated_at?: string | null
           vermogensveld?: boolean | null
