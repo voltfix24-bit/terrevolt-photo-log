@@ -761,7 +761,7 @@ export default function StationDetail() {
       if (uploadError) { toast.error(`Upload mislukt: ${uploadError.message}`); continue; }
 
       const { data: urlData } = supabase.storage.from("to-fotos").getPublicUrl(storagePath);
-      await supabase.from("fotos").insert({ station_id: id!, categorie, storage_path: storagePath, url: urlData.publicUrl, volgorde: fotosByCategorie(categorie).length + done });
+      await supabase.from("fotos").insert({ station_id: id!, categorie, storage_path: storagePath, url: urlData.publicUrl, volgorde: fotosByCategorie(categorie).length + done, uploaded_at: new Date().toISOString() });
 
       done++;
       setUploadProgress((p) => ({ ...p, [categorie]: Math.round((done / total) * 100) }));
