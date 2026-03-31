@@ -338,7 +338,7 @@ function WizardView({
                 {skipped.map(catName => (
                   <button key={catName} onClick={() => {
                     onUnskip(catName);
-                    const c = CATEGORIES.find(x => x.name === catName);
+                    const c = applicableCategories.find(x => x.name === catName);
                     if (c) openAt(c);
                   }} className="w-full flex items-center gap-3 py-2.5 text-left border-b border-outline-variant/10 last:border-0">
                     <span className="material-symbols-rounded text-muted-foreground text-lg">remove</span>
