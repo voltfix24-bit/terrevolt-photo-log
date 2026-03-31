@@ -47,6 +47,41 @@ export type Database = {
         }
         Relationships: []
       }
+      categorie_opmerkingen: {
+        Row: {
+          categorie: string
+          created_at: string | null
+          id: string
+          opmerking: string
+          station_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          categorie: string
+          created_at?: string | null
+          id?: string
+          opmerking: string
+          station_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          categorie?: string
+          created_at?: string | null
+          id?: string
+          opmerking?: string
+          station_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "categorie_opmerkingen_station_id_fkey"
+            columns: ["station_id"]
+            isOneToOne: false
+            referencedRelation: "stations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categorie_voorbeelden: {
         Row: {
           categorie: string
