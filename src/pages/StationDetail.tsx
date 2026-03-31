@@ -242,11 +242,12 @@ interface WizardViewProps {
 }
 
 function WizardView({
-  startIndex, onClose, onSkip, onUnskip, skipped, station,
+  startIndex, stationId, onClose, onSkip, onUnskip, skipped, station,
   fotosByCategorie, isUploading, uploadProgress,
   onUpload, onDelete, onClickThumb, onOpenPdf, filledCount, voorbeelden,
   applicableCategories,
 }: WizardViewProps) {
+  const queryClient = useQueryClient();
   const [currentIndex, setCurrentIndex] = useState(startIndex);
   const [showComplete, setShowComplete] = useState(false);
   const [tipOpen, setTipOpen] = useState(false);
