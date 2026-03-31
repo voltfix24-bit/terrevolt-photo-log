@@ -127,8 +127,8 @@ function getSectionIcon(sectionId: string): string {
 }
 
 /* ==================== CATEGORY ROW ==================== */
-function CategoryRow({ cat, fotos, isSkipped, onOpen }: {
-  cat: Category; fotos: FotoRow[]; isSkipped?: boolean; onOpen: () => void;
+function CategoryRow({ cat, fotos, isSkipped, hasOpmerking, onOpen }: {
+  cat: Category; fotos: FotoRow[]; isSkipped?: boolean; hasOpmerking?: boolean; onOpen: () => void;
 }) {
   const hasPhotos = fotos.length > 0;
 
