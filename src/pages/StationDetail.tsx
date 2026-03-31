@@ -13,6 +13,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useRef, useState, useCallback, useMemo, useEffect } from "react";
 import imageCompression from "browser-image-compression";
+import { useOnline } from "@/hooks/use-online";
+import { queuePhoto } from "@/lib/offline-queue";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { generatePdfHtml } from "@/lib/pdf-generator";
