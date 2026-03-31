@@ -820,6 +820,7 @@ export default function StationDetail() {
       {wizardOpen && (
         <WizardView
           startIndex={wizardStartIndex}
+          stationId={id!}
           onClose={() => setWizardOpen(false)}
           onSkip={addSkip}
           onUnskip={removeSkip}
