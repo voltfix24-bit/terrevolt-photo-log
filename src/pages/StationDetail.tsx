@@ -261,6 +261,7 @@ function WizardView({
   const fileRef = useRef<HTMLInputElement>(null);
   const [opmerkingText, setOpmerkingText] = useState('');
   const [savingOpmerking, setSavingOpmerking] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; path: string } | null>(null);
 
   const cat = applicableCategories[currentIndex];
   const catFotos = cat ? fotosByCategorie(cat.name) : [];
