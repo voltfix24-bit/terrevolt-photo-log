@@ -643,20 +643,33 @@ function WizardView({
         </div>
       </div>
       {/* Controlled delete dialog */}
-      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader><AlertDialogTitle>Foto verwijderen?</AlertDialogTitle><AlertDialogDescription>Deze actie kan niet ongedaan worden gemaakt.</AlertDialogDescription></AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Annuleren</AlertDialogCancel>
-            <AlertDialogAction onClick={() => {
-              if (deleteTarget) {
-                onDelete(deleteTarget.id, deleteTarget.path);
-                setDeleteTarget(null);
-              }
-            }}>Verwijderen</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {deleteTarget && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setDeleteTarget(null)} />
+          <div className="relative bg-card rounded-2xl p-6 mx-6 max-w-sm w-full shadow-2xl space-y-4 animate-fade-up">
+            <h3 className="font-display font-extrabold text-lg text-on-surface">Foto verwijderen?</h3>
+            <p className="text-sm text-muted-foreground">Deze actie kan niet ongedaan worden gemaakt.</p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="px-4 py-2.5 rounded-xl text-sm font-semibold text-muted-foreground bg-surface-container hover:bg-surface-high transition-all"
+              >
+                Annuleren
+              </button>
+              <button
+                onClick={() => {
+                  const { id, path } = deleteTarget;
+                  setDeleteTarget(null);
+                  onDelete(id, path);
+                }}
+                className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-destructive hover:bg-destructive/90 transition-all"
+              >
+                Verwijderen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
