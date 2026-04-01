@@ -261,6 +261,7 @@ function WizardView({
   const fileRef = useRef<HTMLInputElement>(null);
   const [opmerkingText, setOpmerkingText] = useState('');
   const [savingOpmerking, setSavingOpmerking] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; path: string } | null>(null);
 
   const cat = applicableCategories[currentIndex];
   const catFotos = cat ? fotosByCategorie(cat.name) : [];
@@ -584,17 +585,12 @@ function WizardView({
                     {new Date(foto.uploaded_at).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
                   </div>
                 )}
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <button className="absolute top-1.5 right-1.5 w-6 h-6 bg-on-surface/60 backdrop-blur-sm rounded-full text-white flex items-center justify-center active:scale-90 transition-transform">
-                      <span className="material-symbols-rounded text-[14px]">close</span>
-                    </button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader><AlertDialogTitle>Foto verwijderen?</AlertDialogTitle><AlertDialogDescription>Deze actie kan niet ongedaan worden gemaakt.</AlertDialogDescription></AlertDialogHeader>
-                    <AlertDialogFooter><AlertDialogCancel>Annuleren</AlertDialogCancel><AlertDialogAction onClick={() => { setTimeout(() => onDelete(foto.id, foto.storage_path), 100); }}>Verwijderen</AlertDialogAction></AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                <button
+                  onClick={() => setDeleteTarget({ id: foto.id, path: foto.storage_path })}
+                  className="absolute top-1.5 right-1.5 w-6 h-6 bg-on-surface/60 backdrop-blur-sm rounded-full text-white flex items-center justify-center active:scale-90 transition-transform"
+                >
+                  <span className="material-symbols-rounded text-[14px]">close</span>
+                </button>
               </div>
             ))}
             <button onClick={() => fileRef.current?.click()} disabled={isUploading === cat.name} className="aspect-square rounded-2xl border-2 border-dashed border-outline-variant/20 bg-transparent flex flex-col items-center justify-center gap-1.5 text-text-faint hover:border-primary/30 hover:text-primary hover:bg-primary/[0.04] active:scale-95 transition-all">
@@ -646,6 +642,21 @@ function WizardView({
           </button>
         </div>
       </div>
+      {/* Controlled delete dialog */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader><AlertDialogTitle>Foto verwijderen?</AlertDialogTitle><AlertDialogDescription>Deze actie kan niet ongedaan worden gemaakt.</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuleren</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              if (deleteTarget) {
+                onDelete(deleteTarget.id, deleteTarget.path);
+                setDeleteTarget(null);
+              }
+            }}>Verwijderen</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
