@@ -244,7 +244,7 @@ interface WizardViewProps {
   onOpenPdf: () => void;
   filledCount: number;
   voorbeelden: { id: string; categorie: string; url: string }[];
-  applicableCategories: Category[];
+  applicableCategories: MergedCategory[];
 }
 
 function WizardView({
