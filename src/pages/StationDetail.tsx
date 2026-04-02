@@ -840,7 +840,7 @@ export default function StationDetail() {
     setTimeout(() => setShareOpen(true), 500);
   };
 
-  const openWizardAt = useCallback((cat: Category) => {
+  const openWizardAt = useCallback((cat: MergedCategory | Category) => {
     const idx = applicableCategories.findIndex(c => c.id === cat.id);
     setWizardStartIndex(idx >= 0 ? idx : 0);
     setWizardOpen(true);
