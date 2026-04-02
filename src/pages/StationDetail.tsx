@@ -180,7 +180,7 @@ function CategoryRow({ cat, fotos, isSkipped, hasOpmerking, onOpen }: {
             <span className="material-symbols-rounded text-base">remove</span>
           </div>
           <div>
-            <h4 className="font-display font-semibold text-on-surface-variant line-through text-sm">{cat.name}</h4>
+            <h4 className="font-display font-semibold text-on-surface-variant line-through text-sm">{cat.effectiveName}</h4>
             <span className="text-[10px] uppercase tracking-wider text-on-surface-variant/60 font-bold">NVT</span>
           </div>
         </div>
