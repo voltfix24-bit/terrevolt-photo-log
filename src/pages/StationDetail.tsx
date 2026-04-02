@@ -153,7 +153,7 @@ function CategoryRow({ cat, fotos, isSkipped, hasOpmerking, onOpen }: {
             <span className="material-symbols-rounded text-base">photo_camera</span>
           </div>
           <div>
-            <h4 className="font-display font-semibold text-on-surface text-sm">{cat.name}</h4>
+            <h4 className="font-display font-semibold text-on-surface text-sm">{cat.effectiveName}</h4>
             <span className="text-[10px] uppercase tracking-wider text-orange font-bold">Open</span>
           </div>
         </div>
