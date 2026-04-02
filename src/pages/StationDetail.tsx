@@ -206,7 +206,7 @@ function CategoryRow({ cat, fotos, isSkipped, hasOpmerking, onOpen }: {
         </div>
         <div>
           <h4 className="font-display font-bold text-on-surface text-sm flex items-center gap-1.5">
-            {cat.name}
+            {cat.effectiveName}
             {hasOpmerking && <span className="material-symbols-rounded text-accent-gold text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>sticky_note_2</span>}
           </h4>
           <div className="flex items-center gap-2 mt-0.5">
