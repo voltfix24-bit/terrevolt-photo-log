@@ -451,7 +451,7 @@ function WizardView({
             <span className="text-[11px] font-bold uppercase tracking-[0.15em]" style={{ color: section.color }}>{section.label}</span>
           </div>
         )}
-        <h2 className="font-display text-[20px] font-extrabold tracking-tight leading-tight text-text-primary">{cat.name}</h2>
+        <h2 className="font-display text-[20px] font-extrabold tracking-tight leading-tight text-text-primary">{cat.effectiveName}</h2>
       </div>
 
       {/* Content */}
