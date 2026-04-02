@@ -2,6 +2,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { CATEGORIES, SECTIONS, getCategoriesBySection, getApplicableCategories, slugify, type Category, type Section } from "@/lib/categories";
+import { useMergedCategories, type MergedCategory } from "@/hooks/use-categories";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -130,7 +131,7 @@ function getSectionIcon(sectionId: string): string {
 
 /* ==================== CATEGORY ROW ==================== */
 function CategoryRow({ cat, fotos, isSkipped, hasOpmerking, onOpen }: {
-  cat: Category; fotos: FotoRow[]; isSkipped?: boolean; hasOpmerking?: boolean; onOpen: () => void;
+  cat: MergedCategory; fotos: FotoRow[]; isSkipped?: boolean; hasOpmerking?: boolean; onOpen: () => void;
 }) {
   const hasPhotos = fotos.length > 0;
 
@@ -152,7 +153,7 @@ function CategoryRow({ cat, fotos, isSkipped, hasOpmerking, onOpen }: {
             <span className="material-symbols-rounded text-base">photo_camera</span>
           </div>
           <div>
-            <h4 className="font-display font-semibold text-on-surface text-sm">{cat.name}</h4>
+            <h4 className="font-display font-semibold text-on-surface text-sm">{cat.effectiveName}</h4>
             <span className="text-[10px] uppercase tracking-wider text-orange font-bold">Open</span>
           </div>
         </div>
@@ -179,7 +180,7 @@ function CategoryRow({ cat, fotos, isSkipped, hasOpmerking, onOpen }: {
             <span className="material-symbols-rounded text-base">remove</span>
           </div>
           <div>
-            <h4 className="font-display font-semibold text-on-surface-variant line-through text-sm">{cat.name}</h4>
+            <h4 className="font-display font-semibold text-on-surface-variant line-through text-sm">{cat.effectiveName}</h4>
             <span className="text-[10px] uppercase tracking-wider text-on-surface-variant/60 font-bold">NVT</span>
           </div>
         </div>
@@ -205,7 +206,7 @@ function CategoryRow({ cat, fotos, isSkipped, hasOpmerking, onOpen }: {
         </div>
         <div>
           <h4 className="font-display font-bold text-on-surface text-sm flex items-center gap-1.5">
-            {cat.name}
+            {cat.effectiveName}
             {hasOpmerking && <span className="material-symbols-rounded text-accent-gold text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>sticky_note_2</span>}
           </h4>
           <div className="flex items-center gap-2 mt-0.5">
@@ -243,7 +244,7 @@ interface WizardViewProps {
   onOpenPdf: () => void;
   filledCount: number;
   voorbeelden: { id: string; categorie: string; url: string }[];
-  applicableCategories: Category[];
+  applicableCategories: MergedCategory[];
 }
 
 function WizardView({
@@ -450,7 +451,7 @@ function WizardView({
             <span className="text-[11px] font-bold uppercase tracking-[0.15em]" style={{ color: section.color }}>{section.label}</span>
           </div>
         )}
-        <h2 className="font-display text-[20px] font-extrabold tracking-tight leading-tight text-text-primary">{cat.name}</h2>
+        <h2 className="font-display text-[20px] font-extrabold tracking-tight leading-tight text-text-primary">{cat.effectiveName}</h2>
       </div>
 
       {/* Content */}
@@ -480,9 +481,9 @@ function WizardView({
           </button>
           {tipOpen && (
             <div className="px-5 pb-4 pt-0">
-              <p className="text-[13px] leading-[1.7] text-on-surface-variant">{cat.instruction}</p>
-              {cat.tip && (
-                <p className="mt-3 text-[12px] leading-[1.6] text-on-surface-variant/50 border-t border-primary/5 pt-3">{cat.tip}</p>
+               <p className="text-[13px] leading-[1.7] text-on-surface-variant">{cat.effectiveInstruction}</p>
+              {cat.effectiveTip && (
+                <p className="mt-3 text-[12px] leading-[1.6] text-on-surface-variant/50 border-t border-primary/5 pt-3">{cat.effectiveTip}</p>
               )}
             </div>
           )}
@@ -729,8 +730,23 @@ export default function StationDetail() {
     },
   });
 
-  const applicableCategories = useMemo(() => getApplicableCategories(station), [station]);
-  const sectionGroups = useMemo(() => getCategoriesBySection(station), [station]);
+  const { categories: allMergedCategories } = useMergedCategories();
+
+  const applicableCategories = useMemo(() => {
+    return allMergedCategories.filter(c => {
+      if (c.id === 1 && station?.type_ruimte === 'Betreedbaar station') return false;
+      if (c.id === 14 && !station?.vermogensveld) return false;
+      if (c.id === 15 && !station?.da_kast) return false;
+      return true;
+    });
+  }, [station, allMergedCategories]);
+
+  const sectionGroups = useMemo(() => {
+    return SECTIONS.map((section) => ({
+      section,
+      categories: applicableCategories.filter((c) => c.section === section.id),
+    })).filter(g => g.categories.length > 0);
+  }, [applicableCategories]);
 
   const { data: fotos } = useQuery({
     queryKey: ["fotos", id],
@@ -824,7 +840,7 @@ export default function StationDetail() {
     setTimeout(() => setShareOpen(true), 500);
   };
 
-  const openWizardAt = useCallback((cat: Category) => {
+  const openWizardAt = useCallback((cat: MergedCategory | Category) => {
     const idx = applicableCategories.findIndex(c => c.id === cat.id);
     setWizardStartIndex(idx >= 0 ? idx : 0);
     setWizardOpen(true);
