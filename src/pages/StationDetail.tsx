@@ -481,9 +481,9 @@ function WizardView({
           </button>
           {tipOpen && (
             <div className="px-5 pb-4 pt-0">
-              <p className="text-[13px] leading-[1.7] text-on-surface-variant">{cat.instruction}</p>
-              {cat.tip && (
-                <p className="mt-3 text-[12px] leading-[1.6] text-on-surface-variant/50 border-t border-primary/5 pt-3">{cat.tip}</p>
+               <p className="text-[13px] leading-[1.7] text-on-surface-variant">{cat.effectiveInstruction}</p>
+              {cat.effectiveTip && (
+                <p className="mt-3 text-[12px] leading-[1.6] text-on-surface-variant/50 border-t border-primary/5 pt-3">{cat.effectiveTip}</p>
               )}
             </div>
           )}
