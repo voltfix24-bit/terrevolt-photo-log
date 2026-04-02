@@ -730,8 +730,23 @@ export default function StationDetail() {
     },
   });
 
-  const applicableCategories = useMemo(() => getApplicableCategories(station), [station]);
-  const sectionGroups = useMemo(() => getCategoriesBySection(station), [station]);
+  const { categories: allMergedCategories } = useMergedCategories();
+
+  const applicableCategories = useMemo(() => {
+    return allMergedCategories.filter(c => {
+      if (c.id === 1 && station?.type_ruimte === 'Betreedbaar station') return false;
+      if (c.id === 14 && !station?.vermogensveld) return false;
+      if (c.id === 15 && !station?.da_kast) return false;
+      return true;
+    });
+  }, [station, allMergedCategories]);
+
+  const sectionGroups = useMemo(() => {
+    return SECTIONS.map((section) => ({
+      section,
+      categories: applicableCategories.filter((c) => c.section === section.id),
+    })).filter(g => g.categories.length > 0);
+  }, [applicableCategories]);
 
   const { data: fotos } = useQuery({
     queryKey: ["fotos", id],
