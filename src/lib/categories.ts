@@ -83,6 +83,7 @@ export const CATEGORIES: Category[] = [
   { id: 13, section: "ms-deel", name: "Aarding schakelaar", instruction: "Fotografeer de aardingspunten van de schakelaar.", tip: "Zorg dat de aardingsverbindingen duidelijk zichtbaar zijn." },
   { id: 14, section: "ms-deel", name: "Stroomtrafo's vermogensveld", instruction: "Fotografeer de stroomtransformatoren in het vermogensveld.", tip: "Alleen fotograferen als vermogensveld aanwezig is." },
   { id: 15, section: "ms-deel", name: "DA-kast", instruction: "Fotografeer de DA-kast (Directe Aansluitkast).", tip: "Alleen fotograferen als DA-kast aanwezig is. Maak zowel een overzichts- als detailfoto." },
+  { id: 42, section: "ms-deel", name: "WIC-relais", instruction: "Fotografeer het WIC-relais in de MS-installatie.", tip: "Zorg dat het typeplaatje, instellingen en aansluitingen van het WIC-relais duidelijk zichtbaar en leesbaar zijn." },
 
   // ── KABELS EN EINDSLUITINGEN MS ────────────────────────
   { id: 16, section: "kabels-ms", name: "Eindsluitingen MS", instruction: "Fotografeer de eindsluitingen van de MS-kabels inclusief merk en type.", tip: "Zorg dat het merk en type van de eindsluiting leesbaar is op de foto." },
