@@ -382,30 +382,13 @@ export default function Dashboard() {
                             {zipProgress !== null ? "downloading" : "folder_zip"}
                           </span>
                         </button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <button
-                              className="h-[52px] w-[48px] flex items-center justify-center rounded-2xl bg-destructive/[0.06] hover:bg-destructive/[0.12] active:scale-[0.93] transition-all flex-shrink-0"
-                              title="Station verwijderen"
-                            >
-                              <span className="material-symbols-rounded text-destructive/70 text-[20px]">delete</span>
-                            </button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Station verwijderen?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Alle foto's en gegevens van <strong>{station.naam_msr}</strong> worden permanent verwijderd. Dit kan niet ongedaan worden gemaakt.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Annuleren</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDeleteStation(station.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                                Verwijderen
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        <button
+                          onClick={() => handleDeleteStation(station.id, station.naam_msr)}
+                          className="h-[52px] w-[48px] flex items-center justify-center rounded-2xl bg-destructive/[0.06] hover:bg-destructive/[0.12] active:scale-[0.93] transition-all flex-shrink-0"
+                          title="Station verwijderen"
+                        >
+                          <span className="material-symbols-rounded text-destructive/70 text-[20px]">delete</span>
+                        </button>
                       </div>
                     </div>
                   )}
