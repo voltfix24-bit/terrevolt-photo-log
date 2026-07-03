@@ -72,7 +72,12 @@ export default function Dashboard() {
     if (w) { w.document.write(html); w.document.close(); }
   };
 
-  const handleDeleteStation = async (stationId: string) => {
+  const handleDeleteStation = async (stationId: string, naam?: string) => {
+    const ok = await requirePin(
+      "Station verwijderen",
+      naam ? `Voer de toegangscode in om "${naam}" te verwijderen.` : "Voer de toegangscode in om dit station te verwijderen.",
+    );
+    if (!ok) return;
     const { data: fotos } = await supabase.from("fotos").select("storage_path").eq("station_id", stationId);
     if (fotos && fotos.length > 0) {
       await supabase.storage.from("to-fotos").remove(fotos.map(f => f.storage_path));
