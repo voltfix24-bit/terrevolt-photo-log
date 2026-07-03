@@ -13,6 +13,7 @@ import { generatePdfHtml } from "@/lib/pdf-generator";
 import { downloadStationZip } from "@/lib/zip-download";
 import { toast } from "sonner";
 import { useInstellingen } from "@/hooks/use-theme";
+import { requirePin } from "@/lib/require-pin";
 
 export default function Dashboard() {
   const navigate = useNavigate();
