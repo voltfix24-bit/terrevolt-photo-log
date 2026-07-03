@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { requirePin } from "@/lib/require-pin";
 import { CATEGORIES, SECTIONS, getCategoriesBySection, getApplicableCategories, slugify, type Category, type Section } from "@/lib/categories";
 import { useMergedCategories, type MergedCategory } from "@/hooks/use-categories";
 import {
@@ -658,9 +659,11 @@ function WizardView({
                 Annuleren
               </button>
               <button
-                onClick={() => {
+                onClick={async () => {
                   const { id, path } = deleteTarget;
                   setDeleteTarget(null);
+                  const ok = await requirePin("Foto verwijderen", "Voer de toegangscode in om deze foto te verwijderen.");
+                  if (!ok) return;
                   onDelete(id, path);
                 }}
                 className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-destructive hover:bg-destructive/90 transition-all"
