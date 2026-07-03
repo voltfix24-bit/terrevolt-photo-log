@@ -658,9 +658,11 @@ function WizardView({
                 Annuleren
               </button>
               <button
-                onClick={() => {
+                onClick={async () => {
                   const { id, path } = deleteTarget;
                   setDeleteTarget(null);
+                  const ok = await requirePin("Foto verwijderen", "Voer de toegangscode in om deze foto te verwijderen.");
+                  if (!ok) return;
                   onDelete(id, path);
                 }}
                 className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-destructive hover:bg-destructive/90 transition-all"
