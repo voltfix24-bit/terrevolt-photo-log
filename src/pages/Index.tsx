@@ -76,9 +76,9 @@ export default function Dashboard() {
     const total = applicable.reduce((sum, category) => sum + requiredPhotos(category), 0);
     const done = applicable.reduce((sum, category) => sum + Math.min(photosByCategory.get(category.name) ?? 0, requiredPhotos(category)), 0);
     const missing = applicable.map((category) => ({ ...category, missing: Math.max(requiredPhotos(category) - (photosByCategory.get(category.name) ?? 0), 0) })).filter((category) => category.missing > 0);
-    const lastEdited = Math.max(dateValue(station.updated_at), dateValue(station.created_at), ...(station.fotos ?? []).map((photo) => Math.max(dateValue(photo.uploaded_at), dateValue(photo.created_at))));
+    const lastEdited = dateValue(station.updated_at);
     const stale = lastEdited > 0 && Date.now() - lastEdited > 7 * 24 * 60 * 60 * 1000;
-    return { station, done, total, remaining: total - done, complete: done === total, progress: total > 0 ? Math.round((done / total) * 100) : 0, missing, pending: pendingCounts[station.id] ?? 0, lastEdited, stale };
+    return { station, done, total, remaining: total - done, complete: done === total, missing, pending: pendingCounts[station.id] ?? 0, lastEdited, stale };
   }), [stations, pendingCounts]);
 
   const counts = useMemo(() => ({ mijn: enriched.length, bijna: enriched.filter((item) => item.remaining > 0 && item.remaining <= 3).length, klaar: enriched.filter((item) => item.complete).length }), [enriched]);
@@ -145,7 +145,10 @@ export default function Dashboard() {
       <header className="sticky top-0 z-40 border-b border-outline-variant/20 bg-surface-white/95 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4">
           <div className="flex items-center gap-2 text-primary">
-            <span className="material-symbols-rounded text-[21px] text-accent-gold" style={{ fontVariationSettings: "'FILL' 1" }}>bolt</span>
+            <span className="relative flex h-[22px] w-[18px] shrink-0 items-center justify-center" aria-hidden="true">
+              <span className="material-symbols-rounded text-[22px] text-brand-green" style={{ fontVariationSettings: "'FILL' 1" }}>bolt</span>
+              <span className="absolute right-0 top-0 h-1.5 w-1.5 rounded-full bg-accent-gold-bright" />
+            </span>
             <div className="leading-none">
               <span className="block text-[9px] font-bold text-primary">TerreVolt</span>
               <h1 className="mt-0.5 font-display text-[15px] font-semibold text-on-surface">TO-foto&apos;s</h1>
@@ -164,7 +167,7 @@ export default function Dashboard() {
             <span className="material-symbols-rounded absolute left-3 top-1/2 -translate-y-1/2 text-[20px] text-text-muted">search</span>
             <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Naam of behuizingsnummer" className="min-h-[44px] w-full rounded-lg border border-outline-variant/25 bg-surface-white py-[7px] pl-10 pr-3 text-sm font-medium text-on-surface outline-none placeholder:text-text-muted focus:border-primary/50 focus:ring-2 focus:ring-primary/10" />
           </label>
-          <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <div className="flex shrink-0 gap-2">
               {([["mijn", "Mijn stations"], ["bijna", "Bijna klaar"], ["klaar", "Klaar"]] as const).filter(([value]) => counts[value] > 0).map(([value, label]) => (
                 <button key={value} type="button" onClick={() => setActiveFilter(value)} className={`flex min-h-[44px] shrink-0 items-center gap-2 rounded-full border px-4 text-xs font-bold transition-colors ${activeFilter === value ? "border-brand-green bg-brand-green text-primary-foreground" : "border-outline-variant/40 bg-transparent text-text-secondary"}`}>
@@ -172,11 +175,13 @@ export default function Dashboard() {
                 </button>
               ))}
             </div>
+          </div>
+          <div className="flex justify-end pb-1">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button type="button" className="ml-auto flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border border-outline-variant/40 bg-surface-white px-3 text-xs font-bold text-text-secondary" aria-label="Sortering wijzigen">
+                <button type="button" className="flex min-h-[44px] max-w-full items-center gap-1.5 rounded-full border border-outline-variant/40 bg-surface-white px-3 text-xs font-bold text-text-secondary" aria-label="Sortering wijzigen">
                   <span className="material-symbols-rounded text-[18px]">sort</span>
-                  {sortOption === "bijna" ? "Bijna klaar" : sortOption === "recent" ? "Laatst bewerkt" : "Naam A-Z"}
+                  Sorteren: {sortOption === "bijna" ? "bijna klaar" : sortOption === "recent" ? "laatst bewerkt" : "naam A-Z"}
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -193,12 +198,12 @@ export default function Dashboard() {
             <div key={index} className="border-b border-outline-variant/15 px-4 py-3 last:border-b-0"><Skeleton className="mb-2 h-4 w-1/2" /><Skeleton className="h-3 w-2/3" /></div>
           )) : filtered.length === 0 ? (
             <div className="px-6 py-14 text-center text-sm font-medium text-text-muted">Geen stations gevonden</div>
-          ) : filtered.map(({ station, done, total, remaining, complete, progress, missing, pending, stale }) => {
+          ) : filtered.map(({ station, done, total, remaining, complete, missing, pending, stale }) => {
             const isExpanded = expandedId === station.id;
             const displayName = formatStationName(station.naam_msr);
             return (
               <article key={station.id} className="border-b-[0.5px] border-border last:border-b-0">
-                <button type="button" aria-expanded={isExpanded} onClick={() => setExpandedId(isExpanded ? null : station.id)} className={`min-h-[68px] w-full px-4 pb-2 pt-2.5 text-left transition-colors ${isExpanded ? "bg-accent" : "bg-surface-white active:bg-surface-low"}`}>
+                <button type="button" aria-expanded={isExpanded} onClick={() => setExpandedId(isExpanded ? null : station.id)} className={`min-h-16 w-full px-4 py-3.5 text-left transition-colors ${isExpanded ? "bg-accent" : "bg-surface-white active:bg-surface-low"}`}>
                   <div className="grid grid-cols-[minmax(0,1fr)_auto_24px] items-center gap-2.5">
                     <div className="min-w-0"><h2 className="line-clamp-2 font-display text-sm font-extrabold leading-[18px] text-on-surface">{displayName}</h2><p className="mt-0.5 truncate text-[11px] text-text-muted"><span className="font-mono">{station.behuizingsnummer || "Geen nummer"}</span><span className="font-sans"> · {station.ingevuld_door || "Geen monteur"}</span></p></div>
                     <div className="text-right">
@@ -210,12 +215,11 @@ export default function Dashboard() {
                     </div>
                     <span className={`material-symbols-rounded text-[20px] text-text-secondary transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}>expand_more</span>
                   </div>
-                  <div className="mt-2 h-0.5 overflow-hidden rounded-full bg-surface-container"><div className="h-full rounded-full bg-primary transition-[width] duration-500" style={{ width: `${progress}%` }} /></div>
                 </button>
 
                 {isExpanded && (
                   <div className="border-t border-primary/10 bg-accent px-4 pb-4 pt-3 animate-fade-up">
-                    <div className="mb-3"><div className="h-1.5 overflow-hidden rounded-full bg-surface-container"><div className="h-full rounded-full bg-primary" style={{ width: `${progress}%` }} /></div><p className="mt-2 text-xs font-semibold text-text-secondary">{done} van {total} foto&apos;s · {complete ? "alles compleet" : `${remaining} te gaan`}</p></div>
+                    <div className="mb-3"><p className="text-xs font-semibold text-text-secondary">{done} van {total} foto&apos;s · {complete ? "alles compleet" : `${remaining} te gaan`}</p></div>
                     {!complete && (
                       <div className="mb-4 overflow-hidden rounded-lg border border-primary/15 bg-surface-white">
                         <h3 className="px-3 pb-1 pt-3 text-xs font-extrabold text-on-surface">Nog nodig</h3>
