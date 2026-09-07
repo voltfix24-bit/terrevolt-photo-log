@@ -271,8 +271,8 @@ export default function Dashboard() {
               key={station.id}
                className="mb-[11px] overflow-hidden rounded-2xl bg-white"
               style={{
-                 border: open ? `2px solid ${C.green}` : "2px solid transparent",
-                transition: `border-color 0.24s ${EASE}`,
+                boxShadow: open ? `inset 0 0 0 2px ${C.green}` : "none",
+                transition: `box-shadow 0.24s ${EASE}`,
               }}
             >
               <button type="button" aria-expanded={open} onClick={() => setExpandedId(open ? null : station.id)} className="w-full px-4 py-[15px] text-left">
