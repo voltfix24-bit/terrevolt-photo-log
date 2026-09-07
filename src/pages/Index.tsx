@@ -167,7 +167,7 @@ export default function Dashboard() {
           <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <div className="flex shrink-0 gap-2">
               {([["mijn", "Mijn stations"], ["bijna", "Bijna klaar"], ["klaar", "Klaar"]] as const).filter(([value]) => counts[value] > 0).map(([value, label]) => (
-                <button key={value} type="button" onClick={() => setActiveFilter(value)} className={`flex min-h-[44px] shrink-0 items-center gap-2 rounded-full border px-4 text-xs font-bold transition-colors ${activeFilter === value ? "border-primary bg-primary text-primary-foreground" : "border-outline-variant/40 bg-transparent text-text-secondary"}`}>
+                <button key={value} type="button" onClick={() => setActiveFilter(value)} className={`flex min-h-[44px] shrink-0 items-center gap-2 rounded-full border px-4 text-xs font-bold transition-colors ${activeFilter === value ? "border-brand-green bg-brand-green text-primary-foreground" : "border-outline-variant/40 bg-transparent text-text-secondary"}`}>
                   {label}<span className={`min-w-5 rounded-full px-1.5 py-0.5 text-center text-[10px] ${activeFilter === value ? "bg-primary-light/30 text-primary-foreground" : "bg-surface-container"}`}>{counts[value]}</span>
                 </button>
               ))}
@@ -188,7 +188,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <section aria-label="Stations" className="border-y border-outline-variant/20 bg-surface-white">
+        <section aria-label="Stations" className="border-y border-outline-variant/20 bg-home">
           {isLoading ? Array.from({ length: 5 }).map((_, index) => (
             <div key={index} className="border-b border-outline-variant/15 px-4 py-3 last:border-b-0"><Skeleton className="mb-2 h-4 w-1/2" /><Skeleton className="h-3 w-2/3" /></div>
           )) : filtered.length === 0 ? (

@@ -33,6 +33,7 @@ export default {
           soft: "hsl(var(--primary-soft))",
           "soft-2": "hsl(var(--primary-soft-2))",
         },
+        "brand-green": "hsl(var(--brand-green))",
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
           foreground: "hsl(var(--secondary-foreground))",
