@@ -7,7 +7,7 @@
 
 @layer base {
   :root {
-    --background: 116 90% 96%;
+    --background: 101 39% 92%;
     --home-background: 103 47% 97%;
     --foreground: 114 26% 9%;
 
@@ -144,6 +144,7 @@ html, body, #root {
 
 @supports not (backdrop-filter: blur(1px)) {
   .tv-glas { background: #E4F1DE !important; }
+  .apple-glass { background: #E8F2E2 !important; }
 }
 
 * {
