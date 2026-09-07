@@ -172,21 +172,6 @@ function useSkippedCategories(stationId: string | undefined) {
   return { skipped, skippedReasons, addSkip, removeSkip, toggleSkip, isSkipped };
 }
 
-/* ==================== SECTION ICONS ==================== */
-function getSectionIcon(sectionId: string): string {
-  const icons: Record<string, string> = {
-    'algemeen': 'home_work',
-    'ms-deel': 'electrical_services',
-    'kabels-ms': 'cable',
-    'trafo': 'transform',
-    'ls-deel': 'electric_meter',
-    'meting': 'analytics',
-    'ovl-deel': 'light',
-    'gebouw': 'apartment',
-  };
-  return icons[sectionId] || 'folder';
-}
-
 /* ==================== CATEGORY ROW ==================== */
 function CategoryRow({ cat, fotos, isSkipped, skipReason, hasOpmerking, onOpen }: {
   cat: MergedCategory; fotos: FotoRow[]; isSkipped?: boolean; skipReason?: string; hasOpmerking?: boolean; onOpen: () => void;
@@ -611,7 +596,6 @@ export default function StationDetail() {
   );
 
   const filledCount = new Set(fotos?.map((f) => f.categorie).filter(c => applicableCategories.some(ac => ac.name === c))).size;
-  const pct = Math.round((filledCount / applicableCategories.length) * 100);
 
   const compressImage = async (file: File): Promise<File> => {
     if (file.type === "image/heic") return file;
