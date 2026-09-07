@@ -239,7 +239,7 @@ export default function Dashboard() {
 
       </main>
 
-      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center bg-gradient-to-t from-background via-background/95 to-transparent px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-5">
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center border-t-[0.5px] border-border bg-background px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3">
         <button type="button" onClick={() => navigate("/stations/new")} className="pointer-events-auto flex min-h-[48px] items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-bold text-primary-foreground shadow-sm active:bg-primary-hover"><span className="material-symbols-rounded text-[20px]">add</span>Nieuw station</button>
       </div>
 
