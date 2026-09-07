@@ -152,7 +152,7 @@ export default function Dashboard() {
                   <div className="grid grid-cols-[minmax(0,1fr)_auto_24px] items-center gap-2.5">
                     <div className="min-w-0"><h2 className="truncate font-display text-sm font-extrabold text-on-surface">{station.naam_msr}</h2><p className="mt-0.5 truncate text-[11px] text-text-muted"><span className="font-mono">{station.behuizingsnummer || "Geen nummer"}</span><span className="font-sans"> · {station.ingevuld_door || "Geen monteur"}</span></p></div>
                     <div className="text-right">
-                      <div className={`flex items-center justify-end gap-1 text-xs font-extrabold ${pending > 0 ? "text-purple" : complete ? "text-primary" : "text-accent-gold"}`}><span className="material-symbols-rounded text-[16px]">{pending > 0 ? "upload" : complete ? "check_circle" : "pending_actions"}</span><span>{pending > 0 ? `${pending} wachten` : complete ? "Klaar" : `${remaining} te gaan`}</span></div>
+                      <div className={`flex items-center justify-end gap-1 text-xs font-extrabold ${pending > 0 ? "text-sync-pending" : complete ? "text-primary" : "text-accent-gold"}`}><span className="material-symbols-rounded text-[16px]">{pending > 0 ? "upload" : complete ? "check_circle" : "pending_actions"}</span><span>{pending > 0 ? `${pending} wachten` : complete ? "Klaar" : `${remaining} te gaan`}</span></div>
                       <div className="mt-0.5 text-[10px] font-medium text-text-muted">{done} / {total}</div>
                     </div>
                     <span className={`material-symbols-rounded text-[20px] text-text-secondary transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}>expand_more</span>
