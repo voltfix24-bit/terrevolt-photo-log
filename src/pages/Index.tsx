@@ -17,7 +17,7 @@ const requiredPhotos = (category: Category) => category.id === 31 ? 3 : 1;
 const abbreviations = new Set(["ls", "ms", "to", "atr"]);
 
 const C = {
-  bg: "#E4F1DE",
+  bg: "#E8F2E2",
   green: "#1F5C3A",
   cardBorder: "rgba(31,92,58,0.16)",
   soft: "#F2F6F1",
@@ -80,9 +80,9 @@ function ActieKnop({ icon, label, onClick, variant = "neutraal" }: { icon: strin
       aria-label={label}
       style={{
         width: 56, minHeight: 56, flexShrink: 0, display: "flex", flexDirection: "column",
-        alignItems: "center", justifyContent: "center", gap: 2, borderRadius: 15,
-        background: rood ? C.dangerBg : C.soft,
-        border: `0.5px solid ${rood ? C.dangerBorder : C.softBorder}`,
+        alignItems: "center", justifyContent: "center", gap: 2, borderRadius: 12,
+        background: "transparent",
+        border: "none",
       }}
     >
       <span className="material-symbols-rounded" style={{ fontSize: 21, color: rood ? C.danger : C.green }}>{icon}</span>
@@ -208,7 +208,7 @@ export default function Dashboard() {
         className="tv-glas fixed inset-x-0 top-0 z-30"
         style={{
           height: gekrompen ? 48 : 62,
-          background: "rgba(228,241,222,0.75)",
+           background: "rgba(232,242,226,0.8)",
           borderBottom: "0.5px solid rgba(31,92,58,0.14)",
           transition: `height 0.32s ${EASE}`,
           paddingTop: "env(safe-area-inset-top)",
@@ -245,7 +245,7 @@ export default function Dashboard() {
               </h1>
             </div>
           </div>
-          <div className="flex items-center gap-[6px] rounded-[20px] px-[13px] py-[7px]" style={{ background: "rgba(255,255,255,0.75)" }}>
+           <div className="flex items-center gap-[6px] px-[8px] py-[7px]">
             <span className="material-symbols-rounded" style={{ fontSize: 16, color: syncColor }}>{syncIcon}</span>
             <span style={{ fontSize: 13, color: syncColor }}>{syncLabel}</span>
           </div>
@@ -259,7 +259,7 @@ export default function Dashboard() {
         </div>
 
         {isLoading ? Array.from({ length: 4 }).map((_, index) => (
-          <div key={index} className="mb-[11px] rounded-[18px] bg-white p-4" style={{ border: `0.5px solid ${C.cardBorder}` }}>
+           <div key={index} className="mb-[11px] rounded-2xl bg-white p-4">
             <Skeleton className="mb-2 h-4 w-1/2" /><Skeleton className="h-3 w-2/3" />
           </div>
         )) : filtered.length === 0 ? (
@@ -269,10 +269,10 @@ export default function Dashboard() {
           return (
             <div
               key={station.id}
-              className="mb-[11px] overflow-hidden rounded-[18px] bg-white"
+               className="mb-[11px] overflow-hidden rounded-2xl bg-white"
               style={{
-                border: open ? `2px solid ${C.green}` : `0.5px solid ${C.cardBorder}`,
-                transition: `border-color 0.24s ${EASE}`,
+                boxShadow: open ? `inset 0 0 0 2px ${C.green}` : "none",
+                transition: `box-shadow 0.24s ${EASE}`,
               }}
             >
               <button type="button" aria-expanded={open} onClick={() => setExpandedId(open ? null : station.id)} className="w-full px-4 py-[15px] text-left">
@@ -283,10 +283,7 @@ export default function Dashboard() {
                     <p className="mt-[1px] truncate" style={{ fontSize: 14, color: "#4A4A4A" }}>{station.ingevuld_door || "Geen monteur"}</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    <span
-                      className="whitespace-nowrap rounded-[20px] px-[11px] py-[5px]"
-                      style={{ fontSize: 13, color: open ? C.green : "#4A4A4A", background: open ? "#DCEDD6" : "#F0F2F0" }}
-                    >
+                     <span className="whitespace-nowrap px-1 py-[5px]" style={{ fontSize: 13, color: open ? C.green : "#4A4A4A" }}>
                       {relatieveDatum(station.created_at)}
                     </span>
                     <span
@@ -355,7 +352,7 @@ export default function Dashboard() {
       <div
         className="tv-glas fixed inset-x-0 bottom-0 z-30 flex items-center gap-[10px] px-3 pt-[10px]"
         style={{
-          background: "rgba(228,241,222,0.7)",
+           background: "rgba(232,242,226,0.78)",
           borderTop: "0.5px solid rgba(31,92,58,0.14)",
           paddingBottom: "calc(15px + env(safe-area-inset-bottom))",
           ...glas,
@@ -372,7 +369,7 @@ export default function Dashboard() {
               placeholder="Zoek station"
               className="w-full outline-none"
               style={{
-                minHeight: 56, borderRadius: 28, padding: "15px 16px 15px 44px",
+                 minHeight: 58, borderRadius: 16, padding: "15px 16px 15px 44px",
                 fontSize: 16, color: "#0A0A0A",
                 background: "rgba(255,255,255,0.92)", border: `0.5px solid ${C.cardBorder}`,
               }}
@@ -384,7 +381,7 @@ export default function Dashboard() {
             style={{
               flex: 1, display: "flex", alignItems: "center", gap: 10, textAlign: "left",
               background: "rgba(255,255,255,0.92)", border: `0.5px solid ${C.cardBorder}`,
-              borderRadius: 28, padding: "15px 17px", minHeight: 56,
+               borderRadius: 16, padding: "15px 17px", minHeight: 58,
             }}
           >
             <span className="material-symbols-rounded" style={{ fontSize: 19, color: "#5A5A5A" }}>search</span>
@@ -395,7 +392,7 @@ export default function Dashboard() {
           onClick={() => navigate("/stations/new")}
           aria-label="Nieuw station"
           style={{
-            width: 56, height: 56, borderRadius: 28, background: C.green, border: "none",
+             width: 58, height: 58, borderRadius: 16, background: C.green, border: "none",
             display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
           }}
         >
