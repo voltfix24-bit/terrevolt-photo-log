@@ -21,7 +21,7 @@ export default function AppHeader() {
     return false;
   };
 
-  if (location.pathname === "/") return null;
+  if (location.pathname === "/" || /^\/stations\/[^/]+$/.test(location.pathname)) return null;
 
   return (
     <>

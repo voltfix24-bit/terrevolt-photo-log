@@ -79,12 +79,41 @@ function DropZone({ onFiles, disabled, onClick, children }: {
 /* ==================== SKIP TRACKING ==================== */
 function useSkippedCategories(stationId: string | undefined) {
   const key = `skipped-${stationId}`;
+  const reasonsKey = `skip-reasons-${stationId}`;
+  const queryClient = useQueryClient();
   const [skipped, setSkippedRaw] = useState<string[]>(() => {
     try {
       const raw = localStorage.getItem(key);
       return raw ? JSON.parse(raw) : [];
     } catch { return []; }
   });
+  const [skippedReasons, setSkippedReasons] = useState<Record<string, string>>(() => {
+    try {
+      const raw = localStorage.getItem(reasonsKey);
+      return raw ? JSON.parse(raw) : {};
+    } catch { return {}; }
+  });
+  const { data: storedSkips } = useQuery({
+    queryKey: ['categorie-skips', stationId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('categorie_skips').select('categorie, reden').eq('station_id', stationId ?? '');
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!stationId,
+  });
+
+  useEffect(() => {
+    if (!storedSkips) return;
+    const names = storedSkips.map(item => item.categorie);
+    const reasons = Object.fromEntries(storedSkips.map(item => [item.categorie, item.reden]));
+    setSkippedRaw(names);
+    setSkippedReasons(reasons);
+    try {
+      localStorage.setItem(key, JSON.stringify(names));
+      localStorage.setItem(reasonsKey, JSON.stringify(reasons));
+    } catch { /* */ }
+  }, [key, reasonsKey, storedSkips]);
 
   const setSkipped = useCallback((fn: (prev: string[]) => string[]) => {
     setSkippedRaw(prev => {
@@ -94,13 +123,36 @@ function useSkippedCategories(stationId: string | undefined) {
     });
   }, [key]);
 
-  const addSkip = useCallback((catName: string) => {
+  const addSkip = useCallback((catName: string, reason?: string) => {
     setSkipped(prev => prev.includes(catName) ? prev : [...prev, catName]);
-  }, [setSkipped]);
+    if (reason) {
+      setSkippedReasons(prev => {
+        const next = { ...prev, [catName]: reason };
+        try { localStorage.setItem(reasonsKey, JSON.stringify(next)); } catch { /* */ }
+        return next;
+      });
+      if (stationId) {
+        void supabase.from('categorie_skips').upsert({ station_id: stationId, categorie: catName, reden: reason, updated_at: new Date().toISOString() }, { onConflict: 'station_id,categorie' }).then(() => {
+          queryClient.invalidateQueries({ queryKey: ['categorie-skips', stationId] });
+        });
+      }
+    }
+  }, [queryClient, reasonsKey, setSkipped, stationId]);
 
   const removeSkip = useCallback((catName: string) => {
     setSkipped(prev => prev.filter(n => n !== catName));
-  }, [setSkipped]);
+    setSkippedReasons(prev => {
+      const next = { ...prev };
+      delete next[catName];
+      try { localStorage.setItem(reasonsKey, JSON.stringify(next)); } catch { /* */ }
+      return next;
+    });
+    if (stationId) {
+      void supabase.from('categorie_skips').delete().eq('station_id', stationId).eq('categorie', catName).then(() => {
+        queryClient.invalidateQueries({ queryKey: ['categorie-skips', stationId] });
+      });
+    }
+  }, [queryClient, reasonsKey, setSkipped, stationId]);
 
   const toggleSkip = useCallback((catName: string) => {
     setSkipped(prev =>
@@ -112,7 +164,7 @@ function useSkippedCategories(stationId: string | undefined) {
 
   const isSkipped = useCallback((catName: string) => skipped.includes(catName), [skipped]);
 
-  return { skipped, addSkip, removeSkip, toggleSkip, isSkipped };
+  return { skipped, skippedReasons, addSkip, removeSkip, toggleSkip, isSkipped };
 }
 
 /* ==================== SECTION ICONS ==================== */
@@ -131,8 +183,8 @@ function getSectionIcon(sectionId: string): string {
 }
 
 /* ==================== CATEGORY ROW ==================== */
-function CategoryRow({ cat, fotos, isSkipped, hasOpmerking, onOpen }: {
-  cat: MergedCategory; fotos: FotoRow[]; isSkipped?: boolean; hasOpmerking?: boolean; onOpen: () => void;
+function CategoryRow({ cat, fotos, isSkipped, skipReason, hasOpmerking, onOpen }: {
+  cat: MergedCategory; fotos: FotoRow[]; isSkipped?: boolean; skipReason?: string; hasOpmerking?: boolean; onOpen: () => void;
 }) {
   const hasPhotos = fotos.length > 0;
 
@@ -142,20 +194,18 @@ function CategoryRow({ cat, fotos, isSkipped, hasOpmerking, onOpen }: {
       <button
         data-cat-id={cat.id}
         onClick={onOpen}
-        className="flex items-center justify-between w-full p-4 rounded-xl
-                   bg-card shadow-sm border border-outline-variant/15
-                   hover:bg-surface-low transition-colors text-left
-                   active:scale-[0.98] group"
+        className="flex min-h-[64px] items-center justify-between w-full p-3 rounded-lg
+                   bg-orange/[0.08] border border-orange/35 text-left
+                   active:scale-[0.99] group"
       >
         <div className="flex items-center gap-4">
-          <div className="w-9 h-9 rounded-full border border-outline-variant flex items-center
-                          justify-center text-muted-foreground group-hover:border-primary
-                          group-hover:text-primary transition-colors flex-shrink-0">
+          <div className="w-10 h-10 rounded-lg border border-orange/30 bg-orange/10 flex items-center
+                          justify-center text-orange flex-shrink-0">
             <span className="material-symbols-rounded text-base">photo_camera</span>
           </div>
           <div>
             <h4 className="font-display font-semibold text-on-surface text-sm">{cat.effectiveName}</h4>
-            <span className="text-[10px] uppercase tracking-wider text-orange font-bold">Open</span>
+            <span className="text-[11px] text-orange font-bold">0 van {cat.id === 31 ? 3 : 1} foto{cat.id === 31 ? "'s" : ""}</span>
           </div>
         </div>
         <span className="material-symbols-rounded text-muted-foreground/40 group-hover:text-primary transition-colors">
@@ -171,21 +221,19 @@ function CategoryRow({ cat, fotos, isSkipped, hasOpmerking, onOpen }: {
       <button
         data-cat-id={cat.id}
         onClick={onOpen}
-        className="flex items-center justify-between w-full p-4 rounded-xl
-                   bg-surface/30 border border-outline-variant/20 text-left
-                   active:scale-[0.98] group"
+        className="flex min-h-[56px] items-start justify-between w-full py-2.5 text-left
+                   border-b border-outline-variant/20 active:scale-[0.99] group"
       >
-        <div className="flex items-center gap-4">
-          <div className="w-9 h-9 rounded-full border border-outline-variant flex items-center
-                          justify-center text-outline-variant flex-shrink-0">
-            <span className="material-symbols-rounded text-base">remove</span>
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="w-8 h-8 flex items-center justify-center text-text-muted flex-shrink-0">
+            <span className="material-symbols-rounded text-base">block</span>
           </div>
-          <div>
-            <h4 className="font-display font-semibold text-on-surface-variant line-through text-sm">{cat.effectiveName}</h4>
-            <span className="text-[10px] uppercase tracking-wider text-on-surface-variant/60 font-bold">NVT</span>
+          <div className="min-w-0 pt-1">
+            <h4 className="font-display font-semibold text-text-muted line-through text-[13px]">{cat.effectiveName}</h4>
+            {skipReason && <p className="mt-0.5 text-[11px] text-text-muted">{skipReason}</p>}
           </div>
         </div>
-        <span className="text-xs text-primary font-semibold">Alsnog invullen →</span>
+        <span className="mt-1 rounded-full bg-surface-container px-2 py-1 text-[10px] font-bold text-text-muted">nvt</span>
       </button>
     );
   }
@@ -195,33 +243,22 @@ function CategoryRow({ cat, fotos, isSkipped, hasOpmerking, onOpen }: {
     <button
       data-cat-id={cat.id}
       onClick={onOpen}
-      className="flex items-center justify-between w-full p-4 rounded-xl
-                 bg-primary/[0.04] border border-primary/15
-                 relative overflow-hidden text-left active:scale-[0.98] group"
+      className="flex min-h-[48px] items-center justify-between w-full py-2.5
+                 border-b border-outline-variant/20 text-left active:scale-[0.99] group"
     >
-      <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />
-      <div className="flex items-center gap-4 ml-2">
-        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center
                         justify-center text-primary flex-shrink-0">
           <span className="material-symbols-rounded text-base" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
         </div>
         <div>
-          <h4 className="font-display font-bold text-on-surface text-sm flex items-center gap-1.5">
+          <h4 className="font-display font-semibold text-on-surface text-[13px] flex items-center gap-1.5">
             {cat.effectiveName}
             {hasOpmerking && <span className="material-symbols-rounded text-accent-gold text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>sticky_note_2</span>}
           </h4>
-          <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-[10px] uppercase tracking-wider text-primary font-bold">
-              {fotos.length} foto{fotos.length > 1 ? "'s" : ""} ✓
-            </span>
-            <span className="w-1 h-1 rounded-full bg-outline-variant" />
-            <span className="text-[11px] text-on-surface-variant">Tik voor meer</span>
-          </div>
         </div>
       </div>
-      <span className="material-symbols-rounded text-primary/60 group-hover:translate-x-1 transition-transform">
-        chevron_right
-      </span>
+      <span className="shrink-0 text-[11px] font-semibold text-text-muted">{fotos.length} foto{fotos.length === 1 ? "" : "'s"}</span>
     </button>
   );
 }
@@ -231,9 +268,10 @@ interface WizardViewProps {
   startIndex: number;
   stationId: string;
   onClose: () => void;
-  onSkip: (catName: string) => void;
+  onSkip: (catName: string, reason?: string) => void;
   onUnskip: (catName: string) => void;
   skipped: string[];
+  skippedReasons: Record<string, string>;
   station: { vermogensveld: boolean | null; da_kast: boolean | null; naam_msr: string; type_ruimte: string | null };
   fotos: FotoRow[];
   fotosByCategorie: (cat: string) => FotoRow[];
@@ -249,7 +287,7 @@ interface WizardViewProps {
 }
 
 function WizardView({
-  startIndex, stationId, onClose, onSkip, onUnskip, skipped, station,
+  startIndex, stationId, onClose, onSkip, onUnskip, skipped, skippedReasons, station,
   fotosByCategorie, isUploading, uploadProgress,
   onUpload, onDelete, onClickThumb, onOpenPdf, filledCount, voorbeelden,
   applicableCategories,
@@ -264,6 +302,13 @@ function WizardView({
   const [opmerkingText, setOpmerkingText] = useState('');
   const [savingOpmerking, setSavingOpmerking] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; path: string } | null>(null);
+  const [skipReasonOpen, setSkipReasonOpen] = useState(false);
+  const [skipReasonChoice, setSkipReasonChoice] = useState('');
+  const [skipReasonOther, setSkipReasonOther] = useState('');
+  const [opmerkingOpen, setOpmerkingOpen] = useState(false);
+  const [opmerkingSaved, setOpmerkingSaved] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState<{ foto: FotoRow; index: number } | null>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
 
   const cat = applicableCategories[currentIndex];
   const catFotos = cat ? fotosByCategorie(cat.name) : [];
@@ -293,6 +338,8 @@ function WizardView({
 
   useEffect(() => {
     setOpmerkingText(opmerkingData?.opmerking || '');
+    setOpmerkingOpen(false);
+    setOpmerkingSaved(false);
   }, [opmerkingData, currentIndex]);
 
   const saveOpmerking = async () => {
@@ -301,6 +348,7 @@ function WizardView({
       await supabase.from('categorie_opmerkingen').delete().eq('station_id', stationId).eq('categorie', cat.name);
       queryClient.invalidateQueries({ queryKey: ['opmerking', stationId, cat.name] });
       queryClient.invalidateQueries({ queryKey: ['opmerkingen', stationId] });
+      setOpmerkingSaved(true);
       return;
     }
     setSavingOpmerking(true);
@@ -311,6 +359,7 @@ function WizardView({
       updated_at: new Date().toISOString(),
     }, { onConflict: 'station_id,categorie' });
     setSavingOpmerking(false);
+    setOpmerkingSaved(true);
     queryClient.invalidateQueries({ queryKey: ['opmerking', stationId, cat.name] });
     queryClient.invalidateQueries({ queryKey: ['opmerkingen', stationId] });
   };
@@ -338,10 +387,19 @@ function WizardView({
   };
 
   const handleSkip = () => {
-    if (cat) {
-      onSkip(cat.name);
-      goNext();
-    }
+    if (!cat) return;
+    setSkipReasonChoice('');
+    setSkipReasonOther('');
+    setSkipReasonOpen(true);
+  };
+
+  const confirmSkip = () => {
+    if (!cat) return;
+    const reason = skipReasonChoice === 'Anders' ? skipReasonOther.trim() : skipReasonChoice;
+    if (!reason) return;
+    onSkip(cat.name, reason);
+    setSkipReasonOpen(false);
+    goNext();
   };
 
   const openAt = (c: Category) => {
@@ -425,25 +483,27 @@ function WizardView({
   return (
     <div className="fixed inset-0 z-[70] bg-background flex flex-col animate-fade-up">
       {/* Header */}
-      <div className="shrink-0 bg-surface px-5 pt-[max(16px,env(safe-area-inset-top))] pb-3 border-b border-outline-variant/10">
-        <div className="flex items-center gap-3 mb-2">
-          <button onClick={onClose} className="flex items-center gap-1 text-text-muted hover:text-primary-hover text-[13px] font-medium active:scale-95 transition-all">
+      <div className="shrink-0 bg-surface px-4 pt-[max(8px,env(safe-area-inset-top))] pb-3 border-b border-outline-variant/10">
+        <div className="flex min-h-[44px] items-center gap-3 mb-2">
+          <button onClick={onClose} aria-label="Sluiten" className="w-11 h-11 flex items-center justify-center text-text-muted active:scale-95 transition-all">
             <span className="material-symbols-rounded text-[20px]">close</span>
           </button>
           <div className="flex-1 text-center">
             <span className="text-xs font-bold text-muted-foreground">{currentIndex + 1} / {applicableCategories.length}</span>
           </div>
           {!hasPhotos && !isCatSkipped && (
-            <button onClick={handleSkip} className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-text-faint hover:text-text-muted active:scale-[0.97] transition-all">
-              NVT
+            <button onClick={handleSkip} className="min-h-[44px] px-3 rounded-full border border-outline-variant/30 flex items-center gap-1.5 text-[12px] font-bold text-text-muted active:scale-[0.97] transition-all">
+              <span className="material-symbols-rounded text-base">block</span>Nvt
             </button>
           )}
           {(hasPhotos || isCatSkipped) && <div className="w-12" />}
         </div>
 
         {/* Progress bar */}
-        <div className="h-1 bg-surface-container rounded-full overflow-hidden mb-3">
-          <div className="h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${((currentIndex + 1) / applicableCategories.length) * 100}%` }} />
+        <div className="grid h-[5px] gap-0.5 mb-3" style={{ gridTemplateColumns: `repeat(${applicableCategories.length}, minmax(0, 1fr))` }}>
+          {applicableCategories.map((step, index) => (
+            <span key={step.id} className={`h-full ${index < currentIndex ? 'bg-primary' : index === currentIndex ? 'bg-orange' : 'bg-primary/15'} ${index === 0 ? 'rounded-l-full' : ''} ${index === applicableCategories.length - 1 ? 'rounded-r-full' : ''}`} />
+          ))}
         </div>
 
         {section && (
@@ -456,7 +516,7 @@ function WizardView({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-32 space-y-3" style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
+      <div className="flex-1 overflow-y-auto px-4 pt-3 pb-28 space-y-3" style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
         {/* Status badges */}
         {hasPhotos && (
           <div className="flex items-center gap-2.5 px-5 py-3 rounded-2xl bg-primary/5">
@@ -471,23 +531,23 @@ function WizardView({
           </div>
         )}
 
-        {/* Instruction */}
-        <div className="bg-primary/[0.06] rounded-2xl border border-primary/12">
-          <button onClick={() => setTipOpen(!tipOpen)} className="w-full flex items-center gap-3 px-5 py-4 text-left active:scale-[0.99] transition-transform">
-            <div className="w-8 h-8 rounded-xl bg-primary/8 flex items-center justify-center flex-shrink-0">
-              <span className="material-symbols-rounded text-primary text-[18px]">info</span>
-            </div>
-            <span className="text-[13px] font-semibold text-on-surface-variant/70 flex-1">Instructie bekijken</span>
-            <span className="material-symbols-rounded text-[18px] text-on-surface-variant/40">{tipOpen ? 'expand_less' : 'expand_more'}</span>
-          </button>
-          {tipOpen && (
-            <div className="px-5 pb-4 pt-0">
-               <p className="text-[13px] leading-[1.7] text-on-surface-variant">{cat.effectiveInstruction}</p>
-              {cat.effectiveTip && (
-                <p className="mt-3 text-[12px] leading-[1.6] text-on-surface-variant/50 border-t border-primary/5 pt-3">{cat.effectiveTip}</p>
-              )}
-            </div>
+        {/* Instruction and example */}
+        <div className="flex gap-3 rounded-xl border border-primary/15 bg-primary/[0.06] p-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] leading-5 text-on-surface-variant">{cat.effectiveInstruction}</p>
+            {cat.effectiveTip && (
+              <p className="mt-2 flex gap-1.5 text-[11px] leading-4 text-text-muted">
+                <span className="material-symbols-rounded shrink-0 text-[15px]">info</span>{cat.effectiveTip}
+              </p>
+            )}
+          </div>
+          {catVoorbeelden[0] && (
+            <button onClick={() => setVoorbeeldLightbox(0)} className="relative h-[60px] w-[60px] shrink-0 overflow-hidden rounded-lg border border-primary/20">
+              <img src={catVoorbeelden[0].url} alt="Voorbeeldfoto" className="h-full w-full object-cover" />
+              <span className="absolute inset-x-0 bottom-0 bg-primary/80 py-0.5 text-[8px] font-bold text-primary-foreground">voorbeeld</span>
+            </button>
           )}
+          <Lightbox open={voorbeeldLightbox !== null} close={() => setVoorbeeldLightbox(null)} slides={catVoorbeelden.map(v => ({ src: v.url }))} index={voorbeeldLightbox ?? 0} />
         </div>
 
         {/* Conditional warnings */}
@@ -498,7 +558,7 @@ function WizardView({
               <span className="text-[13px] text-on-surface-variant leading-relaxed">Alleen fotograferen als <strong>vermogensveld aanwezig</strong> is.</span>
             </div>
             {!isCatSkipped && !hasPhotos && (
-              <button onClick={() => { onSkip(cat.name); goNext(); }} className="mt-3 ml-8 text-[12px] font-semibold text-primary underline underline-offset-2 active:scale-95 transition-transform">
+              <button onClick={handleSkip} className="mt-3 ml-8 min-h-[44px] text-[12px] font-semibold text-primary underline underline-offset-2 active:scale-95 transition-transform">
                 Niet aanwezig, overslaan →
               </button>
             )}
@@ -511,7 +571,7 @@ function WizardView({
               <span className="text-[13px] text-on-surface-variant leading-relaxed">Alleen fotograferen als <strong>DA-kast aanwezig</strong> is.</span>
             </div>
             {!isCatSkipped && !hasPhotos && (
-              <button onClick={() => { onSkip(cat.name); goNext(); }} className="mt-3 ml-8 text-[12px] font-semibold text-primary underline underline-offset-2 active:scale-95 transition-transform">
+              <button onClick={handleSkip} className="mt-3 ml-8 min-h-[44px] text-[12px] font-semibold text-primary underline underline-offset-2 active:scale-95 transition-transform">
                 Niet aanwezig, overslaan →
               </button>
             )}
@@ -524,47 +584,35 @@ function WizardView({
               <span className="text-[13px] text-on-surface-variant leading-relaxed">Bij een <strong>betreedbaar station</strong> kan deze vraag worden overgeslagen.</span>
             </div>
             {!isCatSkipped && !hasPhotos && (
-              <button onClick={() => { onSkip(cat.name); goNext(); }} className="mt-3 ml-8 text-[12px] font-semibold text-primary underline underline-offset-2 active:scale-95 transition-transform">
+              <button onClick={handleSkip} className="mt-3 ml-8 min-h-[44px] text-[12px] font-semibold text-primary underline underline-offset-2 active:scale-95 transition-transform">
                 Overslaan →
               </button>
             )}
           </div>
         )}
 
-        {catVoorbeelden.length > 0 && (
-          <div>
-            <button onClick={() => setShowVoorbeeld(!showVoorbeeld)} className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-[12px] font-semibold transition-all active:scale-95 ${showVoorbeeld ? 'bg-primary/8 text-primary' : 'bg-surface-high text-text-muted hover:text-primary hover:bg-primary/[0.06]'}`}>
-              <span className="material-symbols-rounded text-[16px]">{showVoorbeeld ? 'visibility_off' : 'visibility'}</span>
-              {showVoorbeeld ? 'Verberg voorbeeld' : 'Voorbeeld bekijken'}
-            </button>
-            {showVoorbeeld && (
-              <div className="flex gap-2.5 overflow-x-auto pb-2 mt-3 -mx-1 px-1 snap-x snap-mandatory">
-                {catVoorbeelden.map((v, i) => (
-                  <button key={v.id} onClick={() => setVoorbeeldLightbox(i)} className="flex-shrink-0 snap-start w-28 h-28 rounded-2xl overflow-hidden border border-outline-variant/10 active:scale-95 transition-transform">
-                    <img src={v.url} alt="Voorbeeld" className="w-full h-full object-cover" />
-                  </button>
-                ))}
-              </div>
-            )}
-            <Lightbox open={voorbeeldLightbox !== null} close={() => setVoorbeeldLightbox(null)} slides={catVoorbeelden.map(v => ({ src: v.url }))} index={voorbeeldLightbox ?? 0} />
-          </div>
-        )}
-
         {/* Hidden file input */}
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/heic,image/webp" multiple className="hidden"
+          onChange={(e) => { if (e.target.files) onUpload(cat.name, e.target.files); e.target.value = ""; }} />
+        <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden"
           onChange={(e) => { if (e.target.files) onUpload(cat.name, e.target.files); e.target.value = ""; }} />
 
         {/* Upload zone — show when no photos */}
         {!hasPhotos && (
-          <DropZone onFiles={(files) => onUpload(cat.name, files)} disabled={isUploading === cat.name} onClick={() => fileRef.current?.click()}>
-            <div className="flex flex-col items-center justify-center py-6">
-              <div className="w-16 h-16 rounded-full bg-primary/6 flex items-center justify-center mb-5">
+          <div>
+          <DropZone onFiles={(files) => onUpload(cat.name, files)} disabled={isUploading === cat.name} onClick={() => cameraRef.current?.click()}>
+            <div className="flex min-h-[150px] flex-col items-center justify-center py-2">
+              <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-3">
                 <span className="material-symbols-rounded text-[32px] text-primary/70">photo_camera</span>
               </div>
-              <div className="font-display text-[17px] font-extrabold text-text-primary mb-1.5">Tik om foto's te maken</div>
-              <div className="text-[13px] text-text-muted leading-relaxed text-center max-w-[240px]">Hoge resolutie aanbevolen voor verificatie.</div>
+              <div className="font-display text-[17px] font-extrabold text-text-primary mb-1">Tik om foto's te maken</div>
+              <div className="text-[12px] text-text-muted">{cat.id === 31 ? 3 : 1} foto{cat.id === 31 ? "'s" : ''} vereist</div>
             </div>
           </DropZone>
+          <button onClick={() => fileRef.current?.click()} className="mt-1 min-h-[44px] w-full flex items-center justify-center gap-2 text-[12px] font-semibold text-text-muted">
+            <span className="material-symbols-rounded text-lg">photo_library</span>Uit galerij kiezen
+          </button>
+          </div>
         )}
 
         {/* Upload progress */}
@@ -578,21 +626,16 @@ function WizardView({
         {hasPhotos && (
           <div className="grid grid-cols-3 gap-2">
             {catFotos.map((foto, i) => (
-              <div key={foto.id} className="relative aspect-square rounded-2xl bg-surface-container overflow-hidden">
-                <button onClick={() => onClickThumb(cat.name, i)} className="w-full h-full">
+              <div key={foto.id} className="relative aspect-square rounded-xl bg-surface-container overflow-hidden">
+                <button onClick={() => setPhotoPreview({ foto, index: i })} className="w-full h-full">
                   <img src={foto.url} alt="" className="w-full h-full object-cover" />
                 </button>
+                <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full border-2 border-background bg-primary" aria-label="Geüpload" />
                 {foto.uploaded_at && (
-                  <div className="absolute bottom-0 left-0 right-0 bg-on-surface/50 backdrop-blur-sm px-2 py-1 text-[9px] text-white font-mono text-center">
+                  <div className="absolute bottom-0 left-0 right-0 bg-on-surface/50 backdrop-blur-sm px-2 py-1 text-[9px] text-primary-foreground font-mono text-center">
                     {new Date(foto.uploaded_at).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
                   </div>
                 )}
-                <button
-                  onClick={() => setDeleteTarget({ id: foto.id, path: foto.storage_path })}
-                  className="absolute top-1.5 right-1.5 w-6 h-6 bg-on-surface/60 backdrop-blur-sm rounded-full text-white flex items-center justify-center active:scale-90 transition-transform"
-                >
-                  <span className="material-symbols-rounded text-[14px]">close</span>
-                </button>
               </div>
             ))}
             <button onClick={() => fileRef.current?.click()} disabled={isUploading === cat.name} className="aspect-square rounded-2xl border-2 border-dashed border-outline-variant/20 bg-transparent flex flex-col items-center justify-center gap-1.5 text-text-faint hover:border-primary/30 hover:text-primary hover:bg-primary/[0.04] active:scale-95 transition-all">
@@ -604,15 +647,14 @@ function WizardView({
       </div>
 
       {/* Opmerking field */}
-      <div className="bg-card rounded-2xl border border-outline-variant/15 shadow-sm overflow-hidden">
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-outline-variant/10">
+      <div className="mx-4 mb-2 shrink-0 bg-card rounded-xl border border-outline-variant/15 overflow-hidden">
+        <button onClick={() => setOpmerkingOpen(!opmerkingOpen)} className="flex min-h-[44px] w-full items-center gap-3 px-3 text-left">
           <span className="material-symbols-rounded text-muted-foreground text-lg">edit_note</span>
-          <span className="text-sm font-bold text-on-surface">Opmerking</span>
-          {opmerkingData?.opmerking && (
-            <span className="ml-auto text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">Opgeslagen</span>
-          )}
-        </div>
-        <div className="p-4">
+          <span className={`min-w-0 flex-1 truncate text-sm ${opmerkingText ? 'text-on-surface' : 'text-muted-foreground'}`}>{opmerkingText || 'Opmerking toevoegen'}</span>
+          {(opmerkingSaved || opmerkingData?.opmerking) && <span className="text-[10px] font-bold text-primary">Bewaard</span>}
+          <span className={`material-symbols-rounded text-lg text-text-muted transition-transform ${opmerkingOpen ? 'rotate-180' : ''}`}>expand_more</span>
+        </button>
+        {opmerkingOpen && <div className="p-3 pt-0">
           <textarea
             value={opmerkingText}
             onChange={e => setOpmerkingText(e.target.value)}
@@ -621,20 +663,16 @@ function WizardView({
             rows={3}
             className="w-full px-3 py-2.5 bg-surface-low border border-outline-variant/20 rounded-xl text-sm text-on-surface placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none transition"
           />
-          <div className="flex items-center justify-between mt-2">
-            <span className="text-[11px] text-muted-foreground">Wordt opgeslagen bij verlaten veld · Verschijnt in PDF</span>
-            {savingOpmerking && <span className="text-[11px] text-muted-foreground">Opslaan...</span>}
-          </div>
-        </div>
+          {savingOpmerking && <div className="mt-1 text-right text-[11px] text-muted-foreground">Opslaan...</div>}
+        </div>}
       </div>
 
       {/* Bottom navigation */}
       <div className="fixed bottom-0 left-0 right-0 z-[75] bg-surface-white/90 backdrop-blur-2xl border-t border-outline-variant/10 px-5 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
         <div className="flex items-center gap-3 max-w-3xl mx-auto">
-          <button onClick={goPrev} disabled={currentIndex === 0} className="min-h-[48px] px-4 bg-surface-container rounded-2xl font-semibold text-[14px] text-muted-foreground active:scale-[0.97] transition-all disabled:opacity-30 flex items-center gap-1.5">
-            <span className="material-symbols-rounded text-[18px]">arrow_back</span>
-            Vorige
-          </button>
+          {currentIndex > 0 && <button onClick={goPrev} aria-label="Vorige" className="w-[52px] h-[52px] shrink-0 bg-surface-container rounded-xl text-muted-foreground active:scale-[0.97] transition-all flex items-center justify-center">
+            <span className="material-symbols-rounded text-[20px]">arrow_back</span>
+          </button>}
           <button onClick={goNext} className="flex-1 min-h-[48px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-2xl font-display text-[15px] font-bold active:scale-[0.97] transition-all flex items-center justify-center gap-1.5">
             {currentIndex < applicableCategories.length - 1 ? (
               <>Volgende <span className="material-symbols-rounded text-[18px]">arrow_forward</span></>
@@ -644,6 +682,35 @@ function WizardView({
           </button>
         </div>
       </div>
+      {skipReasonOpen && (
+        <div className="fixed inset-0 z-[110] flex items-end bg-on-surface/40">
+          <div className="w-full rounded-t-2xl bg-card p-5 pb-[max(20px,env(safe-area-inset-bottom))]">
+            <h3 className="font-display text-lg font-bold text-on-surface">Waarom is deze taak nvt?</h3>
+            <p className="mt-1 text-xs text-text-muted">Kies een reden om verder te gaan.</p>
+            <div className="mt-4 space-y-2">
+              {['Niet aanwezig', 'Niet toegankelijk', 'Anders'].map(reason => (
+                <button key={reason} onClick={() => setSkipReasonChoice(reason)} className={`flex min-h-[48px] w-full items-center gap-3 rounded-xl border px-3 text-left text-sm font-semibold ${skipReasonChoice === reason ? 'border-primary bg-primary/10 text-primary' : 'border-outline-variant/20 text-on-surface'}`}>
+                  <span className="material-symbols-rounded text-lg">{skipReasonChoice === reason ? 'check_circle' : 'radio_button_unchecked'}</span>{reason}{reason === 'Anders' ? '…' : ''}
+                </button>
+              ))}
+              {skipReasonChoice === 'Anders' && <textarea autoFocus value={skipReasonOther} onChange={e => setSkipReasonOther(e.target.value)} rows={2} placeholder="Vul de reden in" className="w-full rounded-xl border border-outline-variant/30 bg-surface-low p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />}
+            </div>
+            <div className="mt-4 flex gap-2">
+              <button onClick={() => setSkipReasonOpen(false)} className="min-h-[48px] flex-1 rounded-xl bg-surface-container text-sm font-semibold text-text-muted">Annuleren</button>
+              <button onClick={confirmSkip} disabled={!skipReasonChoice || (skipReasonChoice === 'Anders' && !skipReasonOther.trim())} className="min-h-[48px] flex-1 rounded-xl bg-primary text-sm font-bold text-primary-foreground disabled:opacity-40">Opslaan</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {photoPreview && (
+        <div className="fixed inset-0 z-[105] flex flex-col bg-on-surface">
+          <div className="flex min-h-[56px] items-center justify-between px-3 pt-[env(safe-area-inset-top)]">
+            <button onClick={() => setPhotoPreview(null)} aria-label="Sluiten" className="h-11 w-11 text-primary-foreground"><span className="material-symbols-rounded">close</span></button>
+            <button onClick={() => { setDeleteTarget({ id: photoPreview.foto.id, path: photoPreview.foto.storage_path }); setPhotoPreview(null); }} className="min-h-[44px] px-3 flex items-center gap-2 text-sm font-semibold text-primary-foreground"><span className="material-symbols-rounded">delete</span>Verwijderen</button>
+          </div>
+          <img src={photoPreview.foto.url} alt="Foto groot weergegeven" className="min-h-0 flex-1 object-contain" />
+        </div>
+      )}
       {/* Controlled delete dialog */}
       {deleteTarget && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center">
@@ -699,7 +766,7 @@ export default function StationDetail() {
   const [shareStation, setShareStation] = useState('');
   const { data: voorbeelden } = useVoorbeelden();
   const { data: instellingenData } = useInstellingen();
-  const { skipped, addSkip, removeSkip, isSkipped } = useSkippedCategories(id);
+  const { skipped, skippedReasons, addSkip, removeSkip, isSkipped } = useSkippedCategories(id);
   const isOnline = useOnline();
   const { data: opmerkingen } = useQuery({
     queryKey: ['opmerkingen', id],
@@ -837,7 +904,7 @@ export default function StationDetail() {
 
   const openPdf = () => {
     if (!station || !fotos) return;
-    const html = generatePdfHtml(station, fotos, instellingenData ?? undefined, opmerkingen ?? undefined);
+    const html = generatePdfHtml(station, fotos, instellingenData ?? undefined, opmerkingen ?? undefined, skipped.map(categorie => ({ categorie, reden: skippedReasons[categorie] || 'Geen reden opgegeven' })));
     const w = window.open("", "_blank");
     if (w) { w.document.write(html); w.document.close(); }
     setShareStation(station.naam_msr);
@@ -915,6 +982,7 @@ export default function StationDetail() {
           onSkip={addSkip}
           onUnskip={removeSkip}
           skipped={skipped}
+          skippedReasons={skippedReasons}
           station={station}
           fotos={fotos ?? []}
           fotosByCategorie={fotosByCategorie}
@@ -930,7 +998,7 @@ export default function StationDetail() {
         />
       )}
 
-      <main className="pt-20 pb-0 px-4 max-w-3xl mx-auto animate-fade-up">
+      <main className="pt-2 pb-0 px-4 max-w-3xl mx-auto animate-fade-up">
         {/* ── 1. HERO ── */}
         <div className="px-5 pt-4 pb-5">
           {/* ROW 1: Navigation bar */}
@@ -981,22 +1049,15 @@ export default function StationDetail() {
           </p>
 
           {/* Progress row */}
-          <div className="flex items-end justify-between mb-2">
-            <div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Overall Progress</div>
-              <div className="font-display text-[42px] font-black leading-none text-on-surface">
-                {pct}<span className="text-[20px] text-muted-foreground">%</span>
-              </div>
+          <div className="mb-3">
+            <div className="font-display text-[22px] font-medium leading-tight text-on-surface">
+              {allDone ? 'Alle taken afgerond' : `${applicableCategories.length - filledCount - skipped.length} taken open`}
             </div>
-            <div className="text-right pb-1">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Categorieën</div>
-              <div className="font-display text-[20px] font-extrabold text-primary">{filledCount} / {applicableCategories.length}</div>
-              <div className="text-xs text-muted-foreground">{fotos?.length ?? 0} foto's</div>
-            </div>
+            <div className="mt-1 text-[12px] text-text-muted">{filledCount} van {applicableCategories.length} · {fotos?.length ?? 0} foto's · {pct}%</div>
           </div>
           {/* Progress bar */}
-          <div className="h-2 bg-surface-container rounded-full overflow-hidden">
-            <div className="h-full rounded-full bg-gradient-to-r from-primary to-primary-light transition-all duration-700" style={{ width: `${pct}%` }} />
+          <div className="h-[5px] bg-primary/15 rounded-full overflow-hidden">
+            <div className="h-full rounded-full bg-primary transition-all duration-700" style={{ width: `${pct}%` }} />
           </div>
         </div>
 
@@ -1016,21 +1077,21 @@ export default function StationDetail() {
               <div ref={el => { sectionRefs.current[section.id] = el; }} key={section.id}
                 className={`rounded-xl overflow-hidden mb-3 ${
                   isComplete
-                    ? 'bg-primary/[0.04] border border-primary/15'
+                    ? 'bg-primary/10 border border-primary/15'
                     : isSectionOpen
-                    ? 'bg-surface-highest/30 shadow-[0px_10px_30px_rgba(19,30,18,0.04)] ring-1 ring-primary/10'
+                    ? 'bg-surface-low border-y border-r border-orange/25 border-l-[3px] border-l-orange rounded-l-none'
                     : 'bg-surface-low hover:bg-surface-container transition-all duration-300'
                 }`}
               >
                 {/* Section header */}
                 <button
                   onClick={() => toggleSection(section.id)}
-                  className={`flex items-center justify-between p-5 w-full cursor-pointer text-left ${
+                  className={`flex min-h-[72px] items-center justify-between p-4 w-full cursor-pointer text-left ${
                     isSectionOpen ? 'bg-surface-low' : ''
                   }`}
                 >
                   <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm ${
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
                       isComplete
                         ? 'bg-primary text-primary-foreground shadow-primary/30'
                         : 'bg-primary/10 text-primary'
@@ -1041,14 +1102,14 @@ export default function StationDetail() {
                     </div>
                     <div>
                       <h3 className={`font-display font-bold text-[17px] ${
-                        isComplete ? 'text-primary font-extrabold' : 'text-on-surface'
+                        'text-on-surface'
                       }`}>
                         {section.label}
                       </h3>
                       <p className="text-xs mt-0.5 text-on-surface-variant">
                         {cats.length} taken
                         {openCats.length > 0 && <> · <span className="text-orange font-semibold">{openCats.length} open</span></>}
-                        {isComplete && <> · <span className="text-primary font-semibold">Voltooid</span></>}
+                        {isComplete && <> · <span className="text-primary font-semibold">voltooid</span></>}
                       </p>
                     </div>
                   </div>
@@ -1061,17 +1122,17 @@ export default function StationDetail() {
 
                 {/* Expanded content */}
                 {isSectionOpen && (
-                  <div className="p-4 space-y-3">
-                    {sortedCats.map(cat => (
-                      <CategoryRow
-                        key={cat.id}
-                        cat={cat}
-                        fotos={fotosByCategorie(cat.name)}
-                        isSkipped={isSkipped(cat.name)}
-                        hasOpmerking={!!opmerkingen?.some(o => o.categorie === cat.name)}
-                        onOpen={() => openWizardAt(cat)}
-                      />
-                    ))}
+                  <div className="px-4 pb-4">
+                    {openCats.length > 0 && <div className="pb-2 pt-1 text-[11px] font-bold uppercase tracking-wider text-orange">Nog te doen</div>}
+                    <div className="space-y-2">
+                      {openCats.map(cat => <CategoryRow key={cat.id} cat={cat} fotos={[]} hasOpmerking={!!opmerkingen?.some(o => o.categorie === cat.name)} onOpen={() => openWizardAt(cat)} />)}
+                    </div>
+                    {(doneCats.length > 0 || skippedCats.length > 0) && <div className="pb-1 pt-4 text-[11px] font-bold uppercase tracking-wider text-text-muted">Afgerond · {doneCats.length + skippedCats.length}</div>}
+                    <div>
+                      {[...doneCats, ...skippedCats].map(cat => (
+                        <CategoryRow key={cat.id} cat={cat} fotos={fotosByCategorie(cat.name)} isSkipped={isSkipped(cat.name)} skipReason={skippedReasons[cat.name]} hasOpmerking={!!opmerkingen?.some(o => o.categorie === cat.name)} onOpen={() => openWizardAt(cat)} />
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>

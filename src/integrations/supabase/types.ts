@@ -82,6 +82,41 @@ export type Database = {
           },
         ]
       }
+      categorie_skips: {
+        Row: {
+          categorie: string
+          created_at: string
+          id: string
+          reden: string
+          station_id: string
+          updated_at: string
+        }
+        Insert: {
+          categorie: string
+          created_at?: string
+          id?: string
+          reden: string
+          station_id: string
+          updated_at?: string
+        }
+        Update: {
+          categorie?: string
+          created_at?: string
+          id?: string
+          reden?: string
+          station_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "categorie_skips_station_id_fkey"
+            columns: ["station_id"]
+            isOneToOne: false
+            referencedRelation: "stations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categorie_voorbeelden: {
         Row: {
           categorie: string
