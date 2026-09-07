@@ -263,7 +263,7 @@ export default function Dashboard() {
             </p>
           </div>
         ) : (
-          <div className="space-y-5">
+          <div className="space-y-2">
             {filtered?.map((station, idx) => {
               const applicable = getApplicableCategories(station);
               const uniqueCategories = new Set(
@@ -275,87 +275,72 @@ export default function Dashboard() {
               const isExpanded = expandedId === station.id;
 
               return (
-                <div key={station.id} className="rounded-[28px] overflow-hidden" style={{ animationDelay: `${idx * 50}ms` }}>
+                <div key={station.id} className="rounded-2xl overflow-hidden" style={{ animationDelay: `${idx * 30}ms` }}>
                   <button
                     onClick={() => setExpandedId(isExpanded ? null : station.id)}
-                    className={`relative w-full text-left transition-all duration-300 active:scale-[0.99] overflow-hidden ${
+                    className={`w-full text-left transition-all duration-200 active:scale-[0.995] bg-surface-white ${
                       isExpanded
-                        ? "bg-surface-white shadow-[0_12px_48px_-12px_rgba(19,30,18,0.12)] rounded-t-[28px] rounded-b-none"
-                        : "bg-surface-white hover:shadow-[0_12px_40px_-10px_rgba(19,30,18,0.10)] shadow-[0_4px_24px_-6px_rgba(19,30,18,0.06)] rounded-[28px]"
+                        ? "shadow-[0_8px_32px_-12px_rgba(19,30,18,0.12)] rounded-t-2xl rounded-b-none"
+                        : "hover:shadow-[0_6px_20px_-8px_rgba(19,30,18,0.10)] shadow-[0_1px_6px_-3px_rgba(19,30,18,0.06)] rounded-2xl"
                     }`}
                   >
-                    {/* Decorative background shapes */}
-                    <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-primary/[0.03]" />
-                    <div className="absolute bottom-0 right-16 w-24 h-24 rounded-full bg-accent-gold-soft/15" />
-
-                    <div className="relative px-7 py-7">
-                      {/* Top row: type label + completion badge */}
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2">
-                          {station.type_ruimte && (
-                            <span className={`text-[9px] font-bold uppercase tracking-[0.12em] px-3 py-1 rounded-full font-display ${
-                              station.type_ruimte === 'Compact Station'
-                                ? 'bg-orange/10 text-orange'
-                                : 'bg-purple-100 text-purple-700'
-                            }`}>
-                              {station.type_ruimte}
-                            </span>
-                          )}
-                          {station.ingevuld_door && (
-                            <div className="inline-flex items-center gap-1.5 bg-accent-gold/[0.07] rounded-full px-3 py-1">
-                              <span className="material-symbols-rounded text-accent-gold text-[12px]">person</span>
-                              <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-accent-gold font-display">
-                                {station.ingevuld_door}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                        {complete && (
-                          <div className="w-9 h-9 rounded-full bg-accent-gold-bright/15 flex items-center justify-center">
-                            <span className="material-symbols-rounded text-accent-gold text-[20px]">verified</span>
-                          </div>
-                        )}
+                    <div className="flex items-center gap-3 px-4 py-3">
+                      {/* Status ring */}
+                      <div className="relative flex-shrink-0 w-10 h-10">
+                        <svg viewBox="0 0 36 36" className="w-10 h-10 -rotate-90">
+                          <circle cx="18" cy="18" r="15.5" fill="none" strokeWidth="3.5" className="stroke-primary/[0.10]" />
+                          <circle
+                            cx="18" cy="18" r="15.5" fill="none" strokeWidth="3.5" strokeLinecap="round"
+                            className={complete ? "stroke-accent-gold" : "stroke-primary"}
+                            strokeDasharray={`${(pct / 100) * 97.4} 97.4`}
+                          />
+                        </svg>
+                        <span className={`absolute inset-0 flex items-center justify-center font-display text-[10px] font-extrabold ${complete ? "text-accent-gold" : "text-text-primary"}`}>
+                          {complete ? <span className="material-symbols-rounded text-[16px]">check</span> : pct}
+                        </span>
                       </div>
 
-                      {/* Station name — Manrope editorial */}
-                      <h3 className="font-display text-[26px] font-extrabold text-text-primary leading-[1.08] tracking-[-0.02em] mb-1.5">
-                        {station.naam_msr}
-                      </h3>
+                      {/* Name + meta */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-display text-[15px] font-extrabold text-text-primary leading-tight tracking-[-0.01em] truncate">
+                          {station.naam_msr}
+                        </h3>
+                        <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-text-muted font-medium truncate">
+                          {station.behuizingsnummer && <span className="truncate">{station.behuizingsnummer}</span>}
+                          {station.behuizingsnummer && station.ingevuld_door && <span className="opacity-40">·</span>}
+                          {station.ingevuld_door && <span className="truncate text-accent-gold font-semibold">{station.ingevuld_door}</span>}
+                        </div>
+                      </div>
 
-                      {/* Subtitle */}
-                      {station.behuizingsnummer && (
-                        <p className="font-display text-[13px] text-text-muted font-medium mb-5">{station.behuizingsnummer}</p>
+                      {/* Type dot + chevron */}
+                      {station.type_ruimte && (
+                        <span className={`hidden sm:inline text-[9px] font-bold uppercase tracking-[0.1em] px-2 py-1 rounded-full font-display flex-shrink-0 ${
+                          station.type_ruimte === 'Compact Station' ? 'bg-orange/10 text-orange' : 'bg-purple-100 text-purple-700'
+                        }`}>
+                          {station.type_ruimte === 'Compact Station' ? 'Compact' : 'Betreedbaar'}
+                        </span>
                       )}
-
-                      {/* Progress bar */}
-                      <div className="mt-2">
-                        <div className="flex items-center gap-3">
-                          <div className="flex-1 h-2 bg-primary/[0.06] rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-gradient-to-r from-primary to-primary-light rounded-full transition-all duration-700 ease-out"
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
-                          <span className="font-display text-xs font-extrabold text-text-primary flex-shrink-0">{pct}%</span>
-                        </div>
-                      </div>
+                      <span className={`material-symbols-rounded text-text-muted text-[20px] flex-shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}>
+                        expand_more
+                      </span>
                     </div>
                   </button>
 
+
                   {/* Expanded action panel */}
                   {isExpanded && (
-                    <div className="bg-surface-white rounded-b-[28px] px-7 pb-7 pt-3 shadow-[0_12px_48px_-12px_rgba(19,30,18,0.12)] animate-fade-up border-t border-outline-variant/5">
+                    <div className="bg-surface-white rounded-b-2xl px-4 pb-4 pt-2 shadow-[0_8px_32px_-12px_rgba(19,30,18,0.12)] animate-fade-up border-t border-outline-variant/10">
                       <div className="flex gap-2.5">
                         <button
                           onClick={() => navigate(`/stations/${station.id}`)}
-                          className="flex-1 min-w-0 min-h-[52px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-2xl font-display text-[15px] font-bold shadow-[0_6px_20px_-4px_rgba(0,100,47,0.35)] active:scale-[0.97] transition-all flex items-center justify-center gap-2.5"
+                          className="flex-1 min-w-0 min-h-[44px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-2xl font-display text-[15px] font-bold shadow-[0_6px_20px_-4px_rgba(0,100,47,0.35)] active:scale-[0.97] transition-all flex items-center justify-center gap-2.5"
                         >
                           <span className="material-symbols-rounded text-[18px] flex-shrink-0">edit_note</span>
                           <span className="truncate">Invullen</span>
                         </button>
                         <button
                           onClick={() => openPdf(station)}
-                          className="h-[52px] w-[48px] flex items-center justify-center rounded-2xl bg-surface-low hover:bg-surface transition-all active:scale-[0.93] flex-shrink-0"
+                          className="h-[44px] w-[44px] flex items-center justify-center rounded-2xl bg-surface-low hover:bg-surface transition-all active:scale-[0.93] flex-shrink-0"
                           title="PDF rapport"
                         >
                           <span className="material-symbols-rounded text-text-secondary text-[20px]">description</span>
@@ -372,7 +357,7 @@ export default function Dashboard() {
                             setZipProgress(null);
                           }}
                           disabled={zipProgress !== null}
-                          className="relative h-[52px] w-[48px] flex items-center justify-center rounded-2xl bg-surface-low hover:bg-surface transition-all active:scale-[0.93] flex-shrink-0 disabled:opacity-60 overflow-hidden"
+                          className="relative h-[44px] w-[44px] flex items-center justify-center rounded-2xl bg-surface-low hover:bg-surface transition-all active:scale-[0.93] flex-shrink-0 disabled:opacity-60 overflow-hidden"
                           title="Foto's als ZIP"
                         >
                           {zipProgress !== null && (
@@ -384,7 +369,7 @@ export default function Dashboard() {
                         </button>
                         <button
                           onClick={() => handleDeleteStation(station.id, station.naam_msr)}
-                          className="h-[52px] w-[48px] flex items-center justify-center rounded-2xl bg-destructive/[0.06] hover:bg-destructive/[0.12] active:scale-[0.93] transition-all flex-shrink-0"
+                          className="h-[44px] w-[44px] flex items-center justify-center rounded-2xl bg-destructive/[0.06] hover:bg-destructive/[0.12] active:scale-[0.93] transition-all flex-shrink-0"
                           title="Station verwijderen"
                         >
                           <span className="material-symbols-rounded text-destructive/70 text-[20px]">delete</span>
