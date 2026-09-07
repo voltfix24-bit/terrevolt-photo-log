@@ -263,125 +263,162 @@ export default function Dashboard() {
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {filtered?.map((station, idx) => {
+          (() => {
+            const enriched = filtered.map((station: any) => {
               const applicable = getApplicableCategories(station);
               const uniqueCategories = new Set(
                 station.fotos?.map((f: { categorie: string }) => f.categorie).filter((c: string) => applicable.some(ac => ac.name === c))
               );
               const cats = uniqueCategories.size;
               const pct = Math.round((cats / applicable.length) * 100);
-              const complete = cats === applicable.length;
-              const isExpanded = expandedId === station.id;
+              return { station, cats, pct, complete: cats === applicable.length };
+            });
 
-              return (
-                <div key={station.id} className="rounded-2xl overflow-hidden" style={{ animationDelay: `${idx * 30}ms` }}>
-                  <button
-                    onClick={() => setExpandedId(isExpanded ? null : station.id)}
-                    className={`w-full text-left transition-all duration-200 active:scale-[0.995] bg-surface-white ${
-                      isExpanded
-                        ? "shadow-[0_8px_32px_-12px_rgba(19,30,18,0.12)] rounded-t-2xl rounded-b-none"
-                        : "hover:shadow-[0_6px_20px_-8px_rgba(19,30,18,0.10)] shadow-[0_1px_6px_-3px_rgba(19,30,18,0.06)] rounded-2xl"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 px-4 py-3">
-                      {/* Status ring */}
-                      <div className="relative flex-shrink-0 w-10 h-10">
-                        <svg viewBox="0 0 36 36" className="w-10 h-10 -rotate-90">
-                          <circle cx="18" cy="18" r="15.5" fill="none" strokeWidth="3.5" className="stroke-primary/[0.10]" />
-                          <circle
-                            cx="18" cy="18" r="15.5" fill="none" strokeWidth="3.5" strokeLinecap="round"
-                            className={complete ? "stroke-accent-gold" : "stroke-primary"}
-                            strokeDasharray={`${(pct / 100) * 97.4} 97.4`}
-                          />
-                        </svg>
-                        <span className={`absolute inset-0 flex items-center justify-center font-display text-[10px] font-extrabold ${complete ? "text-accent-gold" : "text-text-primary"}`}>
-                          {complete ? <span className="material-symbols-rounded text-[16px]">check</span> : pct}
-                        </span>
-                      </div>
+            const groups = [
+              { key: 'bezig', label: 'In uitvoering', hint: 'gestart, nog niet compleet', items: enriched.filter(e => !e.complete && e.cats > 0) },
+              { key: 'concept', label: 'Concept', hint: 'nog geen foto\'s', items: enriched.filter(e => e.cats === 0) },
+              { key: 'klaar', label: 'Afgerond', hint: 'alle categorieën compleet', items: enriched.filter(e => e.complete) },
+            ].filter(g => g.items.length > 0);
 
-                      {/* Name + meta */}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-display text-[15px] font-extrabold text-text-primary leading-tight tracking-[-0.01em] truncate">
-                          {station.naam_msr}
-                        </h3>
-                        <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-text-muted font-medium truncate">
-                          {station.behuizingsnummer && <span className="truncate">{station.behuizingsnummer}</span>}
-                          {station.behuizingsnummer && station.ingevuld_door && <span className="opacity-40">·</span>}
-                          {station.ingevuld_door && <span className="truncate text-accent-gold font-semibold">{station.ingevuld_door}</span>}
-                        </div>
-                      </div>
-
-                      {/* Type dot + chevron */}
-                      {station.type_ruimte && (
-                        <span className={`hidden sm:inline text-[9px] font-bold uppercase tracking-[0.1em] px-2 py-1 rounded-full font-display flex-shrink-0 ${
-                          station.type_ruimte === 'Compact Station' ? 'bg-orange/10 text-orange' : 'bg-purple-100 text-purple-700'
-                        }`}>
-                          {station.type_ruimte === 'Compact Station' ? 'Compact' : 'Betreedbaar'}
-                        </span>
-                      )}
-                      <span className={`material-symbols-rounded text-text-muted text-[20px] flex-shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}>
-                        expand_more
+            return (
+              <div className="space-y-6">
+                {groups.map(group => (
+                  <section key={group.key}>
+                    {/* Group header bar */}
+                    <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-t-xl bg-surface-low border border-outline-variant/15">
+                      <span className="font-display text-[11px] font-extrabold uppercase tracking-[0.14em] text-text-primary">
+                        {group.label}
                       </span>
+                      <span className="text-[10px] font-bold text-text-secondary bg-surface-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+                        {group.items.length}
+                      </span>
+                      <span className="text-[11px] text-text-muted font-medium truncate">{group.hint}</span>
                     </div>
-                  </button>
 
-
-                  {/* Expanded action panel */}
-                  {isExpanded && (
-                    <div className="bg-surface-white rounded-b-2xl px-4 pb-4 pt-2 shadow-[0_8px_32px_-12px_rgba(19,30,18,0.12)] animate-fade-up border-t border-outline-variant/10">
-                      <div className="flex gap-2.5">
-                        <button
-                          onClick={() => navigate(`/stations/${station.id}`)}
-                          className="flex-1 min-w-0 min-h-[44px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-2xl font-display text-[15px] font-bold shadow-[0_6px_20px_-4px_rgba(0,100,47,0.35)] active:scale-[0.97] transition-all flex items-center justify-center gap-2.5"
-                        >
-                          <span className="material-symbols-rounded text-[18px] flex-shrink-0">edit_note</span>
-                          <span className="truncate">Invullen</span>
-                        </button>
-                        <button
-                          onClick={() => openPdf(station)}
-                          className="h-[44px] w-[44px] flex items-center justify-center rounded-2xl bg-surface-low hover:bg-surface transition-all active:scale-[0.93] flex-shrink-0"
-                          title="PDF rapport"
-                        >
-                          <span className="material-symbols-rounded text-text-secondary text-[20px]">description</span>
-                        </button>
-                        <button
-                          onClick={async () => {
-                            const stationFotos = (station.fotos ?? []).map((f: any) => ({ id: f.id, categorie: f.categorie, url: f.url }));
-                            if (stationFotos.length === 0) { toast("Geen foto's om te downloaden"); return; }
-                            setZipProgress(0);
-                            try {
-                              await downloadStationZip(station.naam_msr, stationFotos, (pct) => setZipProgress(pct));
-                              toast.success("ZIP gedownload ✓");
-                            } catch { toast.error("ZIP downloaden mislukt"); }
-                            setZipProgress(null);
-                          }}
-                          disabled={zipProgress !== null}
-                          className="relative h-[44px] w-[44px] flex items-center justify-center rounded-2xl bg-surface-low hover:bg-surface transition-all active:scale-[0.93] flex-shrink-0 disabled:opacity-60 overflow-hidden"
-                          title="Foto's als ZIP"
-                        >
-                          {zipProgress !== null && (
-                            <div className="absolute bottom-0 left-0 right-0 bg-primary/[0.12] transition-all duration-300 rounded-b-2xl" style={{ height: `${zipProgress}%` }} />
-                          )}
-                          <span className="material-symbols-rounded text-text-secondary text-[20px] relative z-10">
-                            {zipProgress !== null ? "downloading" : "folder_zip"}
-                          </span>
-                        </button>
-                        <button
-                          onClick={() => handleDeleteStation(station.id, station.naam_msr)}
-                          className="h-[44px] w-[44px] flex items-center justify-center rounded-2xl bg-destructive/[0.06] hover:bg-destructive/[0.12] active:scale-[0.93] transition-all flex-shrink-0"
-                          title="Station verwijderen"
-                        >
-                          <span className="material-symbols-rounded text-destructive/70 text-[20px]">delete</span>
-                        </button>
-                      </div>
+                    {/* Column headers */}
+                    <div className="hidden sm:flex items-center gap-3 px-4 py-2 bg-surface-white border-x border-b border-outline-variant/12 text-[9px] font-bold uppercase tracking-[0.12em] text-text-muted">
+                      <span className="flex-1">Station / Behuizingsnummer</span>
+                      <span className="w-24 text-center">Voortgang</span>
+                      <span className="w-32 text-center">Monteur</span>
+                      <span className="w-24 text-right">Type</span>
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+
+                    {/* Rows */}
+                    <div className="bg-surface-white border-x border-b border-outline-variant/12 rounded-b-xl overflow-hidden">
+                      {group.items.map(({ station, cats, pct, complete }, idx) => {
+                        const isExpanded = expandedId === station.id;
+                        return (
+                          <div key={station.id} className={idx > 0 ? "border-t border-outline-variant/10" : ""}>
+                            <button
+                              onClick={() => setExpandedId(isExpanded ? null : station.id)}
+                              className={`w-full text-left transition-colors ${isExpanded ? 'bg-surface-low/60' : 'hover:bg-surface-low/40'}`}
+                            >
+                              <div className="flex items-center gap-3 px-4 py-3">
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="font-display text-[14px] font-extrabold text-text-primary leading-tight tracking-[-0.01em] truncate uppercase">
+                                    {station.naam_msr}
+                                  </h3>
+                                  <div className="text-[11px] text-text-muted font-mono mt-0.5 truncate">
+                                    {station.behuizingsnummer || '—'}
+                                  </div>
+                                </div>
+
+                                {/* Progress pill */}
+                                <div className="w-24 flex justify-center flex-shrink-0">
+                                  <span className={`text-[9px] font-extrabold uppercase tracking-[0.1em] px-2.5 py-1 rounded-full font-display ${
+                                    complete
+                                      ? 'bg-accent-gold/15 text-accent-gold'
+                                      : cats === 0
+                                        ? 'bg-surface-low text-text-muted'
+                                        : 'bg-primary/10 text-primary'
+                                  }`}>
+                                    {complete ? 'Afgerond' : cats === 0 ? 'Concept' : `${pct}%`}
+                                  </span>
+                                </div>
+
+                                {/* Monteur */}
+                                <div className="hidden sm:block w-32 text-center text-[11px] font-medium text-text-secondary truncate flex-shrink-0">
+                                  {station.ingevuld_door || '—'}
+                                </div>
+
+                                {/* Type */}
+                                <div className="hidden sm:block w-24 text-right flex-shrink-0">
+                                  {station.type_ruimte && (
+                                    <span className={`text-[9px] font-bold uppercase tracking-[0.1em] px-2 py-1 rounded-full font-display ${
+                                      station.type_ruimte === 'Compact Station' ? 'bg-orange/10 text-orange' : 'bg-purple-100 text-purple-700'
+                                    }`}>
+                                      {station.type_ruimte === 'Compact Station' ? 'Compact' : 'Betreedbaar'}
+                                    </span>
+                                  )}
+                                </div>
+
+                                <span className={`material-symbols-rounded text-text-muted text-[18px] flex-shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}>
+                                  expand_more
+                                </span>
+                              </div>
+                            </button>
+
+                            {/* Expanded action panel */}
+                            {isExpanded && (
+                              <div className="bg-surface-low/40 px-4 pb-4 pt-3 animate-fade-up border-t border-outline-variant/10">
+                                <div className="flex gap-2.5">
+                                  <button
+                                    onClick={() => navigate(`/stations/${station.id}`)}
+                                    className="flex-1 min-w-0 min-h-[44px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-2xl font-display text-[15px] font-bold shadow-[0_6px_20px_-4px_rgba(0,100,47,0.35)] active:scale-[0.97] transition-all flex items-center justify-center gap-2.5"
+                                  >
+                                    <span className="material-symbols-rounded text-[18px] flex-shrink-0">edit_note</span>
+                                    <span className="truncate">Invullen</span>
+                                  </button>
+                                  <button
+                                    onClick={() => openPdf(station)}
+                                    className="h-[44px] w-[44px] flex items-center justify-center rounded-2xl bg-surface-white hover:bg-surface transition-all active:scale-[0.93] flex-shrink-0"
+                                    title="PDF rapport"
+                                  >
+                                    <span className="material-symbols-rounded text-text-secondary text-[20px]">description</span>
+                                  </button>
+                                  <button
+                                    onClick={async () => {
+                                      const stationFotos = (station.fotos ?? []).map((f: any) => ({ id: f.id, categorie: f.categorie, url: f.url }));
+                                      if (stationFotos.length === 0) { toast("Geen foto's om te downloaden"); return; }
+                                      setZipProgress(0);
+                                      try {
+                                        await downloadStationZip(station.naam_msr, stationFotos, (p) => setZipProgress(p));
+                                        toast.success("ZIP gedownload ✓");
+                                      } catch { toast.error("ZIP downloaden mislukt"); }
+                                      setZipProgress(null);
+                                    }}
+                                    disabled={zipProgress !== null}
+                                    className="relative h-[44px] w-[44px] flex items-center justify-center rounded-2xl bg-surface-white hover:bg-surface transition-all active:scale-[0.93] flex-shrink-0 disabled:opacity-60 overflow-hidden"
+                                    title="Foto's als ZIP"
+                                  >
+                                    {zipProgress !== null && (
+                                      <div className="absolute bottom-0 left-0 right-0 bg-primary/[0.12] transition-all duration-300 rounded-b-2xl" style={{ height: `${zipProgress}%` }} />
+                                    )}
+                                    <span className="material-symbols-rounded text-text-secondary text-[20px] relative z-10">
+                                      {zipProgress !== null ? "downloading" : "folder_zip"}
+                                    </span>
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteStation(station.id, station.naam_msr)}
+                                    className="h-[44px] w-[44px] flex items-center justify-center rounded-2xl bg-destructive/[0.06] hover:bg-destructive/[0.12] active:scale-[0.93] transition-all flex-shrink-0"
+                                    title="Station verwijderen"
+                                  >
+                                    <span className="material-symbols-rounded text-destructive/70 text-[20px]">delete</span>
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </section>
+                ))}
+              </div>
+            );
+          })()
         )}
+
 
         {/* Brand footer */}
         <div className="mt-16 pb-4 text-center">
