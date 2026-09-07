@@ -47,7 +47,7 @@ export default function Dashboard() {
   const { data: stations, isLoading } = useQuery({
     queryKey: ["stations"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("stations").select("*, fotos(categorie, id, url, storage_path)").order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("stations").select("*, fotos(categorie, id, url, storage_path, created_at, uploaded_at)").order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
@@ -199,7 +199,7 @@ export default function Dashboard() {
                   <div className="grid grid-cols-[minmax(0,1fr)_auto_24px] items-center gap-2.5">
                     <div className="min-w-0"><h2 className="line-clamp-2 font-display text-sm font-extrabold leading-[18px] text-on-surface">{displayName}</h2><p className="mt-0.5 truncate text-[11px] text-text-muted"><span className="font-mono">{station.behuizingsnummer || "Geen nummer"}</span><span className="font-sans"> · {station.ingevuld_door || "Geen monteur"}</span></p></div>
                     <div className="text-right">
-                      <div className={`flex items-center justify-end gap-1 text-xs font-extrabold ${pending > 0 ? "text-sync-pending" : complete ? "text-primary" : remaining >= 4 ? "text-accent-gold" : "text-text-secondary"}`}>
+                      <div className={`flex items-center justify-end gap-1 text-xs font-extrabold ${pending > 0 ? "text-sync-pending" : complete ? "text-primary" : remaining >= 4 ? "text-attention" : "text-text-secondary"}`}>
                         {(pending > 0 || complete || stale) && <span className="material-symbols-rounded text-[16px]">{pending > 0 ? "upload" : complete ? "check_circle" : "schedule"}</span>}
                         <span>{pending > 0 ? `${pending} wachten` : complete ? "Klaar" : `${remaining} te gaan`}</span>
                       </div>
