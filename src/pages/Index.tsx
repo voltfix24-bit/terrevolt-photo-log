@@ -15,7 +15,21 @@ import { toast } from "sonner";
 type PendingCounts = Record<string, number>;
 const requiredPhotos = (category: Category) => category.id === 31 ? 3 : 1;
 const abbreviations = new Set(["ls", "ms", "to", "atr"]);
-const GREEN = "#1F5C3A";
+
+const C = {
+  bg: "#E4F1DE",
+  green: "#1F5C3A",
+  cardBorder: "rgba(31,92,58,0.16)",
+  soft: "#F2F6F1",
+  softBorder: "#D4DFD2",
+  danger: "#B3352C",
+  dangerBg: "#FBEDEC",
+  dangerBorder: "#F0D2CF",
+  upload: "#1A4E8A",
+};
+
+const SPRING = "cubic-bezier(0.34,1.4,0.64,1)";
+const EASE = "cubic-bezier(0.22,1,0.36,1)";
 
 const formatStationName = (name: string) => name
   .toLocaleLowerCase("nl-NL")
@@ -36,19 +50,44 @@ const relatieveDatum = (value?: string | null) => {
   return `${Math.floor(dagen / 30)} mnd`;
 };
 
-function ActieKnop({ icon, label, onClick, variant = "neutraal" }: { icon: string; label: string; onClick: () => void; variant?: "neutraal" | "gevaar" }) {
-  const rood = variant === "gevaar";
+function DrukKnop({ children, style, className, ...rest }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  const [ingedrukt, setIngedrukt] = useState(false);
   return (
     <button
       type="button"
+      {...rest}
+      className={className}
+      onPointerDown={() => setIngedrukt(true)}
+      onPointerUp={() => setIngedrukt(false)}
+      onPointerLeave={() => setIngedrukt(false)}
+      onPointerCancel={() => setIngedrukt(false)}
+      style={{
+        transform: ingedrukt ? "scale(0.94)" : "scale(1)",
+        transition: `transform 0.14s ${SPRING}`,
+        ...style,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function ActieKnop({ icon, label, onClick, variant = "neutraal" }: { icon: string; label: string; onClick: () => void; variant?: "neutraal" | "gevaar" }) {
+  const rood = variant === "gevaar";
+  return (
+    <DrukKnop
       onClick={onClick}
       aria-label={label}
-      className="flex w-[54px] min-h-[54px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-[14px] border transition-transform active:scale-[0.97]"
-      style={{ background: rood ? "#FBEDEC" : "#FFFFFF", borderColor: rood ? "#F0D2CF" : "#DCE3DC", color: rood ? "#B3352C" : GREEN }}
+      style={{
+        width: 56, minHeight: 56, flexShrink: 0, display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center", gap: 2, borderRadius: 15,
+        background: rood ? C.dangerBg : C.soft,
+        border: `0.5px solid ${rood ? C.dangerBorder : C.softBorder}`,
+      }}
     >
-      <span className="material-symbols-rounded text-[21px]">{icon}</span>
-      <span className="text-[10px]" style={{ color: rood ? "#B3352C" : "#3D3D3D" }}>{label}</span>
-    </button>
+      <span className="material-symbols-rounded" style={{ fontSize: 21, color: rood ? C.danger : C.green }}>{icon}</span>
+      <span style={{ fontSize: 10, color: rood ? C.danger : "#3D3D3D" }}>{label}</span>
+    </DrukKnop>
   );
 }
 
@@ -62,6 +101,7 @@ export default function Dashboard() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [pendingCounts, setPendingCounts] = useState<PendingCounts>({});
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; naam: string } | null>(null);
+  const [gekrompen, setGekrompen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const { data: stations, isLoading } = useQuery({
@@ -92,6 +132,15 @@ export default function Dashboard() {
   useEffect(() => {
     if (searchOpen) searchInputRef.current?.focus();
   }, [searchOpen]);
+
+  useEffect(() => {
+    const onScroll = () => {
+      const top = window.scrollY;
+      setGekrompen((vorige) => (vorige ? top > 12 : top > 28));
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const enriched = useMemo(() => (stations ?? []).map((station) => {
     const applicable = getApplicableCategories(station);
@@ -146,94 +195,212 @@ export default function Dashboard() {
 
   const syncLabel = !isOnline ? "Offline" : totalPending > 0 ? `${totalPending} wachten` : "Gesynct";
   const syncIcon = !isOnline ? "cloud_off" : totalPending > 0 ? "cloud_upload" : "cloud_done";
+  const syncColor = !isOnline || totalPending > 0 ? C.upload : C.green;
+
+  const glas = {
+    WebkitBackdropFilter: "saturate(180%) blur(24px)",
+    backdropFilter: "saturate(180%) blur(24px)",
+  } as const;
 
   return (
-    <div className="flex min-h-screen flex-col bg-home">
-      <header className="flex items-center justify-between border-b border-[#E3E8E3] bg-home px-4 pb-2 pt-[10px]">
-        <div className="flex items-center gap-2">
-          <span className="relative flex h-[22px] w-[20px] shrink-0 items-center justify-center" aria-hidden="true">
-            <span className="material-symbols-rounded text-[20px]" style={{ color: GREEN, fontVariationSettings: "'FILL' 1" }}>bolt</span>
-            <span className="absolute right-0 top-0 h-1.5 w-1.5 rounded-full bg-accent-gold-bright" />
-          </span>
-          <div>
-            <div className="text-[11px] leading-none" style={{ color: GREEN }}>TerreVolt</div>
-            <h1 className="font-display text-[19px] font-medium leading-tight text-[#0A0A0A]">TO-foto&apos;s</h1>
+    <div className="min-h-screen" style={{ background: C.bg }}>
+      <header
+        className="tv-glas fixed inset-x-0 top-0 z-30"
+        style={{
+          height: gekrompen ? 48 : 62,
+          background: "rgba(228,241,222,0.75)",
+          borderBottom: "0.5px solid rgba(31,92,58,0.14)",
+          transition: `height 0.32s ${EASE}`,
+          paddingTop: "env(safe-area-inset-top)",
+          ...glas,
+        }}
+      >
+        <div className="flex h-full items-center justify-between px-4">
+          <div className="flex min-w-0 items-center gap-[9px]">
+            <span className="relative flex h-[22px] w-[20px] shrink-0 items-center justify-center" aria-hidden="true">
+              <span className="material-symbols-rounded" style={{ fontSize: 20, color: C.green, fontVariationSettings: "'FILL' 1" }}>bolt</span>
+              <span className="absolute right-0 top-0 h-1.5 w-1.5 rounded-full bg-accent-gold-bright" />
+            </span>
+            <div className="min-w-0">
+              <div
+                aria-hidden={gekrompen}
+                style={{
+                  fontSize: 11, color: C.green, lineHeight: 1.1, overflow: "hidden",
+                  height: gekrompen ? 0 : 13,
+                  opacity: gekrompen ? 0 : 1,
+                  transition: `height 0.32s ${EASE}, opacity 0.22s ease`,
+                }}
+              >
+                TerreVolt
+              </div>
+              <h1
+                className="font-display"
+                style={{
+                  fontWeight: 500, color: "#0A2A18", lineHeight: 1.2,
+                  fontSize: gekrompen ? 17 : 20,
+                  transition: `font-size 0.32s ${EASE}`,
+                }}
+              >
+                TO-foto&apos;s
+              </h1>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-[6px] rounded-full px-3 py-[6px]" style={{ background: totalPending > 0 ? "#EAF1FA" : "#E7F3E4" }}>
-          <span className="material-symbols-rounded text-[16px]" style={{ color: totalPending > 0 ? "#1A4E8A" : GREEN }}>{syncIcon}</span>
-          <span className="text-[13px]" style={{ color: totalPending > 0 ? "#1A4E8A" : GREEN }}>{syncLabel}</span>
+          <div className="flex items-center gap-[6px] rounded-[20px] px-[13px] py-[7px]" style={{ background: "rgba(255,255,255,0.75)" }}>
+            <span className="material-symbols-rounded" style={{ fontSize: 16, color: syncColor }}>{syncIcon}</span>
+            <span style={{ fontSize: 13, color: syncColor }}>{syncLabel}</span>
+          </div>
         </div>
       </header>
 
-      <div className="flex items-center gap-[7px] bg-home px-4 pb-[7px] pt-[11px]">
-        <span className="material-symbols-rounded text-[15px] text-[#3D3D3D]">schedule</span>
-        <span className="text-[13px] text-[#3D3D3D]">Nieuwste opdrachten eerst</span>
-      </div>
+      <main className="px-3 pb-[104px] pt-[calc(74px_+_env(safe-area-inset-top))]">
+        <div className="flex items-center gap-[7px] px-1 pb-[10px] pt-[2px]">
+          <span className="material-symbols-rounded" style={{ fontSize: 15, color: "#2E5A3E" }}>schedule</span>
+          <span style={{ fontSize: 13, color: "#2E5A3E" }}>Nieuwste opdrachten eerst</span>
+        </div>
 
-      <main className="flex-1 px-3 pb-[104px]">
         {isLoading ? Array.from({ length: 4 }).map((_, index) => (
-          <div key={index} className="mb-[10px] rounded-[16px] border border-[#DCE3DC] bg-white p-4"><Skeleton className="mb-2 h-4 w-1/2" /><Skeleton className="h-3 w-2/3" /></div>
+          <div key={index} className="mb-[11px] rounded-[18px] bg-white p-4" style={{ border: `0.5px solid ${C.cardBorder}` }}>
+            <Skeleton className="mb-2 h-4 w-1/2" /><Skeleton className="h-3 w-2/3" />
+          </div>
         )) : filtered.length === 0 ? (
-          <div className="px-6 py-14 text-center text-[15px] text-[#4A4A4A]">Geen stations gevonden</div>
+          <div className="px-6 py-14 text-center" style={{ fontSize: 15, color: "#4A4A4A" }}>Geen stations gevonden</div>
         ) : filtered.map(({ station, done, total, remaining, complete, pending }) => {
           const open = expandedId === station.id;
           return (
-            <div key={station.id} className="mb-[10px] overflow-hidden rounded-[16px] bg-white shadow-sm" style={{ border: open ? `2px solid ${GREEN}` : "0.5px solid #DCE3DC" }}>
+            <div
+              key={station.id}
+              className="mb-[11px] overflow-hidden rounded-[18px] bg-white"
+              style={{
+                border: open ? `2px solid ${C.green}` : `0.5px solid ${C.cardBorder}`,
+                transition: `border-color 0.24s ${EASE}`,
+              }}
+            >
               <button type="button" aria-expanded={open} onClick={() => setExpandedId(open ? null : station.id)} className="w-full px-4 py-[15px] text-left">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h2 className="break-words font-display text-[18px] font-medium leading-tight text-[#0A0A0A]">{formatStationName(station.naam_msr)}</h2>
-                    <p className="mt-[3px] truncate font-mono text-[14px] text-[#4A4A4A]">{station.behuizingsnummer || "Geen nummer"}</p>
-                    <p className="mt-[2px] truncate text-[14px] text-[#4A4A4A]">{station.ingevuld_door || "Geen monteur"}</p>
+                    <h2 className="break-words font-display" style={{ fontSize: 18, fontWeight: 500, color: "#0A0A0A", lineHeight: 1.25 }}>{formatStationName(station.naam_msr)}</h2>
+                    <p className="mt-[3px] break-words font-mono" style={{ fontSize: 14, color: "#4A4A4A" }}>{station.behuizingsnummer || "Geen nummer"}</p>
+                    <p className="mt-[1px] truncate" style={{ fontSize: 14, color: "#4A4A4A" }}>{station.ingevuld_door || "Geen monteur"}</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    <span className="whitespace-nowrap rounded-full px-[10px] py-[5px] text-[13px]" style={open ? { background: "#DCEDD6", color: GREEN } : { background: "#F0F2F0", color: "#4A4A4A" }}>{relatieveDatum(station.created_at)}</span>
-                    <span className="material-symbols-rounded text-[20px] text-[#3D3D3D]">{open ? "expand_less" : "expand_more"}</span>
+                    <span
+                      className="whitespace-nowrap rounded-[20px] px-[11px] py-[5px]"
+                      style={{ fontSize: 13, color: open ? C.green : "#4A4A4A", background: open ? "#DCEDD6" : "#F0F2F0" }}
+                    >
+                      {relatieveDatum(station.created_at)}
+                    </span>
+                    <span
+                      className="material-symbols-rounded"
+                      style={{
+                        fontSize: 21, color: "#3D3D3D",
+                        transform: open ? "rotate(180deg)" : "rotate(0deg)",
+                        transition: `transform 0.3s ${SPRING}`,
+                      }}
+                    >
+                      expand_more
+                    </span>
                   </div>
                 </div>
                 <div className="mt-3 flex items-center justify-between gap-2">
                   {pending > 0 ? (
-                    <span className="flex items-center gap-[7px] text-[16px]" style={{ color: "#1A4E8A" }}><span className="material-symbols-rounded text-[18px]">cloud_upload</span>{pending} wachten</span>
+                    <span className="flex items-center gap-[7px]" style={{ fontSize: 16, color: C.upload }}>
+                      <span className="material-symbols-rounded" style={{ fontSize: 18 }}>cloud_upload</span>
+                      {pending} wachten
+                    </span>
                   ) : complete ? (
-                    <span className="text-[16px] font-medium" style={{ color: GREEN }}>Klaar</span>
+                    <span className="flex items-center gap-[7px]" style={{ fontSize: 16, fontWeight: 500, color: C.green }}>
+                      <span className="material-symbols-rounded" style={{ fontSize: 18, fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                      Klaar
+                    </span>
                   ) : (
-                    <span className="text-[16px] text-[#0A0A0A]">{remaining} {remaining === 1 ? "taak" : "taken"} te gaan</span>
+                    <span className="flex items-center gap-[7px]" style={{ fontSize: 16, color: "#0A0A0A" }}>
+                      <span className="material-symbols-rounded" style={{ fontSize: 18, color: "#4A4A4A" }}>photo_camera</span>
+                      {remaining} {remaining === 1 ? "taak" : "taken"} te gaan
+                    </span>
                   )}
-                  <span className="shrink-0 font-mono text-[15px] text-[#5A5A5A]">{done} / {total}</span>
+                  <span className="shrink-0 font-mono" style={{ fontSize: 15, color: "#5A5A5A" }}>{done} / {total}</span>
                 </div>
               </button>
 
-              {open && (
-                <div className="flex items-stretch gap-2 px-3 pb-[13px]">
-                  <button type="button" onClick={() => navigate(`/stations/${station.id}`)} className="flex min-h-[54px] flex-1 items-center justify-center gap-[9px] rounded-[14px] px-[10px] py-[15px] text-[17px] font-medium text-white transition-transform active:scale-[0.98]" style={{ background: GREEN }}>
-                    <span className="material-symbols-rounded text-[20px]">photo_camera</span>Invullen
-                  </button>
-                  <ActieKnop icon="description" label="Pdf" onClick={() => openPdf(station)} />
-                  <ActieKnop icon="ios_share" label="Delen" onClick={() => shareStation(station)} />
-                  <ActieKnop icon="delete" label="Wis" variant="gevaar" onClick={() => setDeleteTarget({ id: station.id, naam: station.naam_msr })} />
-                </div>
-              )}
+              <div
+                style={{
+                  padding: "0 12px", display: "flex", gap: 8, alignItems: "stretch",
+                  overflow: "hidden",
+                  maxHeight: open ? 90 : 0,
+                  opacity: open ? 1 : 0,
+                  paddingBottom: open ? 13 : 0,
+                  transition: `max-height 0.34s ${EASE}, opacity 0.24s ease, padding-bottom 0.34s ${EASE}`,
+                }}
+              >
+                <DrukKnop
+                  onClick={() => navigate(`/stations/${station.id}`)}
+                  style={{
+                    flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 9,
+                    background: C.green, color: "#fff", fontSize: 17, fontWeight: 500,
+                    padding: "15px 10px", borderRadius: 15, border: "none", minHeight: 56,
+                  }}
+                >
+                  <span className="material-symbols-rounded" style={{ fontSize: 20 }}>photo_camera</span>
+                  Invullen
+                </DrukKnop>
+                <ActieKnop icon="description" label="Pdf" onClick={() => openPdf(station)} />
+                <ActieKnop icon="ios_share" label="Delen" onClick={() => shareStation(station)} />
+                <ActieKnop icon="delete" label="Wis" variant="gevaar" onClick={() => setDeleteTarget({ id: station.id, naam: station.naam_msr })} />
+              </div>
             </div>
           );
         })}
       </main>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-[10px] border-t bg-home/82 px-3 pt-[10px] backdrop-blur-[20px]" style={{ borderColor: "rgba(0,0,0,0.06)", paddingBottom: "calc(14px + env(safe-area-inset-bottom))" }}>
+      <div
+        className="tv-glas fixed inset-x-0 bottom-0 z-30 flex items-center gap-[10px] px-3 pt-[10px]"
+        style={{
+          background: "rgba(228,241,222,0.7)",
+          borderTop: "0.5px solid rgba(31,92,58,0.14)",
+          paddingBottom: "calc(15px + env(safe-area-inset-bottom))",
+          ...glas,
+        }}
+      >
         {searchOpen || search ? (
           <label className="relative flex-1">
-            <span className="material-symbols-rounded absolute left-4 top-1/2 -translate-y-1/2 text-[19px] text-[#5A5A5A]">search</span>
-            <input ref={searchInputRef} value={search} onChange={(event) => setSearch(event.target.value)} onBlur={() => { if (!search) setSearchOpen(false); }} placeholder="Zoek station" className="min-h-[52px] w-full rounded-[26px] border py-[14px] pl-11 pr-4 text-[16px] text-[#0A0A0A] outline-none placeholder:text-[#6A6A6A]" style={{ background: "rgba(255,255,255,0.9)", borderColor: "rgba(0,0,0,0.08)" }} />
+            <span className="material-symbols-rounded absolute left-4 top-1/2 -translate-y-1/2" style={{ fontSize: 19, color: "#5A5A5A" }}>search</span>
+            <input
+              ref={searchInputRef}
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              onBlur={() => { if (!search) setSearchOpen(false); }}
+              placeholder="Zoek station"
+              className="w-full outline-none"
+              style={{
+                minHeight: 56, borderRadius: 28, padding: "15px 16px 15px 44px",
+                fontSize: 16, color: "#0A0A0A",
+                background: "rgba(255,255,255,0.92)", border: `0.5px solid ${C.cardBorder}`,
+              }}
+            />
           </label>
         ) : (
-          <button type="button" onClick={() => setSearchOpen(true)} className="flex min-h-[52px] flex-1 items-center gap-[10px] rounded-[26px] border px-4 py-[14px] text-left" style={{ background: "rgba(255,255,255,0.9)", borderColor: "rgba(0,0,0,0.08)" }}>
-            <span className="material-symbols-rounded text-[19px] text-[#5A5A5A]">search</span>
-            <span className="text-[16px] text-[#6A6A6A]">Zoek station</span>
-          </button>
+          <DrukKnop
+            onClick={() => setSearchOpen(true)}
+            style={{
+              flex: 1, display: "flex", alignItems: "center", gap: 10, textAlign: "left",
+              background: "rgba(255,255,255,0.92)", border: `0.5px solid ${C.cardBorder}`,
+              borderRadius: 28, padding: "15px 17px", minHeight: 56,
+            }}
+          >
+            <span className="material-symbols-rounded" style={{ fontSize: 19, color: "#5A5A5A" }}>search</span>
+            <span style={{ fontSize: 16, color: "#6A6A6A" }}>Zoek station</span>
+          </DrukKnop>
         )}
-        <button type="button" onClick={() => navigate("/stations/new")} aria-label="Nieuw station" className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full transition-transform active:scale-[0.97]" style={{ background: GREEN }}>
-          <span className="material-symbols-rounded text-[24px] text-white">add</span>
-        </button>
+        <DrukKnop
+          onClick={() => navigate("/stations/new")}
+          aria-label="Nieuw station"
+          style={{
+            width: 56, height: 56, borderRadius: 28, background: C.green, border: "none",
+            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+          }}
+        >
+          <span className="material-symbols-rounded" style={{ fontSize: 25, color: "#fff" }}>add</span>
+        </DrukKnop>
       </div>
 
       <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
