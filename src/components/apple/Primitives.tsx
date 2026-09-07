@@ -1,4 +1,4 @@
-import { CSSProperties, HTMLAttributes, ButtonHTMLAttributes, ReactNode, useState } from "react";
+import { CSSProperties, HTMLAttributes, ButtonHTMLAttributes, ReactNode, forwardRef, useState } from "react";
 
 export const T = {
   bg: "#E8F2E2",
@@ -53,9 +53,9 @@ export function Pressable({ children, style, scale = 0.94, type = "button", onPo
   );
 }
 
-export function Group({ children, style, ...rest }: HTMLAttributes<HTMLDivElement>) {
-  return <div {...rest} style={{ background: T.surface, borderRadius: R.group, overflow: "hidden", marginBottom: 20, ...style }}>{children}</div>;
-}
+export const Group = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(function Group({ children, style, ...rest }, ref) {
+  return <div ref={ref} {...rest} style={{ background: T.surface, borderRadius: R.group, overflow: "hidden", marginBottom: 20, ...style }}>{children}</div>;
+});
 
 export function Hairline({ inset = INSET_ROW }: { inset?: number }) {
   return <div aria-hidden="true" style={{ height: "0.5px", background: T.hairline, marginLeft: inset }} />;

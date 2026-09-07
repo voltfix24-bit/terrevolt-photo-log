@@ -861,23 +861,22 @@ export default function StationDetail() {
         </GlassBar>
       )}
       {allDone && !wizardOpen && (
-        <div className="fixed bottom-0 left-0 right-0 z-[50] p-4 bg-surface-white/95 backdrop-blur-xl border-t border-outline-variant/10 pb-[max(16px,env(safe-area-inset-bottom))]">
+        <GlassBar style={{ position: "fixed", left: 0, right: 0 }}>
           <div className="flex gap-2.5 max-w-3xl mx-auto">
-            <button
+            <Pressable
               onClick={openPdf}
-              className="flex-1 min-h-[52px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-2xl font-display font-bold text-[15px] shadow-[0_6px_20px_-4px_rgba(0,100,47,0.35)] active:scale-[0.97] transition-all flex items-center justify-center gap-2.5"
+              style={{ flex: 1, minHeight: ROW_MIN, background: T.green, color: T.surface, borderRadius: R.control, fontSize: 17, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", gap: 9 }}
             >
-              <span className="material-symbols-rounded text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>picture_as_pdf</span>
-              ✓ Alles klaar — PDF downloaden
-            </button>
-            <button
+              Pdf downloaden
+            </Pressable>
+            <Pressable
               onClick={() => { setShareStation(station?.naam_msr || ''); setShareOpen(true); }}
-              className="w-[52px] h-[52px] bg-surface-low rounded-2xl flex items-center justify-center border border-outline-variant/20 active:scale-95 transition-all flex-shrink-0"
+              style={{ minHeight: ROW_MIN, padding: "0 8px", color: T.green, fontSize: 17, flexShrink: 0 }}
             >
-              <span className="material-symbols-rounded text-muted-foreground text-xl">ios_share</span>
-            </button>
+              Delen
+            </Pressable>
           </div>
-        </div>
+        </GlassBar>
       )}
 
       {/* Share bottom sheet */}
