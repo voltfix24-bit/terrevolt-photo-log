@@ -79,11 +79,18 @@ function DropZone({ onFiles, disabled, onClick, children }: {
 /* ==================== SKIP TRACKING ==================== */
 function useSkippedCategories(stationId: string | undefined) {
   const key = `skipped-${stationId}`;
+  const reasonsKey = `skip-reasons-${stationId}`;
   const [skipped, setSkippedRaw] = useState<string[]>(() => {
     try {
       const raw = localStorage.getItem(key);
       return raw ? JSON.parse(raw) : [];
     } catch { return []; }
+  });
+  const [skippedReasons, setSkippedReasons] = useState<Record<string, string>>(() => {
+    try {
+      const raw = localStorage.getItem(reasonsKey);
+      return raw ? JSON.parse(raw) : {};
+    } catch { return {}; }
   });
 
   const setSkipped = useCallback((fn: (prev: string[]) => string[]) => {
@@ -94,13 +101,26 @@ function useSkippedCategories(stationId: string | undefined) {
     });
   }, [key]);
 
-  const addSkip = useCallback((catName: string) => {
+  const addSkip = useCallback((catName: string, reason?: string) => {
     setSkipped(prev => prev.includes(catName) ? prev : [...prev, catName]);
-  }, [setSkipped]);
+    if (reason) {
+      setSkippedReasons(prev => {
+        const next = { ...prev, [catName]: reason };
+        try { localStorage.setItem(reasonsKey, JSON.stringify(next)); } catch { /* */ }
+        return next;
+      });
+    }
+  }, [reasonsKey, setSkipped]);
 
   const removeSkip = useCallback((catName: string) => {
     setSkipped(prev => prev.filter(n => n !== catName));
-  }, [setSkipped]);
+    setSkippedReasons(prev => {
+      const next = { ...prev };
+      delete next[catName];
+      try { localStorage.setItem(reasonsKey, JSON.stringify(next)); } catch { /* */ }
+      return next;
+    });
+  }, [reasonsKey, setSkipped]);
 
   const toggleSkip = useCallback((catName: string) => {
     setSkipped(prev =>
@@ -112,7 +132,7 @@ function useSkippedCategories(stationId: string | undefined) {
 
   const isSkipped = useCallback((catName: string) => skipped.includes(catName), [skipped]);
 
-  return { skipped, addSkip, removeSkip, toggleSkip, isSkipped };
+  return { skipped, skippedReasons, addSkip, removeSkip, toggleSkip, isSkipped };
 }
 
 /* ==================== SECTION ICONS ==================== */
@@ -131,8 +151,8 @@ function getSectionIcon(sectionId: string): string {
 }
 
 /* ==================== CATEGORY ROW ==================== */
-function CategoryRow({ cat, fotos, isSkipped, hasOpmerking, onOpen }: {
-  cat: MergedCategory; fotos: FotoRow[]; isSkipped?: boolean; hasOpmerking?: boolean; onOpen: () => void;
+function CategoryRow({ cat, fotos, isSkipped, skipReason, hasOpmerking, onOpen }: {
+  cat: MergedCategory; fotos: FotoRow[]; isSkipped?: boolean; skipReason?: string; hasOpmerking?: boolean; onOpen: () => void;
 }) {
   const hasPhotos = fotos.length > 0;
 
@@ -142,20 +162,18 @@ function CategoryRow({ cat, fotos, isSkipped, hasOpmerking, onOpen }: {
       <button
         data-cat-id={cat.id}
         onClick={onOpen}
-        className="flex items-center justify-between w-full p-4 rounded-xl
-                   bg-card shadow-sm border border-outline-variant/15
-                   hover:bg-surface-low transition-colors text-left
-                   active:scale-[0.98] group"
+        className="flex min-h-[64px] items-center justify-between w-full p-3 rounded-lg
+                   bg-orange/[0.08] border border-orange/35 text-left
+                   active:scale-[0.99] group"
       >
         <div className="flex items-center gap-4">
-          <div className="w-9 h-9 rounded-full border border-outline-variant flex items-center
-                          justify-center text-muted-foreground group-hover:border-primary
-                          group-hover:text-primary transition-colors flex-shrink-0">
+          <div className="w-10 h-10 rounded-lg border border-orange/30 bg-orange/10 flex items-center
+                          justify-center text-orange flex-shrink-0">
             <span className="material-symbols-rounded text-base">photo_camera</span>
           </div>
           <div>
             <h4 className="font-display font-semibold text-on-surface text-sm">{cat.effectiveName}</h4>
-            <span className="text-[10px] uppercase tracking-wider text-orange font-bold">Open</span>
+            <span className="text-[11px] text-orange font-bold">0 van {cat.id === 31 ? 3 : 1} foto{cat.id === 31 ? "'s" : ""}</span>
           </div>
         </div>
         <span className="material-symbols-rounded text-muted-foreground/40 group-hover:text-primary transition-colors">
@@ -171,21 +189,19 @@ function CategoryRow({ cat, fotos, isSkipped, hasOpmerking, onOpen }: {
       <button
         data-cat-id={cat.id}
         onClick={onOpen}
-        className="flex items-center justify-between w-full p-4 rounded-xl
-                   bg-surface/30 border border-outline-variant/20 text-left
-                   active:scale-[0.98] group"
+        className="flex min-h-[56px] items-start justify-between w-full py-2.5 text-left
+                   border-b border-outline-variant/20 active:scale-[0.99] group"
       >
-        <div className="flex items-center gap-4">
-          <div className="w-9 h-9 rounded-full border border-outline-variant flex items-center
-                          justify-center text-outline-variant flex-shrink-0">
-            <span className="material-symbols-rounded text-base">remove</span>
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="w-8 h-8 flex items-center justify-center text-text-muted flex-shrink-0">
+            <span className="material-symbols-rounded text-base">block</span>
           </div>
-          <div>
-            <h4 className="font-display font-semibold text-on-surface-variant line-through text-sm">{cat.effectiveName}</h4>
-            <span className="text-[10px] uppercase tracking-wider text-on-surface-variant/60 font-bold">NVT</span>
+          <div className="min-w-0 pt-1">
+            <h4 className="font-display font-semibold text-text-muted line-through text-[13px]">{cat.effectiveName}</h4>
+            {skipReason && <p className="mt-0.5 text-[11px] text-text-muted">{skipReason}</p>}
           </div>
         </div>
-        <span className="text-xs text-primary font-semibold">Alsnog invullen →</span>
+        <span className="mt-1 rounded-full bg-surface-container px-2 py-1 text-[10px] font-bold text-text-muted">nvt</span>
       </button>
     );
   }
@@ -195,33 +211,22 @@ function CategoryRow({ cat, fotos, isSkipped, hasOpmerking, onOpen }: {
     <button
       data-cat-id={cat.id}
       onClick={onOpen}
-      className="flex items-center justify-between w-full p-4 rounded-xl
-                 bg-primary/[0.04] border border-primary/15
-                 relative overflow-hidden text-left active:scale-[0.98] group"
+      className="flex min-h-[48px] items-center justify-between w-full py-2.5
+                 border-b border-outline-variant/20 text-left active:scale-[0.99] group"
     >
-      <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />
-      <div className="flex items-center gap-4 ml-2">
-        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center
                         justify-center text-primary flex-shrink-0">
           <span className="material-symbols-rounded text-base" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
         </div>
         <div>
-          <h4 className="font-display font-bold text-on-surface text-sm flex items-center gap-1.5">
+          <h4 className="font-display font-semibold text-on-surface text-[13px] flex items-center gap-1.5">
             {cat.effectiveName}
             {hasOpmerking && <span className="material-symbols-rounded text-accent-gold text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>sticky_note_2</span>}
           </h4>
-          <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-[10px] uppercase tracking-wider text-primary font-bold">
-              {fotos.length} foto{fotos.length > 1 ? "'s" : ""} ✓
-            </span>
-            <span className="w-1 h-1 rounded-full bg-outline-variant" />
-            <span className="text-[11px] text-on-surface-variant">Tik voor meer</span>
-          </div>
         </div>
       </div>
-      <span className="material-symbols-rounded text-primary/60 group-hover:translate-x-1 transition-transform">
-        chevron_right
-      </span>
+      <span className="shrink-0 text-[11px] font-semibold text-text-muted">{fotos.length} foto{fotos.length === 1 ? "" : "'s"}</span>
     </button>
   );
 }
