@@ -23,8 +23,9 @@ export const T = {
 
 export const R = { screen: 20, group: 16, control: 16, small: 12 } as const;
 export const M = { spring: "cubic-bezier(0.34,1.4,0.64,1)", ease: "cubic-bezier(0.22,1,0.36,1)" } as const;
-export const ROW_MIN = 58;
+export const ROW_MIN = 60;
 export const ROW_PAD_X = 17;
+export const SWIPE_ACTION_W = 74;
 export const ICON = 23;
 export const ICON_GAP = 14;
 export const INSET_HEAD = ROW_PAD_X;
