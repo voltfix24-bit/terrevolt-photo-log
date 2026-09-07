@@ -148,8 +148,8 @@ export default function Dashboard() {
   const syncIcon = !isOnline ? "cloud_off" : totalPending > 0 ? "cloud_upload" : "cloud_done";
 
   return (
-    <div className="flex min-h-screen flex-col bg-white">
-      <header className="flex items-center justify-between border-b border-[#E3E8E3] px-4 pb-2 pt-[10px]">
+    <div className="flex min-h-screen flex-col bg-home">
+      <header className="flex items-center justify-between border-b border-[#E3E8E3] bg-home px-4 pb-2 pt-[10px]">
         <div className="flex items-center gap-2">
           <span className="relative flex h-[22px] w-[20px] shrink-0 items-center justify-center" aria-hidden="true">
             <span className="material-symbols-rounded text-[20px]" style={{ color: GREEN, fontVariationSettings: "'FILL' 1" }}>bolt</span>
@@ -166,20 +166,20 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <div className="flex items-center gap-[7px] px-4 pb-[7px] pt-[11px]">
+      <div className="flex items-center gap-[7px] bg-home px-4 pb-[7px] pt-[11px]">
         <span className="material-symbols-rounded text-[15px] text-[#3D3D3D]">schedule</span>
         <span className="text-[13px] text-[#3D3D3D]">Nieuwste opdrachten eerst</span>
       </div>
 
       <main className="flex-1 px-3 pb-[104px]">
         {isLoading ? Array.from({ length: 4 }).map((_, index) => (
-          <div key={index} className="mb-[10px] rounded-[16px] border border-[#DCE3DC] p-4"><Skeleton className="mb-2 h-4 w-1/2" /><Skeleton className="h-3 w-2/3" /></div>
+          <div key={index} className="mb-[10px] rounded-[16px] border border-[#DCE3DC] bg-white p-4"><Skeleton className="mb-2 h-4 w-1/2" /><Skeleton className="h-3 w-2/3" /></div>
         )) : filtered.length === 0 ? (
           <div className="px-6 py-14 text-center text-[15px] text-[#4A4A4A]">Geen stations gevonden</div>
         ) : filtered.map(({ station, done, total, remaining, complete, pending }) => {
           const open = expandedId === station.id;
           return (
-            <div key={station.id} className="mb-[10px] overflow-hidden rounded-[16px]" style={{ background: open ? "#F4F9F2" : "#FFFFFF", border: open ? `2px solid ${GREEN}` : "0.5px solid #DCE3DC" }}>
+            <div key={station.id} className="mb-[10px] overflow-hidden rounded-[16px] bg-white shadow-sm" style={{ border: open ? `2px solid ${GREEN}` : "0.5px solid #DCE3DC" }}>
               <button type="button" aria-expanded={open} onClick={() => setExpandedId(open ? null : station.id)} className="w-full px-4 py-[15px] text-left">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -219,7 +219,7 @@ export default function Dashboard() {
         })}
       </main>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-[10px] border-t px-3 pt-[10px]" style={{ background: "rgba(244,249,242,0.82)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderColor: "rgba(0,0,0,0.06)", paddingBottom: "calc(14px + env(safe-area-inset-bottom))" }}>
+      <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-[10px] border-t bg-home/82 px-3 pt-[10px] backdrop-blur-[20px]" style={{ borderColor: "rgba(0,0,0,0.06)", paddingBottom: "calc(14px + env(safe-area-inset-bottom))" }}>
         {searchOpen || search ? (
           <label className="relative flex-1">
             <span className="material-symbols-rounded absolute left-4 top-1/2 -translate-y-1/2 text-[19px] text-[#5A5A5A]">search</span>
