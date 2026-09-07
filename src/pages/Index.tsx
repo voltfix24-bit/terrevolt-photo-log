@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,15 +10,12 @@ import { generatePdfHtml } from "@/lib/pdf-generator";
 import { requirePin } from "@/lib/require-pin";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 
-type Filter = "mijn" | "bijna" | "klaar";
-type SortOption = "bijna" | "recent" | "naam";
 type PendingCounts = Record<string, number>;
 const requiredPhotos = (category: Category) => category.id === 31 ? 3 : 1;
-const SORT_STORAGE_KEY = "dashboard-sort";
 const abbreviations = new Set(["ls", "ms", "to", "atr"]);
+const GREEN = "#1F5C3A";
 
 const formatStationName = (name: string) => name
   .toLocaleLowerCase("nl-NL")
@@ -29,20 +26,43 @@ const formatStationName = (name: string) => name
 
 const dateValue = (value?: string | null) => value ? new Date(value).getTime() : 0;
 
+const relatieveDatum = (value?: string | null) => {
+  if (!value) return "—";
+  const dagen = Math.floor((Date.now() - new Date(value).getTime()) / 86400000);
+  if (dagen <= 0) return "Vandaag";
+  if (dagen === 1) return "Gisteren";
+  if (dagen < 7) return `${dagen} dgn`;
+  if (dagen < 30) return `${Math.floor(dagen / 7)} wk`;
+  return `${Math.floor(dagen / 30)} mnd`;
+};
+
+function ActieKnop({ icon, label, onClick, variant = "neutraal" }: { icon: string; label: string; onClick: () => void; variant?: "neutraal" | "gevaar" }) {
+  const rood = variant === "gevaar";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className="flex w-[54px] min-h-[54px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-[14px] border transition-transform active:scale-[0.97]"
+      style={{ background: rood ? "#FBEDEC" : "#FFFFFF", borderColor: rood ? "#F0D2CF" : "#DCE3DC", color: rood ? "#B3352C" : GREEN }}
+    >
+      <span className="material-symbols-rounded text-[21px]">{icon}</span>
+      <span className="text-[10px]" style={{ color: rood ? "#B3352C" : "#3D3D3D" }}>{label}</span>
+    </button>
+  );
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isOnline = useOnline();
   const { data: instellingenData } = useInstellingen();
   const [search, setSearch] = useState("");
-  const [activeFilter, setActiveFilter] = useState<Filter>("mijn");
-  const [sortOption, setSortOption] = useState<SortOption>(() => {
-    const stored = localStorage.getItem(SORT_STORAGE_KEY);
-    return stored === "recent" || stored === "naam" ? stored : "bijna";
-  });
+  const [searchOpen, setSearchOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [pendingCounts, setPendingCounts] = useState<PendingCounts>({});
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; naam: string } | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const { data: stations, isLoading } = useQuery({
     queryKey: ["stations"],
@@ -69,39 +89,25 @@ export default function Dashboard() {
     return () => { mounted = false; window.clearInterval(interval); window.removeEventListener("focus", updatePending); };
   }, [isOnline]);
 
+  useEffect(() => {
+    if (searchOpen) searchInputRef.current?.focus();
+  }, [searchOpen]);
+
   const enriched = useMemo(() => (stations ?? []).map((station) => {
     const applicable = getApplicableCategories(station);
     const photosByCategory = new Map<string, number>();
     for (const photo of station.fotos ?? []) photosByCategory.set(photo.categorie, (photosByCategory.get(photo.categorie) ?? 0) + 1);
     const total = applicable.reduce((sum, category) => sum + requiredPhotos(category), 0);
     const done = applicable.reduce((sum, category) => sum + Math.min(photosByCategory.get(category.name) ?? 0, requiredPhotos(category)), 0);
-    const missing = applicable.map((category) => ({ ...category, missing: Math.max(requiredPhotos(category) - (photosByCategory.get(category.name) ?? 0), 0) })).filter((category) => category.missing > 0);
-    const lastEdited = dateValue(station.updated_at);
-    const stale = lastEdited > 0 && Date.now() - lastEdited > 7 * 24 * 60 * 60 * 1000;
-    return { station, done, total, remaining: total - done, complete: done === total, missing, pending: pendingCounts[station.id] ?? 0, lastEdited, stale };
+    return { station, done, total, remaining: total - done, complete: done === total && total > 0, pending: pendingCounts[station.id] ?? 0, createdAt: dateValue(station.created_at) };
   }), [stations, pendingCounts]);
 
-  const counts = useMemo(() => ({ mijn: enriched.length, bijna: enriched.filter((item) => item.remaining > 0 && item.remaining <= 3).length, klaar: enriched.filter((item) => item.complete).length }), [enriched]);
   const filtered = useMemo(() => enriched.filter((item) => {
     const query = search.trim().toLowerCase();
-    const matchesSearch = !query || item.station.naam_msr.toLowerCase().includes(query) || item.station.behuizingsnummer?.toLowerCase().includes(query);
-    const matchesFilter = activeFilter === "mijn" || (activeFilter === "bijna" && item.remaining > 0 && item.remaining <= 3) || (activeFilter === "klaar" && item.complete);
-    return matchesSearch && matchesFilter;
-  }).sort((a, b) => {
-    if (sortOption === "recent") return b.lastEdited - a.lastEdited;
-    if (sortOption === "naam") return formatStationName(a.station.naam_msr).localeCompare(formatStationName(b.station.naam_msr), "nl-NL");
-    if (a.complete !== b.complete) return a.complete ? 1 : -1;
-    return a.remaining - b.remaining || b.lastEdited - a.lastEdited;
-  }), [activeFilter, enriched, search, sortOption]);
+    return !query || item.station.naam_msr.toLowerCase().includes(query) || item.station.behuizingsnummer?.toLowerCase().includes(query);
+  }).sort((a, b) => b.createdAt - a.createdAt), [enriched, search]);
+
   const totalPending = Object.values(pendingCounts).reduce((sum, count) => sum + count, 0);
-
-  useEffect(() => {
-    localStorage.setItem(SORT_STORAGE_KEY, sortOption);
-  }, [sortOption]);
-
-  useEffect(() => {
-    if (counts[activeFilter] === 0 && activeFilter !== "mijn") setActiveFilter("mijn");
-  }, [activeFilter, counts]);
 
   const openPdf = async (station: any) => {
     const { data: opmerkingen } = await supabase.from("categorie_opmerkingen").select("categorie, opmerking").eq("station_id", station.id);
@@ -138,116 +144,96 @@ export default function Dashboard() {
     toast.success("Station verwijderd");
   };
 
-  const formatCreatedAt = (value?: string | null) => !value ? "Datum onbekend" : new Intl.DateTimeFormat("nl-NL", { day: "numeric", month: "short" }).format(new Date(value));
+  const syncLabel = !isOnline ? "Offline" : totalPending > 0 ? `${totalPending} wachten` : "Gesynct";
+  const syncIcon = !isOnline ? "cloud_off" : totalPending > 0 ? "cloud_upload" : "cloud_done";
 
   return (
-    <div className="min-h-screen bg-home pb-24">
-      <header className="sticky top-0 z-40 border-b border-outline-variant/20 bg-surface-white/95 backdrop-blur-md">
-        <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4">
-          <div className="flex items-center gap-2 text-primary">
-            <span className="relative flex h-[22px] w-[18px] shrink-0 items-center justify-center" aria-hidden="true">
-              <span className="material-symbols-rounded text-[22px] text-brand-green" style={{ fontVariationSettings: "'FILL' 1" }}>bolt</span>
-              <span className="absolute right-0 top-0 h-1.5 w-1.5 rounded-full bg-accent-gold-bright" />
-            </span>
-            <div className="leading-none">
-              <span className="block text-[9px] font-bold text-primary">TerreVolt</span>
-              <h1 className="mt-0.5 font-display text-[15px] font-semibold text-on-surface">TO-foto&apos;s</h1>
-            </div>
+    <div className="flex min-h-screen flex-col bg-white">
+      <header className="flex items-center justify-between border-b border-[#E3E8E3] px-4 pb-2 pt-[10px]">
+        <div className="flex items-center gap-2">
+          <span className="relative flex h-[22px] w-[20px] shrink-0 items-center justify-center" aria-hidden="true">
+            <span className="material-symbols-rounded text-[20px]" style={{ color: GREEN, fontVariationSettings: "'FILL' 1" }}>bolt</span>
+            <span className="absolute right-0 top-0 h-1.5 w-1.5 rounded-full bg-accent-gold-bright" />
+          </span>
+          <div>
+            <div className="text-[11px] leading-none" style={{ color: GREEN }}>TerreVolt</div>
+            <h1 className="font-display text-[19px] font-medium leading-tight text-[#0A0A0A]">TO-foto&apos;s</h1>
           </div>
-          <div className={`flex min-h-[32px] items-center gap-1.5 rounded-full px-3 text-xs font-bold ${!isOnline ? "bg-surface-container text-text-secondary" : totalPending > 0 ? "bg-orange/10 text-orange" : "bg-primary/10 text-primary"}`}>
-            <span className="material-symbols-rounded text-[17px]">{!isOnline ? "cloud_off" : totalPending > 0 ? "upload" : "cloud_done"}</span>
-            <span>{!isOnline ? "Offline" : totalPending > 0 ? `${totalPending} wachten` : "Gesynct"}</span>
-          </div>
+        </div>
+        <div className="flex items-center gap-[6px] rounded-full px-3 py-[6px]" style={{ background: totalPending > 0 ? "#EAF1FA" : "#E7F3E4" }}>
+          <span className="material-symbols-rounded text-[16px]" style={{ color: totalPending > 0 ? "#1A4E8A" : GREEN }}>{syncIcon}</span>
+          <span className="text-[13px]" style={{ color: totalPending > 0 ? "#1A4E8A" : GREEN }}>{syncLabel}</span>
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl">
-        <div className="space-y-1.5 px-4 py-2">
-          <label className="relative block">
-            <span className="material-symbols-rounded absolute left-3 top-1/2 -translate-y-1/2 text-[20px] text-text-muted">search</span>
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Naam of behuizingsnummer" className="min-h-[44px] w-full rounded-lg border border-outline-variant/25 bg-surface-white py-[7px] pl-10 pr-3 text-sm font-medium text-on-surface outline-none placeholder:text-text-muted focus:border-primary/50 focus:ring-2 focus:ring-primary/10" />
-          </label>
-          <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="flex shrink-0 gap-2">
-              {([["mijn", "Mijn stations"], ["bijna", "Bijna klaar"], ["klaar", "Klaar"]] as const).filter(([value]) => counts[value] > 0).map(([value, label]) => (
-                <button key={value} type="button" onClick={() => setActiveFilter(value)} className={`flex min-h-[44px] shrink-0 items-center gap-2 rounded-full border px-4 text-xs font-bold transition-colors ${activeFilter === value ? "border-brand-green bg-brand-green text-primary-foreground" : "border-outline-variant/40 bg-transparent text-text-secondary"}`}>
-                  {label}<span className={`min-w-5 rounded-full px-1.5 py-0.5 text-center text-[10px] ${activeFilter === value ? "bg-primary-light/30 text-primary-foreground" : "bg-surface-container"}`}>{counts[value]}</span>
-                </button>
-              ))}
+      <div className="flex items-center gap-[7px] px-4 pb-[7px] pt-[11px]">
+        <span className="material-symbols-rounded text-[15px] text-[#3D3D3D]">schedule</span>
+        <span className="text-[13px] text-[#3D3D3D]">Nieuwste opdrachten eerst</span>
+      </div>
+
+      <main className="flex-1 px-3 pb-[104px]">
+        {isLoading ? Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="mb-[10px] rounded-[16px] border border-[#DCE3DC] p-4"><Skeleton className="mb-2 h-4 w-1/2" /><Skeleton className="h-3 w-2/3" /></div>
+        )) : filtered.length === 0 ? (
+          <div className="px-6 py-14 text-center text-[15px] text-[#4A4A4A]">Geen stations gevonden</div>
+        ) : filtered.map(({ station, done, total, remaining, complete, pending }) => {
+          const open = expandedId === station.id;
+          return (
+            <div key={station.id} className="mb-[10px] overflow-hidden rounded-[16px]" style={{ background: open ? "#F4F9F2" : "#FFFFFF", border: open ? `2px solid ${GREEN}` : "0.5px solid #DCE3DC" }}>
+              <button type="button" aria-expanded={open} onClick={() => setExpandedId(open ? null : station.id)} className="w-full px-4 py-[15px] text-left">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h2 className="break-words font-display text-[18px] font-medium leading-tight text-[#0A0A0A]">{formatStationName(station.naam_msr)}</h2>
+                    <p className="mt-[3px] truncate font-mono text-[14px] text-[#4A4A4A]">{station.behuizingsnummer || "Geen nummer"}</p>
+                    <p className="mt-[2px] truncate text-[14px] text-[#4A4A4A]">{station.ingevuld_door || "Geen monteur"}</p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className="whitespace-nowrap rounded-full px-[10px] py-[5px] text-[13px]" style={open ? { background: "#DCEDD6", color: GREEN } : { background: "#F0F2F0", color: "#4A4A4A" }}>{relatieveDatum(station.created_at)}</span>
+                    <span className="material-symbols-rounded text-[20px] text-[#3D3D3D]">{open ? "expand_less" : "expand_more"}</span>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center justify-between gap-2">
+                  {pending > 0 ? (
+                    <span className="flex items-center gap-[7px] text-[16px]" style={{ color: "#1A4E8A" }}><span className="material-symbols-rounded text-[18px]">cloud_upload</span>{pending} wachten</span>
+                  ) : complete ? (
+                    <span className="text-[16px] font-medium" style={{ color: GREEN }}>Klaar</span>
+                  ) : (
+                    <span className="text-[16px] text-[#0A0A0A]">{remaining} {remaining === 1 ? "taak" : "taken"} te gaan</span>
+                  )}
+                  <span className="shrink-0 font-mono text-[15px] text-[#5A5A5A]">{done} / {total}</span>
+                </div>
+              </button>
+
+              {open && (
+                <div className="flex items-stretch gap-2 px-3 pb-[13px]">
+                  <button type="button" onClick={() => navigate(`/stations/${station.id}`)} className="flex min-h-[54px] flex-1 items-center justify-center gap-[9px] rounded-[14px] px-[10px] py-[15px] text-[17px] font-medium text-white transition-transform active:scale-[0.98]" style={{ background: GREEN }}>
+                    <span className="material-symbols-rounded text-[20px]">photo_camera</span>Invullen
+                  </button>
+                  <ActieKnop icon="description" label="Pdf" onClick={() => openPdf(station)} />
+                  <ActieKnop icon="ios_share" label="Delen" onClick={() => shareStation(station)} />
+                  <ActieKnop icon="delete" label="Wis" variant="gevaar" onClick={() => setDeleteTarget({ id: station.id, naam: station.naam_msr })} />
+                </div>
+              )}
             </div>
-          </div>
-          <div className="flex justify-end pb-1">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button type="button" className="flex min-h-[44px] max-w-full items-center gap-1.5 rounded-full border border-outline-variant/40 bg-surface-white px-3 text-xs font-bold text-text-secondary" aria-label="Sortering wijzigen">
-                  <span className="material-symbols-rounded text-[18px]">sort</span>
-                  Sorteren: {sortOption === "bijna" ? "bijna klaar" : sortOption === "recent" ? "laatst bewerkt" : "naam A-Z"}
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => setSortOption("bijna")} className="min-h-[44px]">Bijna klaar</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setSortOption("recent")} className="min-h-[44px]">Laatst bewerkt</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setSortOption("naam")} className="min-h-[44px]">Naam A-Z</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-
-        <section aria-label="Stations" className="border-y border-outline-variant/20 bg-home">
-          {isLoading ? Array.from({ length: 5 }).map((_, index) => (
-            <div key={index} className="border-b border-outline-variant/15 px-4 py-3 last:border-b-0"><Skeleton className="mb-2 h-4 w-1/2" /><Skeleton className="h-3 w-2/3" /></div>
-          )) : filtered.length === 0 ? (
-            <div className="px-6 py-14 text-center text-sm font-medium text-text-muted">Geen stations gevonden</div>
-          ) : filtered.map(({ station, done, total, remaining, complete, missing, pending, stale }) => {
-            const isExpanded = expandedId === station.id;
-            const displayName = formatStationName(station.naam_msr);
-            return (
-              <article key={station.id} className="border-b-[0.5px] border-border last:border-b-0">
-                <button type="button" aria-expanded={isExpanded} onClick={() => setExpandedId(isExpanded ? null : station.id)} className={`min-h-16 w-full px-4 py-3.5 text-left transition-colors ${isExpanded ? "bg-accent" : "bg-surface-white active:bg-surface-low"}`}>
-                  <div className="grid grid-cols-[minmax(0,1fr)_auto_24px] items-center gap-2.5">
-                    <div className="min-w-0"><h2 className="line-clamp-2 font-display text-sm font-extrabold leading-[18px] text-on-surface">{displayName}</h2><p className="mt-0.5 truncate text-[11px] text-text-muted"><span className="font-mono">{station.behuizingsnummer || "Geen nummer"}</span><span className="font-sans"> · {station.ingevuld_door || "Geen monteur"}</span></p></div>
-                    <div className="text-right">
-                      <div className={`flex items-center justify-end gap-1 text-xs font-extrabold ${pending > 0 ? "text-sync-pending" : complete || remaining >= 4 ? "text-primary" : "text-text-secondary"}`}>
-                        {(pending > 0 || complete || stale) && <span className={`material-symbols-rounded text-[16px] ${remaining >= 4 && pending === 0 && !complete ? "text-accent-gold" : ""}`}>{pending > 0 ? "upload" : complete ? "check_circle" : "schedule"}</span>}
-                        <span>{pending > 0 ? `${pending} wachten` : complete ? "Klaar" : `${remaining} te gaan`}</span>
-                      </div>
-                      <div className="mt-0.5 text-[10px] font-medium text-text-muted">{done} / {total}</div>
-                    </div>
-                    <span className={`material-symbols-rounded text-[20px] text-text-secondary transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}>expand_more</span>
-                  </div>
-                </button>
-
-                {isExpanded && (
-                  <div className="border-t border-primary/10 bg-accent px-4 pb-4 pt-3 animate-fade-up">
-                    <div className="mb-3"><p className="text-xs font-semibold text-text-secondary">{done} van {total} foto&apos;s · {complete ? "alles compleet" : `${remaining} te gaan`}</p></div>
-                    {!complete && (
-                      <div className="mb-4 overflow-hidden rounded-lg border border-primary/15 bg-surface-white">
-                        <h3 className="px-3 pb-1 pt-3 text-xs font-extrabold text-on-surface">Nog nodig</h3>
-                        <div className="divide-y divide-outline-variant/15">{missing.map((category) => (
-                          <button key={category.id} type="button" onClick={() => navigate(`/stations/${station.id}?categorie=${category.id}`)} className="flex min-h-[44px] w-full items-center justify-between gap-3 px-3 text-left text-xs font-semibold text-text-secondary active:bg-surface-low"><span className="truncate">{category.name} · {category.missing} {category.missing === 1 ? "foto" : "foto's"}</span><span className="material-symbols-rounded shrink-0 text-[18px] text-primary">arrow_forward</span></button>
-                        ))}</div>
-                      </div>
-                    )}
-                    <button type="button" onClick={() => complete ? openPdf(station) : navigate(`/stations/${station.id}`)} className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-[13px] font-display text-sm font-bold text-primary-foreground active:bg-primary-hover"><span className="material-symbols-rounded text-[20px]">{complete ? "description" : "photo_camera"}</span>{complete ? "Rapport bekijken" : "Verder invullen"}</button>
-                    <div className="mt-2 grid grid-cols-2 gap-2">
-                      <button type="button" onClick={() => openPdf(station)} className="flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-outline-variant/40 bg-surface-white text-xs font-bold text-text-secondary active:bg-surface-low"><span className="material-symbols-rounded text-[18px]">description</span>Rapport</button>
-                      <button type="button" onClick={() => shareStation(station)} className="flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-outline-variant/40 bg-surface-white text-xs font-bold text-text-secondary active:bg-surface-low"><span className="material-symbols-rounded text-[18px]">ios_share</span>Delen</button>
-                    </div>
-                    <div className="mt-3 flex min-h-[44px] items-center justify-between border-t border-primary/10 pt-2">
-                      <p className="min-w-0 truncate pr-2 text-[10px] text-text-muted">Aangemaakt {formatCreatedAt(station.created_at)} · {station.ingevuld_door || "Onbekend"}</p>
-                      <DropdownMenu><DropdownMenuTrigger asChild><button type="button" className="flex min-h-[44px] items-center gap-1 rounded-lg px-2 text-xs font-bold text-text-secondary" aria-label={`Meer acties voor ${station.naam_msr}`}><span className="material-symbols-rounded text-[19px]">more_horiz</span>Meer</button></DropdownMenuTrigger><DropdownMenuContent align="end" className="min-w-[190px]"><DropdownMenuItem onSelect={() => setDeleteTarget({ id: station.id, naam: station.naam_msr })} className="min-h-[44px] gap-2 text-destructive focus:text-destructive"><span className="material-symbols-rounded text-[18px]">delete</span>Station verwijderen</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
-                    </div>
-                  </div>
-                )}
-              </article>
-            );
-          })}
-        </section>
-
+          );
+        })}
       </main>
 
-      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center border-t-[0.5px] border-border bg-home px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3">
-        <button type="button" onClick={() => navigate("/stations/new")} className="pointer-events-auto flex min-h-[48px] items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-bold text-primary-foreground shadow-sm active:bg-primary-hover"><span className="material-symbols-rounded text-[20px]">add</span>Nieuw station</button>
+      <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-[10px] border-t px-3 pt-[10px]" style={{ background: "rgba(244,249,242,0.82)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderColor: "rgba(0,0,0,0.06)", paddingBottom: "calc(14px + env(safe-area-inset-bottom))" }}>
+        {searchOpen || search ? (
+          <label className="relative flex-1">
+            <span className="material-symbols-rounded absolute left-4 top-1/2 -translate-y-1/2 text-[19px] text-[#5A5A5A]">search</span>
+            <input ref={searchInputRef} value={search} onChange={(event) => setSearch(event.target.value)} onBlur={() => { if (!search) setSearchOpen(false); }} placeholder="Zoek station" className="min-h-[52px] w-full rounded-[26px] border py-[14px] pl-11 pr-4 text-[16px] text-[#0A0A0A] outline-none placeholder:text-[#6A6A6A]" style={{ background: "rgba(255,255,255,0.9)", borderColor: "rgba(0,0,0,0.08)" }} />
+          </label>
+        ) : (
+          <button type="button" onClick={() => setSearchOpen(true)} className="flex min-h-[52px] flex-1 items-center gap-[10px] rounded-[26px] border px-4 py-[14px] text-left" style={{ background: "rgba(255,255,255,0.9)", borderColor: "rgba(0,0,0,0.08)" }}>
+            <span className="material-symbols-rounded text-[19px] text-[#5A5A5A]">search</span>
+            <span className="text-[16px] text-[#6A6A6A]">Zoek station</span>
+          </button>
+        )}
+        <button type="button" onClick={() => navigate("/stations/new")} aria-label="Nieuw station" className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full transition-transform active:scale-[0.97]" style={{ background: GREEN }}>
+          <span className="material-symbols-rounded text-[24px] text-white">add</span>
+        </button>
       </div>
 
       <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
