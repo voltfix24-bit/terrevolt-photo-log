@@ -21,6 +21,8 @@ export default function AppHeader() {
     return false;
   };
 
+  if (location.pathname === "/") return null;
+
   return (
     <>
       <header className="fixed top-0 w-full z-50 bg-surface-white/80 backdrop-blur-md border-b border-outline-variant/8">

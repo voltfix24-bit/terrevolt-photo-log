@@ -1,433 +1,198 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { getApplicableCategories } from "@/lib/categories";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { useQueryClient } from "@tanstack/react-query";
-import { generatePdfHtml } from "@/lib/pdf-generator";
-import { downloadStationZip } from "@/lib/zip-download";
-import { toast } from "sonner";
+import { getApplicableCategories, type Category } from "@/lib/categories";
+import { getPendingPhotos } from "@/lib/offline-queue";
+import { useOnline } from "@/hooks/use-online";
 import { useInstellingen } from "@/hooks/use-theme";
+import { generatePdfHtml } from "@/lib/pdf-generator";
 import { requirePin } from "@/lib/require-pin";
+import { Skeleton } from "@/components/ui/skeleton";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { toast } from "sonner";
+
+type Filter = "mijn" | "bijna" | "klaar";
+type PendingCounts = Record<string, number>;
+const requiredPhotos = (category: Category) => category.id === 31 ? 3 : 1;
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [search, setSearch] = useState("");
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [zipProgress, setZipProgress] = useState<number | null>(null);
-  const [filterType, setFilterType] = useState<string>('all');
-  const [filterMonteur, setFilterMonteur] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'datum_desc' | 'datum_asc' | 'naam'>('datum_desc');
-  const [showFilters, setShowFilters] = useState(false);
   const queryClient = useQueryClient();
+  const isOnline = useOnline();
+  const { data: instellingenData } = useInstellingen();
+  const [search, setSearch] = useState("");
+  const [activeFilter, setActiveFilter] = useState<Filter>("mijn");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [pendingCounts, setPendingCounts] = useState<PendingCounts>({});
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; naam: string } | null>(null);
 
   const { data: stations, isLoading } = useQuery({
     queryKey: ["stations"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("stations")
-        .select("*, fotos(categorie, id, url, storage_path)")
-        .order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("stations").select("*, fotos(categorie, id, url, storage_path)").order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
   });
 
-  const uniqueMonteurs = useMemo(() => {
-    const names = stations?.map(s => s.ingevuld_door).filter(Boolean) as string[] ?? [];
-    return [...new Set(names)].sort();
-  }, [stations]);
+  useEffect(() => {
+    let mounted = true;
+    const updatePending = async () => {
+      const pending = await getPendingPhotos();
+      if (!mounted) return;
+      setPendingCounts(pending.reduce<PendingCounts>((counts, photo) => {
+        counts[photo.stationId] = (counts[photo.stationId] ?? 0) + 1;
+        return counts;
+      }, {}));
+    };
+    updatePending();
+    const interval = window.setInterval(updatePending, 3000);
+    window.addEventListener("focus", updatePending);
+    return () => { mounted = false; window.clearInterval(interval); window.removeEventListener("focus", updatePending); };
+  }, [isOnline]);
 
-  const hasActiveFilters = filterType !== 'all' || filterMonteur !== 'all' || sortBy !== 'datum_desc';
+  const enriched = useMemo(() => (stations ?? []).map((station) => {
+    const applicable = getApplicableCategories(station);
+    const photosByCategory = new Map<string, number>();
+    for (const photo of station.fotos ?? []) photosByCategory.set(photo.categorie, (photosByCategory.get(photo.categorie) ?? 0) + 1);
+    const total = applicable.reduce((sum, category) => sum + requiredPhotos(category), 0);
+    const done = applicable.reduce((sum, category) => sum + Math.min(photosByCategory.get(category.name) ?? 0, requiredPhotos(category)), 0);
+    const missing = applicable.map((category) => ({ ...category, missing: Math.max(requiredPhotos(category) - (photosByCategory.get(category.name) ?? 0), 0) })).filter((category) => category.missing > 0);
+    return { station, done, total, remaining: total - done, complete: done === total, progress: total > 0 ? Math.round((done / total) * 100) : 0, missing, pending: pendingCounts[station.id] ?? 0 };
+  }), [stations, pendingCounts]);
 
-  const filtered = useMemo(() => {
-    if (!stations) return [];
-    let result = stations.filter(s => {
-      const matchSearch = !search ||
-        s.naam_msr.toLowerCase().includes(search.toLowerCase()) ||
-        s.behuizingsnummer?.toLowerCase().includes(search.toLowerCase());
-      const matchType = filterType === 'all' || s.type_ruimte === filterType;
-      const matchMonteur = filterMonteur === 'all' || s.ingevuld_door === filterMonteur;
-      return matchSearch && matchType && matchMonteur;
-    });
-    result = [...result].sort((a, b) => {
-      if (sortBy === 'naam') return a.naam_msr.localeCompare(b.naam_msr);
-      if (sortBy === 'datum_asc') return (a.datum || '').localeCompare(b.datum || '');
-      return (b.datum || '').localeCompare(a.datum || '');
-    });
-    return result;
-  }, [stations, search, filterType, filterMonteur, sortBy]);
-
-  const { data: instellingenData } = useInstellingen();
+  const counts = useMemo(() => ({ mijn: enriched.length, bijna: enriched.filter((item) => item.remaining > 0 && item.remaining <= 3).length, klaar: enriched.filter((item) => item.complete).length }), [enriched]);
+  const filtered = useMemo(() => enriched.filter((item) => {
+    const query = search.trim().toLowerCase();
+    const matchesSearch = !query || item.station.naam_msr.toLowerCase().includes(query) || item.station.behuizingsnummer?.toLowerCase().includes(query);
+    const matchesFilter = activeFilter === "mijn" || (activeFilter === "bijna" && item.remaining > 0 && item.remaining <= 3) || (activeFilter === "klaar" && item.complete);
+    return matchesSearch && matchesFilter;
+  }), [activeFilter, enriched, search]);
+  const totalPending = Object.values(pendingCounts).reduce((sum, count) => sum + count, 0);
 
   const openPdf = async (station: any) => {
-    const fotos = station.fotos ?? [];
-    const { data: opmerkingen } = await supabase.from('categorie_opmerkingen').select('categorie, opmerking').eq('station_id', station.id);
-    const html = generatePdfHtml(station, fotos, instellingenData ?? undefined, opmerkingen ?? undefined);
-    const w = window.open("", "_blank");
-    if (w) { w.document.write(html); w.document.close(); }
+    const { data: opmerkingen } = await supabase.from("categorie_opmerkingen").select("categorie, opmerking").eq("station_id", station.id);
+    const html = generatePdfHtml(station, station.fotos ?? [], instellingenData ?? undefined, opmerkingen ?? undefined);
+    const reportWindow = window.open("", "_blank");
+    if (reportWindow) { reportWindow.document.write(html); reportWindow.document.close(); }
   };
 
-  const handleDeleteStation = async (stationId: string, naam?: string) => {
-    const ok = await requirePin(
-      "Station verwijderen",
-      naam ? `Voer de toegangscode in om "${naam}" te verwijderen.` : "Voer de toegangscode in om dit station te verwijderen.",
-    );
-    if (!ok) return;
-    const { data: fotos } = await supabase.from("fotos").select("storage_path").eq("station_id", stationId);
-    if (fotos && fotos.length > 0) {
-      await supabase.storage.from("to-fotos").remove(fotos.map(f => f.storage_path));
-      await supabase.from("fotos").delete().eq("station_id", stationId);
+  const shareStation = async (station: any) => {
+    const url = `${window.location.origin}/stations/${station.id}`;
+    if (navigator.share) {
+      try { await navigator.share({ title: `TO-foto's · ${station.naam_msr}`, text: `Bekijk station ${station.naam_msr}`, url }); } catch { /* geannuleerd */ }
+      return;
     }
-    const { error } = await supabase.from("stations").delete().eq("id", stationId);
+    await navigator.clipboard.writeText(url);
+    toast.success("Link gekopieerd");
+  };
+
+  const handleDeleteStation = async () => {
+    if (!deleteTarget) return;
+    const target = deleteTarget;
+    setDeleteTarget(null);
+    const unlocked = await requirePin("Station verwijderen", `Voer de toegangscode in om “${target.naam}” definitief te verwijderen.`);
+    if (!unlocked) return;
+    const { data: photos } = await supabase.from("fotos").select("storage_path").eq("station_id", target.id);
+    if (photos?.length) {
+      await supabase.storage.from("to-fotos").remove(photos.map((photo) => photo.storage_path));
+      await supabase.from("fotos").delete().eq("station_id", target.id);
+    }
+    const { error } = await supabase.from("stations").delete().eq("id", target.id);
     if (error) { toast.error("Verwijderen mislukt"); return; }
-    toast.success("Station verwijderd");
     setExpandedId(null);
     queryClient.invalidateQueries({ queryKey: ["stations"] });
+    toast.success("Station verwijderd");
   };
 
+  const formatCreatedAt = (value?: string | null) => !value ? "Datum onbekend" : new Intl.DateTimeFormat("nl-NL", { day: "numeric", month: "short" }).format(new Date(value));
+
   return (
-    <div className="min-h-screen bg-background pb-28 md:pb-8">
-
-      {/* ── Branded hero canvas ── */}
-      <div className="relative overflow-hidden bg-gradient-to-b from-primary/[0.09] via-primary/[0.04] to-transparent pt-[88px] pb-12 px-6">
-        {/* Decorative shapes */}
-        <div className="absolute -top-20 -right-16 w-56 h-56 rounded-full bg-primary/[0.06] blur-xl" />
-        <div className="absolute top-32 -left-24 w-40 h-40 rounded-full bg-primary-container/20 blur-2xl" />
-
-        <div className="relative max-w-lg mx-auto animate-fade-up">
-          {/* Eyebrow */}
-          <div className="flex items-center gap-2.5 mb-5">
-            <div className="w-2 h-2 rounded-full bg-accent-gold-bright" />
-            <span className="text-[10px] font-extrabold uppercase tracking-[0.25em] text-accent-gold font-display">
-              Technische Oplevering
-            </span>
+    <div className="min-h-screen bg-background pb-8">
+      <header className="sticky top-0 z-40 border-b border-outline-variant/20 bg-surface-white/95 backdrop-blur-md">
+        <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4">
+          <div className="flex items-center gap-2 text-primary">
+            <span className="material-symbols-rounded text-[21px]" style={{ fontVariationSettings: "'FILL' 1" }}>bolt</span>
+            <h1 className="font-display text-[15px] font-semibold text-on-surface">TO-foto&apos;s</h1>
           </div>
-
-          {/* Main title — editorial scale */}
-          <h1 className="font-display text-[48px] font-extrabold tracking-[-0.035em] text-text-primary leading-[0.95] mb-4">
-            TO-Foto's
-          </h1>
-
-          {/* Supporting text */}
-          <p className="font-display text-[15px] font-medium text-text-secondary/50 leading-relaxed max-w-[280px]">
-            Beheer en monitor alle technische opleveringen op één plek.
-          </p>
+          <div className={`flex min-h-[32px] items-center gap-1.5 rounded-full px-3 text-xs font-bold ${!isOnline ? "bg-surface-container text-text-secondary" : totalPending > 0 ? "bg-orange/10 text-orange" : "bg-primary/10 text-primary"}`}>
+            <span className="material-symbols-rounded text-[17px]">{!isOnline ? "cloud_off" : totalPending > 0 ? "upload" : "cloud_done"}</span>
+            <span>{!isOnline ? "Offline" : totalPending > 0 ? `${totalPending} wachten` : "Gesynct"}</span>
+          </div>
         </div>
-      </div>
+      </header>
 
-      <main className="px-4 sm:px-6 max-w-[1600px] mx-auto animate-fade-up">
-
-        {/* ── Search + Filter ── */}
-        <div className="relative -mt-3 mb-5 max-w-2xl mx-auto">
-          <div className="flex gap-2">
-            <div className="relative flex-1 bg-surface-white rounded-[22px] shadow-[0_8px_32px_-8px_rgba(19,30,18,0.08)] border border-outline-variant/6 overflow-hidden">
-              <span className="material-symbols-rounded absolute left-5 top-1/2 -translate-y-1/2 text-primary/35 text-[22px]">search</span>
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Zoek op naam of behuizingsnummer..."
-                className="w-full bg-transparent border-none rounded-[22px] py-[18px] pl-14 pr-5 text-[15px] focus:ring-0 focus:outline-none transition-all placeholder:text-text-faint font-display font-medium text-text-primary"
-              />
-            </div>
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className={`w-[52px] h-[52px] rounded-[18px] flex items-center justify-center flex-shrink-0 border transition-all active:scale-95 ${
-                showFilters || hasActiveFilters
-                  ? 'bg-primary text-primary-foreground border-primary shadow-md shadow-primary/25'
-                  : 'bg-surface-white text-muted-foreground border-outline-variant/20 shadow-sm'
-              }`}
-            >
-              <span className="material-symbols-rounded text-xl">tune</span>
-            </button>
-          </div>
-
-          {showFilters && (
-            <div className="mt-2 bg-card rounded-2xl border border-outline-variant/15 shadow-sm p-4 space-y-4 animate-fade-up">
-              <div>
-                <div className="text-[10px] font-black uppercase tracking-wider text-muted-foreground mb-2">Type station</div>
-                <div className="flex gap-2">
-                  {[
-                    { value: 'all', label: 'Alle' },
-                    { value: 'Compact Station', label: 'Compact' },
-                    { value: 'Betreedbaar station', label: 'Betreedbaar' },
-                  ].map(opt => (
-                    <button
-                      key={opt.value}
-                      onClick={() => setFilterType(opt.value)}
-                      className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
-                        filterType === opt.value
-                          ? 'bg-primary text-primary-foreground shadow-sm'
-                          : 'bg-surface-low text-muted-foreground hover:bg-surface-container'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {uniqueMonteurs.length > 0 && (
-                <div>
-                  <div className="text-[10px] font-black uppercase tracking-wider text-muted-foreground mb-2">Monteur</div>
-                  <div className="flex gap-2 flex-wrap">
-                    <button
-                      onClick={() => setFilterMonteur('all')}
-                      className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${
-                        filterMonteur === 'all'
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-surface-low text-muted-foreground'
-                      }`}
-                    >
-                      Alle
-                    </button>
-                    {uniqueMonteurs.map(monteur => (
-                      <button
-                        key={monteur}
-                        onClick={() => setFilterMonteur(monteur)}
-                        className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${
-                          filterMonteur === monteur
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-surface-low text-muted-foreground'
-                        }`}
-                      >
-                        {monteur}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <div>
-                <div className="text-[10px] font-black uppercase tracking-wider text-muted-foreground mb-2">Sortering</div>
-                <div className="flex gap-2">
-                  {[
-                    { value: 'datum_desc', label: 'Nieuwste eerst' },
-                    { value: 'datum_asc', label: 'Oudste eerst' },
-                    { value: 'naam', label: 'Naam A-Z' },
-                  ].map(opt => (
-                    <button
-                      key={opt.value}
-                      onClick={() => setSortBy(opt.value as typeof sortBy)}
-                      className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
-                        sortBy === opt.value
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-surface-low text-muted-foreground'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {hasActiveFilters && (
-                <button
-                  onClick={() => { setFilterType('all'); setFilterMonteur('all'); setSortBy('datum_desc'); }}
-                  className="w-full py-2.5 rounded-xl text-xs font-bold text-muted-foreground bg-surface-container hover:bg-surface-high transition-all flex items-center justify-center gap-2"
-                >
-                  <span className="material-symbols-rounded text-base">filter_alt_off</span>
-                  Filters wissen
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {(search || hasActiveFilters) && filtered && (
-          <div className="text-xs text-muted-foreground mb-4 px-1 max-w-2xl mx-auto">
-            <span className="font-bold text-on-surface">{filtered.length}</span> station{filtered.length !== 1 ? 's' : ''} gevonden
-          </div>
-        )}
-
-        {/* ── Station list ── */}
-        {isLoading ? (
-          <div className="space-y-5">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="rounded-[28px] bg-surface-white p-7 shadow-[0_4px_24px_-6px_rgba(19,30,18,0.06)]">
-                <Skeleton className="h-4 w-2/5 mb-4 rounded-full" />
-                <Skeleton className="h-6 w-4/5 mb-3 rounded-lg" />
-                <Skeleton className="h-3 w-3/5 rounded-full" />
-              </div>
+      <main className="mx-auto max-w-3xl">
+        <div className="space-y-2.5 px-4 py-3">
+          <label className="relative block">
+            <span className="material-symbols-rounded absolute left-3 top-1/2 -translate-y-1/2 text-[20px] text-text-muted">search</span>
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Naam of behuizingsnummer" className="min-h-[44px] w-full rounded-lg border border-outline-variant/25 bg-surface-white py-[7px] pl-10 pr-3 text-sm font-medium text-on-surface outline-none placeholder:text-text-muted focus:border-primary/50 focus:ring-2 focus:ring-primary/10" />
+          </label>
+          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {([["mijn", "Mijn stations"], ["bijna", "Bijna klaar"], ["klaar", "Klaar"]] as const).map(([value, label]) => (
+              <button key={value} type="button" onClick={() => setActiveFilter(value)} className={`flex min-h-[44px] shrink-0 items-center gap-2 rounded-full border px-4 text-xs font-bold transition-colors ${activeFilter === value ? "border-on-surface bg-on-surface text-primary-foreground" : "border-outline-variant/40 bg-transparent text-text-secondary"}`}>
+                {label}<span className={`min-w-5 rounded-full px-1.5 py-0.5 text-center text-[10px] ${activeFilter === value ? "bg-surface-white/15" : "bg-surface-container"}`}>{counts[value]}</span>
+              </button>
             ))}
           </div>
-        ) : filtered?.length === 0 ? (
-          <div className="py-24 text-center">
-            <div className="w-16 h-16 rounded-full bg-surface-low flex items-center justify-center mx-auto mb-5">
-              <span className="material-symbols-rounded text-text-muted text-[32px]">search_off</span>
-            </div>
-            <p className="text-text-muted text-[15px] font-display font-medium">
-              {search ? "Geen stations gevonden" : "Nog geen stations aangemaakt."}
-            </p>
-          </div>
-        ) : (
-          (() => {
-            const enriched = filtered.map((station: any) => {
-              const applicable = getApplicableCategories(station);
-              const uniqueCategories = new Set(
-                station.fotos?.map((f: { categorie: string }) => f.categorie).filter((c: string) => applicable.some(ac => ac.name === c))
-              );
-              const cats = uniqueCategories.size;
-              const pct = Math.round((cats / applicable.length) * 100);
-              return { station, cats, pct, complete: cats === applicable.length };
-            });
-
-            const groups = [
-              { key: 'bezig', label: 'In uitvoering', hint: 'gestart, nog niet compleet', items: enriched.filter(e => !e.complete && e.cats > 0) },
-              { key: 'concept', label: 'Concept', hint: 'nog geen foto\'s', items: enriched.filter(e => e.cats === 0) },
-              { key: 'klaar', label: 'Afgerond', hint: 'alle categorieën compleet', items: enriched.filter(e => e.complete) },
-            ].filter(g => g.items.length > 0);
-
-            return (
-              <div className="space-y-5">
-                {groups.map(group => (
-                  <section key={group.key}>
-                    {/* Flat group band, matching the reference list */}
-                    <div className="flex items-center gap-2.5 px-3 sm:px-4 py-2 bg-surface-low">
-                      <span className="font-display text-[11px] font-extrabold uppercase tracking-[0.12em] text-text-primary">
-                        {group.label}
-                      </span>
-                      <span className="text-[10px] font-bold text-text-secondary">
-                        {group.items.length}
-                      </span>
-                      <span className="text-[10px] text-text-muted font-medium truncate">{group.hint}</span>
-                    </div>
-
-                    {/* Column headers */}
-                    <div className="hidden sm:grid grid-cols-[minmax(260px,2fr)_minmax(120px,0.8fr)_minmax(150px,1fr)_minmax(130px,0.8fr)_28px] items-center gap-4 px-4 py-2 bg-surface-white border-b border-outline-variant/15 text-[9px] font-bold uppercase tracking-[0.1em] text-text-muted">
-                      <span>Station / Behuizingsnummer</span>
-                      <span>Status</span>
-                      <span>Monteur</span>
-                      <span>Type</span>
-                      <span />
-                    </div>
-
-                    {/* Rows */}
-                    <div className="bg-surface-white border-b border-outline-variant/15 overflow-hidden">
-                      {group.items.map(({ station, cats, pct, complete }, idx) => {
-                        const isExpanded = expandedId === station.id;
-                        return (
-                          <div key={station.id} className={idx > 0 ? "border-t border-outline-variant/15" : ""}>
-                            <button
-                              onClick={() => setExpandedId(isExpanded ? null : station.id)}
-                              className={`w-full text-left transition-colors ${isExpanded ? 'bg-surface-low/60' : 'hover:bg-surface-low/35'}`}
-                            >
-                              <div className="grid grid-cols-[minmax(0,1fr)_auto_20px] sm:grid-cols-[minmax(260px,2fr)_minmax(120px,0.8fr)_minmax(150px,1fr)_minmax(130px,0.8fr)_28px] items-center gap-x-3 sm:gap-x-4 px-3 sm:px-4 py-2.5 min-h-[58px]">
-                                <div className="min-w-0">
-                                  <h3 className="font-display text-[13px] font-extrabold text-text-primary leading-tight truncate uppercase">
-                                    {station.naam_msr}
-                                  </h3>
-                                  <div className="text-[10px] text-text-muted font-mono mt-1 truncate">
-                                    {station.behuizingsnummer || '—'}
-                                    <span className="sm:hidden font-sans"> · {station.ingevuld_door || 'Geen monteur'}</span>
-                                  </div>
-                                </div>
-
-                                {/* Status */}
-                                <div className="flex justify-end sm:justify-start">
-                                  <span className={`text-[9px] font-extrabold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full font-display whitespace-nowrap ${
-                                    complete
-                                      ? 'bg-accent-gold/15 text-accent-gold'
-                                      : cats === 0
-                                        ? 'bg-surface-low text-text-muted'
-                                        : 'bg-primary/10 text-primary'
-                                  }`}>
-                                    {complete ? 'Afgerond' : cats === 0 ? 'Concept' : `${pct}%`}
-                                  </span>
-                                </div>
-
-                                {/* Monteur */}
-                                <div className="hidden sm:block text-[11px] font-medium text-text-secondary truncate">
-                                  {station.ingevuld_door || '—'}
-                                </div>
-
-                                {/* Type */}
-                                <div className="hidden sm:block">
-                                  {station.type_ruimte && (
-                                    <span className={`text-[9px] font-bold uppercase tracking-[0.1em] px-2 py-1 rounded-full font-display ${
-                                      station.type_ruimte === 'Compact Station' ? 'bg-orange/10 text-orange' : 'bg-purple-100 text-purple-700'
-                                    }`}>
-                                      {station.type_ruimte === 'Compact Station' ? 'Compact' : 'Betreedbaar'}
-                                    </span>
-                                  )}
-                                </div>
-
-                                <span className={`material-symbols-rounded text-text-muted text-[18px] transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}>
-                                  expand_more
-                                </span>
-                              </div>
-                            </button>
-
-                            {/* Expanded action panel */}
-                            {isExpanded && (
-                              <div className="bg-surface-low/40 px-3 sm:px-4 pb-3 pt-3 animate-fade-up border-t border-outline-variant/10">
-                                <div className="flex gap-2.5 max-w-xl">
-                                  <button
-                                    onClick={() => navigate(`/stations/${station.id}`)}
-                                    className="flex-1 min-w-0 min-h-[44px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-2xl font-display text-[15px] font-bold shadow-[0_6px_20px_-4px_rgba(0,100,47,0.35)] active:scale-[0.97] transition-all flex items-center justify-center gap-2.5"
-                                  >
-                                    <span className="material-symbols-rounded text-[18px] flex-shrink-0">edit_note</span>
-                                    <span className="truncate">Invullen</span>
-                                  </button>
-                                  <button
-                                    onClick={() => openPdf(station)}
-                                    className="h-[44px] w-[44px] flex items-center justify-center rounded-2xl bg-surface-white hover:bg-surface transition-all active:scale-[0.93] flex-shrink-0"
-                                    title="PDF rapport"
-                                  >
-                                    <span className="material-symbols-rounded text-text-secondary text-[20px]">description</span>
-                                  </button>
-                                  <button
-                                    onClick={async () => {
-                                      const stationFotos = (station.fotos ?? []).map((f: any) => ({ id: f.id, categorie: f.categorie, url: f.url }));
-                                      if (stationFotos.length === 0) { toast("Geen foto's om te downloaden"); return; }
-                                      setZipProgress(0);
-                                      try {
-                                        await downloadStationZip(station.naam_msr, stationFotos, (p) => setZipProgress(p));
-                                        toast.success("ZIP gedownload ✓");
-                                      } catch { toast.error("ZIP downloaden mislukt"); }
-                                      setZipProgress(null);
-                                    }}
-                                    disabled={zipProgress !== null}
-                                    className="relative h-[44px] w-[44px] flex items-center justify-center rounded-2xl bg-surface-white hover:bg-surface transition-all active:scale-[0.93] flex-shrink-0 disabled:opacity-60 overflow-hidden"
-                                    title="Foto's als ZIP"
-                                  >
-                                    {zipProgress !== null && (
-                                      <div className="absolute bottom-0 left-0 right-0 bg-primary/[0.12] transition-all duration-300 rounded-b-2xl" style={{ height: `${zipProgress}%` }} />
-                                    )}
-                                    <span className="material-symbols-rounded text-text-secondary text-[20px] relative z-10">
-                                      {zipProgress !== null ? "downloading" : "folder_zip"}
-                                    </span>
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeleteStation(station.id, station.naam_msr)}
-                                    className="h-[44px] w-[44px] flex items-center justify-center rounded-2xl bg-destructive/[0.06] hover:bg-destructive/[0.12] active:scale-[0.93] transition-all flex-shrink-0"
-                                    title="Station verwijderen"
-                                  >
-                                    <span className="material-symbols-rounded text-destructive/70 text-[20px]">delete</span>
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </section>
-                ))}
-              </div>
-            );
-          })()
-        )}
-
-
-        {/* Brand footer */}
-        <div className="mt-16 pb-4 text-center">
-          <span className="font-display text-[12px] font-extrabold text-primary/15 tracking-tight">TerreVolt</span>
-          <div className="font-display text-[8px] font-medium uppercase tracking-[0.2em] text-text-faint/40 mt-0.5">Technische Oplevering</div>
         </div>
+
+        <section aria-label="Stations" className="border-y border-outline-variant/20 bg-surface-white">
+          {isLoading ? Array.from({ length: 5 }).map((_, index) => (
+            <div key={index} className="border-b border-outline-variant/15 px-4 py-3 last:border-b-0"><Skeleton className="mb-2 h-4 w-1/2" /><Skeleton className="h-3 w-2/3" /></div>
+          )) : filtered.length === 0 ? (
+            <div className="px-6 py-14 text-center text-sm font-medium text-text-muted">Geen stations gevonden</div>
+          ) : filtered.map(({ station, done, total, remaining, complete, progress, missing, pending }) => {
+            const isExpanded = expandedId === station.id;
+            return (
+              <article key={station.id} className="border-b border-outline-variant/20 last:border-b-0">
+                <button type="button" aria-expanded={isExpanded} onClick={() => setExpandedId(isExpanded ? null : station.id)} className={`relative min-h-[68px] w-full px-4 pb-3 pt-2.5 text-left transition-colors ${isExpanded ? "bg-accent" : "bg-surface-white active:bg-surface-low"}`}>
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto_24px] items-center gap-2.5">
+                    <div className="min-w-0"><h2 className="truncate font-display text-sm font-extrabold text-on-surface">{station.naam_msr}</h2><p className="mt-0.5 truncate text-[11px] text-text-muted"><span className="font-mono">{station.behuizingsnummer || "Geen nummer"}</span><span className="font-sans"> · {station.ingevuld_door || "Geen monteur"}</span></p></div>
+                    <div className="text-right">
+                      <div className={`flex items-center justify-end gap-1 text-xs font-extrabold ${pending > 0 ? "text-sync-pending" : complete ? "text-primary" : "text-accent-gold"}`}><span className="material-symbols-rounded text-[16px]">{pending > 0 ? "upload" : complete ? "check_circle" : "pending_actions"}</span><span>{pending > 0 ? `${pending} wachten` : complete ? "Klaar" : `${remaining} te gaan`}</span></div>
+                      <div className="mt-0.5 text-[10px] font-medium text-text-muted">{done} / {total}</div>
+                    </div>
+                    <span className={`material-symbols-rounded text-[20px] text-text-secondary transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}>expand_more</span>
+                  </div>
+                  <div className="absolute inset-x-4 bottom-0 h-1 overflow-hidden rounded-full bg-surface-container"><div className="h-full rounded-full bg-primary transition-[width] duration-500" style={{ width: `${progress}%` }} /></div>
+                </button>
+
+                {isExpanded && (
+                  <div className="border-t border-primary/10 bg-accent px-4 pb-4 pt-3 animate-fade-up">
+                    <div className="mb-3"><div className="h-1.5 overflow-hidden rounded-full bg-surface-container"><div className="h-full rounded-full bg-primary" style={{ width: `${progress}%` }} /></div><p className="mt-2 text-xs font-semibold text-text-secondary">{done} van {total} foto&apos;s · {complete ? "alles compleet" : `${remaining} te gaan`}</p></div>
+                    {!complete && (
+                      <div className="mb-4 overflow-hidden rounded-lg border border-primary/15 bg-surface-white">
+                        <h3 className="px-3 pb-1 pt-3 text-xs font-extrabold text-on-surface">Nog nodig</h3>
+                        <div className="divide-y divide-outline-variant/15">{missing.map((category) => (
+                          <button key={category.id} type="button" onClick={() => navigate(`/stations/${station.id}?categorie=${category.id}`)} className="flex min-h-[44px] w-full items-center justify-between gap-3 px-3 text-left text-xs font-semibold text-text-secondary active:bg-surface-low"><span className="truncate">{category.name} · {category.missing} {category.missing === 1 ? "foto" : "foto's"}</span><span className="material-symbols-rounded shrink-0 text-[18px] text-primary">arrow_forward</span></button>
+                        ))}</div>
+                      </div>
+                    )}
+                    <button type="button" onClick={() => complete ? openPdf(station) : navigate(`/stations/${station.id}`)} className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-[13px] font-display text-sm font-bold text-primary-foreground active:bg-primary-hover"><span className="material-symbols-rounded text-[20px]">{complete ? "description" : "photo_camera"}</span>{complete ? "Rapport bekijken" : "Verder invullen"}</button>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <button type="button" onClick={() => openPdf(station)} className="flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-outline-variant/40 bg-surface-white text-xs font-bold text-text-secondary active:bg-surface-low"><span className="material-symbols-rounded text-[18px]">description</span>Rapport</button>
+                      <button type="button" onClick={() => shareStation(station)} className="flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-outline-variant/40 bg-surface-white text-xs font-bold text-text-secondary active:bg-surface-low"><span className="material-symbols-rounded text-[18px]">ios_share</span>Delen</button>
+                    </div>
+                    <div className="mt-3 flex min-h-[44px] items-center justify-between border-t border-primary/10 pt-2">
+                      <p className="min-w-0 truncate pr-2 text-[10px] text-text-muted">Aangemaakt {formatCreatedAt(station.created_at)} · {station.ingevuld_door || "Onbekend"}</p>
+                      <DropdownMenu><DropdownMenuTrigger asChild><button type="button" className="flex min-h-[44px] items-center gap-1 rounded-lg px-2 text-xs font-bold text-text-secondary" aria-label={`Meer acties voor ${station.naam_msr}`}><span className="material-symbols-rounded text-[19px]">more_horiz</span>Meer</button></DropdownMenuTrigger><DropdownMenuContent align="end" className="min-w-[190px]"><DropdownMenuItem onSelect={() => setDeleteTarget({ id: station.id, naam: station.naam_msr })} className="min-h-[44px] gap-2 text-destructive focus:text-destructive"><span className="material-symbols-rounded text-[18px]">delete</span>Station verwijderen</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
+                    </div>
+                  </div>
+                )}
+              </article>
+            );
+          })}
+        </section>
+
+        <div className="flex justify-center px-4 py-5"><button type="button" onClick={() => navigate("/stations/new")} className="flex min-h-[48px] items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-bold text-primary-foreground shadow-sm active:bg-primary-hover"><span className="material-symbols-rounded text-[20px]">add</span>Nieuw station</button></div>
       </main>
+
+      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Station verwijderen?</AlertDialogTitle><AlertDialogDescription>Het station en alle bijbehorende foto&apos;s worden definitief verwijderd. Daarna wordt om de toegangscode gevraagd.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Annuleren</AlertDialogCancel><AlertDialogAction onClick={handleDeleteStation} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Verwijderen</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

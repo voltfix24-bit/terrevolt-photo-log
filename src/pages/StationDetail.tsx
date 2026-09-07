@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { requirePin } from "@/lib/require-pin";
@@ -682,6 +682,7 @@ function WizardView({
 export default function StationDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const [uploadingCat, setUploadingCat] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
@@ -848,6 +849,15 @@ export default function StationDetail() {
     setWizardStartIndex(idx >= 0 ? idx : 0);
     setWizardOpen(true);
   }, [applicableCategories]);
+
+  useEffect(() => {
+    const categoryId = Number(searchParams.get("categorie"));
+    if (!categoryId || applicableCategories.length === 0) return;
+    const category = applicableCategories.find((item) => item.id === categoryId);
+    if (!category) return;
+    openWizardAt(category);
+    setSearchParams({}, { replace: true });
+  }, [applicableCategories, openWizardAt, searchParams, setSearchParams]);
 
   // Find next incomplete category across applicable categories
   const nextIncomplete = useMemo(() => {

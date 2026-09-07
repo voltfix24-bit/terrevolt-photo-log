@@ -75,6 +75,7 @@ export default {
         "outline-variant": "hsl(var(--outline-variant))",
         orange: "hsl(var(--orange))",
         purple: "hsl(var(--purple))",
+        "sync-pending": "hsl(var(--sync-pending))",
         tertiary: {
           DEFAULT: "hsl(var(--tertiary))",
           soft: "hsl(var(--tertiary-soft))",
