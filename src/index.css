@@ -8,6 +8,7 @@
 @layer base {
   :root {
     --background: 116 90% 96%;
+    --home-background: 103 47% 97%;
     --foreground: 114 26% 9%;
 
     --card: 0 0% 100%;
@@ -55,7 +56,6 @@
     --orange: 15 82% 50%;
     --purple: 276 52% 36%;
     --sync-pending: 210 80% 40%;
-    --attention: 37 85% 28%;
 
     --primary-container: 116 90% 96%;
     --on-primary-container: 150 100% 10%;
