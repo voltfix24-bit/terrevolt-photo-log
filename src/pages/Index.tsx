@@ -78,7 +78,7 @@ export default function Dashboard() {
     const missing = applicable.map((category) => ({ ...category, missing: Math.max(requiredPhotos(category) - (photosByCategory.get(category.name) ?? 0), 0) })).filter((category) => category.missing > 0);
     const lastEdited = dateValue(station.updated_at);
     const stale = lastEdited > 0 && Date.now() - lastEdited > 7 * 24 * 60 * 60 * 1000;
-    return { station, done, total, remaining: total - done, complete: done === total, progress: total > 0 ? Math.round((done / total) * 100) : 0, missing, pending: pendingCounts[station.id] ?? 0, lastEdited, stale };
+    return { station, done, total, remaining: total - done, complete: done === total, missing, pending: pendingCounts[station.id] ?? 0, lastEdited, stale };
   }), [stations, pendingCounts]);
 
   const counts = useMemo(() => ({ mijn: enriched.length, bijna: enriched.filter((item) => item.remaining > 0 && item.remaining <= 3).length, klaar: enriched.filter((item) => item.complete).length }), [enriched]);
@@ -198,7 +198,7 @@ export default function Dashboard() {
             <div key={index} className="border-b border-outline-variant/15 px-4 py-3 last:border-b-0"><Skeleton className="mb-2 h-4 w-1/2" /><Skeleton className="h-3 w-2/3" /></div>
           )) : filtered.length === 0 ? (
             <div className="px-6 py-14 text-center text-sm font-medium text-text-muted">Geen stations gevonden</div>
-          ) : filtered.map(({ station, done, total, remaining, complete, progress, missing, pending, stale }) => {
+          ) : filtered.map(({ station, done, total, remaining, complete, missing, pending, stale }) => {
             const isExpanded = expandedId === station.id;
             const displayName = formatStationName(station.naam_msr);
             return (
