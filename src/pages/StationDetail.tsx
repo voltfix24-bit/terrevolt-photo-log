@@ -734,7 +734,7 @@ export default function StationDetail() {
   const [shareStation, setShareStation] = useState('');
   const { data: voorbeelden } = useVoorbeelden();
   const { data: instellingenData } = useInstellingen();
-  const { skipped, addSkip, removeSkip, isSkipped } = useSkippedCategories(id);
+  const { skipped, skippedReasons, addSkip, removeSkip, isSkipped } = useSkippedCategories(id);
   const isOnline = useOnline();
   const { data: opmerkingen } = useQuery({
     queryKey: ['opmerkingen', id],
@@ -872,7 +872,7 @@ export default function StationDetail() {
 
   const openPdf = () => {
     if (!station || !fotos) return;
-    const html = generatePdfHtml(station, fotos, instellingenData ?? undefined, opmerkingen ?? undefined);
+    const html = generatePdfHtml(station, fotos, instellingenData ?? undefined, opmerkingen ?? undefined, skipped.map(categorie => ({ categorie, reden: skippedReasons[categorie] || 'Geen reden opgegeven' })));
     const w = window.open("", "_blank");
     if (w) { w.document.write(html); w.document.close(); }
     setShareStation(station.naam_msr);
@@ -950,6 +950,7 @@ export default function StationDetail() {
           onSkip={addSkip}
           onUnskip={removeSkip}
           skipped={skipped}
+          skippedReasons={skippedReasons}
           station={station}
           fotos={fotos ?? []}
           fotosByCategorie={fotosByCategorie}
@@ -965,7 +966,7 @@ export default function StationDetail() {
         />
       )}
 
-      <main className="pt-20 pb-0 px-4 max-w-3xl mx-auto animate-fade-up">
+      <main className="pt-2 pb-0 px-4 max-w-3xl mx-auto animate-fade-up">
         {/* ── 1. HERO ── */}
         <div className="px-5 pt-4 pb-5">
           {/* ROW 1: Navigation bar */}
@@ -1016,22 +1017,15 @@ export default function StationDetail() {
           </p>
 
           {/* Progress row */}
-          <div className="flex items-end justify-between mb-2">
-            <div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Overall Progress</div>
-              <div className="font-display text-[42px] font-black leading-none text-on-surface">
-                {pct}<span className="text-[20px] text-muted-foreground">%</span>
-              </div>
+          <div className="mb-3">
+            <div className="font-display text-[22px] font-medium leading-tight text-on-surface">
+              {allDone ? 'Alle taken afgerond' : `${applicableCategories.length - filledCount - skipped.length} taken open`}
             </div>
-            <div className="text-right pb-1">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Categorieën</div>
-              <div className="font-display text-[20px] font-extrabold text-primary">{filledCount} / {applicableCategories.length}</div>
-              <div className="text-xs text-muted-foreground">{fotos?.length ?? 0} foto's</div>
-            </div>
+            <div className="mt-1 text-[12px] text-text-muted">{filledCount} van {applicableCategories.length} · {fotos?.length ?? 0} foto's · {pct}%</div>
           </div>
           {/* Progress bar */}
-          <div className="h-2 bg-surface-container rounded-full overflow-hidden">
-            <div className="h-full rounded-full bg-gradient-to-r from-primary to-primary-light transition-all duration-700" style={{ width: `${pct}%` }} />
+          <div className="h-[5px] bg-primary/15 rounded-full overflow-hidden">
+            <div className="h-full rounded-full bg-primary transition-all duration-700" style={{ width: `${pct}%` }} />
           </div>
         </div>
 
@@ -1051,21 +1045,21 @@ export default function StationDetail() {
               <div ref={el => { sectionRefs.current[section.id] = el; }} key={section.id}
                 className={`rounded-xl overflow-hidden mb-3 ${
                   isComplete
-                    ? 'bg-primary/[0.04] border border-primary/15'
+                    ? 'bg-primary/10 border border-primary/15'
                     : isSectionOpen
-                    ? 'bg-surface-highest/30 shadow-[0px_10px_30px_rgba(19,30,18,0.04)] ring-1 ring-primary/10'
+                    ? 'bg-surface-low border-y border-r border-orange/25 border-l-[3px] border-l-orange rounded-l-none'
                     : 'bg-surface-low hover:bg-surface-container transition-all duration-300'
                 }`}
               >
                 {/* Section header */}
                 <button
                   onClick={() => toggleSection(section.id)}
-                  className={`flex items-center justify-between p-5 w-full cursor-pointer text-left ${
+                  className={`flex min-h-[72px] items-center justify-between p-4 w-full cursor-pointer text-left ${
                     isSectionOpen ? 'bg-surface-low' : ''
                   }`}
                 >
                   <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm ${
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
                       isComplete
                         ? 'bg-primary text-primary-foreground shadow-primary/30'
                         : 'bg-primary/10 text-primary'
@@ -1076,14 +1070,14 @@ export default function StationDetail() {
                     </div>
                     <div>
                       <h3 className={`font-display font-bold text-[17px] ${
-                        isComplete ? 'text-primary font-extrabold' : 'text-on-surface'
+                        'text-on-surface'
                       }`}>
                         {section.label}
                       </h3>
                       <p className="text-xs mt-0.5 text-on-surface-variant">
                         {cats.length} taken
                         {openCats.length > 0 && <> · <span className="text-orange font-semibold">{openCats.length} open</span></>}
-                        {isComplete && <> · <span className="text-primary font-semibold">Voltooid</span></>}
+                        {isComplete && <> · <span className="text-primary font-semibold">voltooid</span></>}
                       </p>
                     </div>
                   </div>
@@ -1096,17 +1090,17 @@ export default function StationDetail() {
 
                 {/* Expanded content */}
                 {isSectionOpen && (
-                  <div className="p-4 space-y-3">
-                    {sortedCats.map(cat => (
-                      <CategoryRow
-                        key={cat.id}
-                        cat={cat}
-                        fotos={fotosByCategorie(cat.name)}
-                        isSkipped={isSkipped(cat.name)}
-                        hasOpmerking={!!opmerkingen?.some(o => o.categorie === cat.name)}
-                        onOpen={() => openWizardAt(cat)}
-                      />
-                    ))}
+                  <div className="px-4 pb-4">
+                    {openCats.length > 0 && <div className="pb-2 pt-1 text-[11px] font-bold uppercase tracking-wider text-orange">Nog te doen</div>}
+                    <div className="space-y-2">
+                      {openCats.map(cat => <CategoryRow key={cat.id} cat={cat} fotos={[]} hasOpmerking={!!opmerkingen?.some(o => o.categorie === cat.name)} onOpen={() => openWizardAt(cat)} />)}
+                    </div>
+                    {(doneCats.length > 0 || skippedCats.length > 0) && <div className="pb-1 pt-4 text-[11px] font-bold uppercase tracking-wider text-text-muted">Afgerond · {doneCats.length + skippedCats.length}</div>}
+                    <div>
+                      {[...doneCats, ...skippedCats].map(cat => (
+                        <CategoryRow key={cat.id} cat={cat} fotos={fotosByCategorie(cat.name)} isSkipped={isSkipped(cat.name)} skipReason={skippedReasons[cat.name]} hasOpmerking={!!opmerkingen?.some(o => o.categorie === cat.name)} onOpen={() => openWizardAt(cat)} />
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
