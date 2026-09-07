@@ -141,12 +141,15 @@ export default function Dashboard() {
   const formatCreatedAt = (value?: string | null) => !value ? "Datum onbekend" : new Intl.DateTimeFormat("nl-NL", { day: "numeric", month: "short" }).format(new Date(value));
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen bg-home pb-24">
       <header className="sticky top-0 z-40 border-b border-outline-variant/20 bg-surface-white/95 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4">
           <div className="flex items-center gap-2 text-primary">
-            <span className="material-symbols-rounded text-[21px]" style={{ fontVariationSettings: "'FILL' 1" }}>bolt</span>
-            <h1 className="font-display text-[15px] font-semibold text-on-surface">TO-foto&apos;s</h1>
+            <span className="material-symbols-rounded text-[21px] text-accent-gold" style={{ fontVariationSettings: "'FILL' 1" }}>bolt</span>
+            <div className="leading-none">
+              <span className="block text-[9px] font-bold text-primary">TerreVolt</span>
+              <h1 className="mt-0.5 font-display text-[15px] font-semibold text-on-surface">TO-foto&apos;s</h1>
+            </div>
           </div>
           <div className={`flex min-h-[32px] items-center gap-1.5 rounded-full px-3 text-xs font-bold ${!isOnline ? "bg-surface-container text-text-secondary" : totalPending > 0 ? "bg-orange/10 text-orange" : "bg-primary/10 text-primary"}`}>
             <span className="material-symbols-rounded text-[17px]">{!isOnline ? "cloud_off" : totalPending > 0 ? "upload" : "cloud_done"}</span>
@@ -164,8 +167,8 @@ export default function Dashboard() {
           <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <div className="flex shrink-0 gap-2">
               {([["mijn", "Mijn stations"], ["bijna", "Bijna klaar"], ["klaar", "Klaar"]] as const).filter(([value]) => counts[value] > 0).map(([value, label]) => (
-                <button key={value} type="button" onClick={() => setActiveFilter(value)} className={`flex min-h-[44px] shrink-0 items-center gap-2 rounded-full border px-4 text-xs font-bold transition-colors ${activeFilter === value ? "border-on-surface bg-on-surface text-primary-foreground" : "border-outline-variant/40 bg-transparent text-text-secondary"}`}>
-                  {label}<span className={`min-w-5 rounded-full px-1.5 py-0.5 text-center text-[10px] ${activeFilter === value ? "bg-surface-white/15" : "bg-surface-container"}`}>{counts[value]}</span>
+                <button key={value} type="button" onClick={() => setActiveFilter(value)} className={`flex min-h-[44px] shrink-0 items-center gap-2 rounded-full border px-4 text-xs font-bold transition-colors ${activeFilter === value ? "border-brand-green bg-brand-green text-primary-foreground" : "border-outline-variant/40 bg-transparent text-text-secondary"}`}>
+                  {label}<span className={`min-w-5 rounded-full px-1.5 py-0.5 text-center text-[10px] ${activeFilter === value ? "bg-primary-light/30 text-primary-foreground" : "bg-surface-container"}`}>{counts[value]}</span>
                 </button>
               ))}
             </div>
@@ -185,7 +188,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <section aria-label="Stations" className="border-y border-outline-variant/20 bg-surface-white">
+        <section aria-label="Stations" className="border-y border-outline-variant/20 bg-home">
           {isLoading ? Array.from({ length: 5 }).map((_, index) => (
             <div key={index} className="border-b border-outline-variant/15 px-4 py-3 last:border-b-0"><Skeleton className="mb-2 h-4 w-1/2" /><Skeleton className="h-3 w-2/3" /></div>
           )) : filtered.length === 0 ? (
@@ -199,8 +202,8 @@ export default function Dashboard() {
                   <div className="grid grid-cols-[minmax(0,1fr)_auto_24px] items-center gap-2.5">
                     <div className="min-w-0"><h2 className="line-clamp-2 font-display text-sm font-extrabold leading-[18px] text-on-surface">{displayName}</h2><p className="mt-0.5 truncate text-[11px] text-text-muted"><span className="font-mono">{station.behuizingsnummer || "Geen nummer"}</span><span className="font-sans"> · {station.ingevuld_door || "Geen monteur"}</span></p></div>
                     <div className="text-right">
-                      <div className={`flex items-center justify-end gap-1 text-xs font-extrabold ${pending > 0 ? "text-sync-pending" : complete ? "text-primary" : remaining >= 4 ? "text-attention" : "text-text-secondary"}`}>
-                        {(pending > 0 || complete || stale) && <span className="material-symbols-rounded text-[16px]">{pending > 0 ? "upload" : complete ? "check_circle" : "schedule"}</span>}
+                      <div className={`flex items-center justify-end gap-1 text-xs font-extrabold ${pending > 0 ? "text-sync-pending" : complete || remaining >= 4 ? "text-primary" : "text-text-secondary"}`}>
+                        {(pending > 0 || complete || stale) && <span className={`material-symbols-rounded text-[16px] ${remaining >= 4 && pending === 0 && !complete ? "text-accent-gold" : ""}`}>{pending > 0 ? "upload" : complete ? "check_circle" : "schedule"}</span>}
                         <span>{pending > 0 ? `${pending} wachten` : complete ? "Klaar" : `${remaining} te gaan`}</span>
                       </div>
                       <div className="mt-0.5 text-[10px] font-medium text-text-muted">{done} / {total}</div>
@@ -239,7 +242,7 @@ export default function Dashboard() {
 
       </main>
 
-      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center border-t-[0.5px] border-border bg-background px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3">
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center border-t-[0.5px] border-border bg-home px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3">
         <button type="button" onClick={() => navigate("/stations/new")} className="pointer-events-auto flex min-h-[48px] items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-bold text-primary-foreground shadow-sm active:bg-primary-hover"><span className="material-symbols-rounded text-[20px]">add</span>Nieuw station</button>
       </div>
 

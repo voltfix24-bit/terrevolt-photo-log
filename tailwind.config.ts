@@ -22,6 +22,7 @@ export default {
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
+        home: "hsl(var(--home-background))",
         foreground: "hsl(var(--foreground))",
         primary: {
           DEFAULT: "hsl(var(--primary))",
@@ -32,6 +33,7 @@ export default {
           soft: "hsl(var(--primary-soft))",
           "soft-2": "hsl(var(--primary-soft-2))",
         },
+        "brand-green": "hsl(var(--brand-green))",
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
           foreground: "hsl(var(--secondary-foreground))",
@@ -76,7 +78,6 @@ export default {
         orange: "hsl(var(--orange))",
         purple: "hsl(var(--purple))",
         "sync-pending": "hsl(var(--sync-pending))",
-        attention: "hsl(var(--attention))",
         tertiary: {
           DEFAULT: "hsl(var(--tertiary))",
           soft: "hsl(var(--tertiary-soft))",
