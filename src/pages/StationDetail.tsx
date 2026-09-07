@@ -236,9 +236,10 @@ interface WizardViewProps {
   startIndex: number;
   stationId: string;
   onClose: () => void;
-  onSkip: (catName: string) => void;
+  onSkip: (catName: string, reason?: string) => void;
   onUnskip: (catName: string) => void;
   skipped: string[];
+  skippedReasons: Record<string, string>;
   station: { vermogensveld: boolean | null; da_kast: boolean | null; naam_msr: string; type_ruimte: string | null };
   fotos: FotoRow[];
   fotosByCategorie: (cat: string) => FotoRow[];
@@ -254,7 +255,7 @@ interface WizardViewProps {
 }
 
 function WizardView({
-  startIndex, stationId, onClose, onSkip, onUnskip, skipped, station,
+  startIndex, stationId, onClose, onSkip, onUnskip, skipped, skippedReasons, station,
   fotosByCategorie, isUploading, uploadProgress,
   onUpload, onDelete, onClickThumb, onOpenPdf, filledCount, voorbeelden,
   applicableCategories,
@@ -269,6 +270,13 @@ function WizardView({
   const [opmerkingText, setOpmerkingText] = useState('');
   const [savingOpmerking, setSavingOpmerking] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; path: string } | null>(null);
+  const [skipReasonOpen, setSkipReasonOpen] = useState(false);
+  const [skipReasonChoice, setSkipReasonChoice] = useState('');
+  const [skipReasonOther, setSkipReasonOther] = useState('');
+  const [opmerkingOpen, setOpmerkingOpen] = useState(false);
+  const [opmerkingSaved, setOpmerkingSaved] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState<{ foto: FotoRow; index: number } | null>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
 
   const cat = applicableCategories[currentIndex];
   const catFotos = cat ? fotosByCategorie(cat.name) : [];
@@ -298,6 +306,8 @@ function WizardView({
 
   useEffect(() => {
     setOpmerkingText(opmerkingData?.opmerking || '');
+    setOpmerkingOpen(false);
+    setOpmerkingSaved(false);
   }, [opmerkingData, currentIndex]);
 
   const saveOpmerking = async () => {
@@ -306,6 +316,7 @@ function WizardView({
       await supabase.from('categorie_opmerkingen').delete().eq('station_id', stationId).eq('categorie', cat.name);
       queryClient.invalidateQueries({ queryKey: ['opmerking', stationId, cat.name] });
       queryClient.invalidateQueries({ queryKey: ['opmerkingen', stationId] });
+      setOpmerkingSaved(true);
       return;
     }
     setSavingOpmerking(true);
@@ -316,6 +327,7 @@ function WizardView({
       updated_at: new Date().toISOString(),
     }, { onConflict: 'station_id,categorie' });
     setSavingOpmerking(false);
+    setOpmerkingSaved(true);
     queryClient.invalidateQueries({ queryKey: ['opmerking', stationId, cat.name] });
     queryClient.invalidateQueries({ queryKey: ['opmerkingen', stationId] });
   };
@@ -343,10 +355,19 @@ function WizardView({
   };
 
   const handleSkip = () => {
-    if (cat) {
-      onSkip(cat.name);
-      goNext();
-    }
+    if (!cat) return;
+    setSkipReasonChoice('');
+    setSkipReasonOther('');
+    setSkipReasonOpen(true);
+  };
+
+  const confirmSkip = () => {
+    if (!cat) return;
+    const reason = skipReasonChoice === 'Anders' ? skipReasonOther.trim() : skipReasonChoice;
+    if (!reason) return;
+    onSkip(cat.name, reason);
+    setSkipReasonOpen(false);
+    goNext();
   };
 
   const openAt = (c: Category) => {
