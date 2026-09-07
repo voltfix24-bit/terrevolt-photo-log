@@ -121,10 +121,10 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <main className="px-5 max-w-lg mx-auto animate-fade-up">
+      <main className="px-4 sm:px-6 max-w-[1600px] mx-auto animate-fade-up">
 
         {/* ── Search + Filter ── */}
-        <div className="relative -mt-3 mb-5">
+        <div className="relative -mt-3 mb-5 max-w-2xl mx-auto">
           <div className="flex gap-2">
             <div className="relative flex-1 bg-surface-white rounded-[22px] shadow-[0_8px_32px_-8px_rgba(19,30,18,0.08)] border border-outline-variant/6 overflow-hidden">
               <span className="material-symbols-rounded absolute left-5 top-1/2 -translate-y-1/2 text-primary/35 text-[22px]">search</span>
@@ -237,7 +237,7 @@ export default function Dashboard() {
         </div>
 
         {(search || hasActiveFilters) && filtered && (
-          <div className="text-xs text-muted-foreground mb-4 px-1">
+          <div className="text-xs text-muted-foreground mb-4 px-1 max-w-2xl mx-auto">
             <span className="font-bold text-on-surface">{filtered.length}</span> station{filtered.length !== 1 ? 's' : ''} gevonden
           </div>
         )}
@@ -281,51 +281,53 @@ export default function Dashboard() {
             ].filter(g => g.items.length > 0);
 
             return (
-              <div className="space-y-6">
+              <div className="space-y-5">
                 {groups.map(group => (
                   <section key={group.key}>
-                    {/* Group header bar */}
-                    <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-t-xl bg-surface-low border border-outline-variant/15">
-                      <span className="font-display text-[11px] font-extrabold uppercase tracking-[0.14em] text-text-primary">
+                    {/* Flat group band, matching the reference list */}
+                    <div className="flex items-center gap-2.5 px-3 sm:px-4 py-2 bg-surface-low">
+                      <span className="font-display text-[11px] font-extrabold uppercase tracking-[0.12em] text-text-primary">
                         {group.label}
                       </span>
-                      <span className="text-[10px] font-bold text-text-secondary bg-surface-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+                      <span className="text-[10px] font-bold text-text-secondary">
                         {group.items.length}
                       </span>
-                      <span className="text-[11px] text-text-muted font-medium truncate">{group.hint}</span>
+                      <span className="text-[10px] text-text-muted font-medium truncate">{group.hint}</span>
                     </div>
 
                     {/* Column headers */}
-                    <div className="hidden sm:flex items-center gap-3 px-4 py-2 bg-surface-white border-x border-b border-outline-variant/12 text-[9px] font-bold uppercase tracking-[0.12em] text-text-muted">
-                      <span className="flex-1">Station / Behuizingsnummer</span>
-                      <span className="w-24 text-center">Voortgang</span>
-                      <span className="w-32 text-center">Monteur</span>
-                      <span className="w-24 text-right">Type</span>
+                    <div className="hidden sm:grid grid-cols-[minmax(260px,2fr)_minmax(120px,0.8fr)_minmax(150px,1fr)_minmax(130px,0.8fr)_28px] items-center gap-4 px-4 py-2 bg-surface-white border-b border-outline-variant/15 text-[9px] font-bold uppercase tracking-[0.1em] text-text-muted">
+                      <span>Station / Behuizingsnummer</span>
+                      <span>Status</span>
+                      <span>Monteur</span>
+                      <span>Type</span>
+                      <span />
                     </div>
 
                     {/* Rows */}
-                    <div className="bg-surface-white border-x border-b border-outline-variant/12 rounded-b-xl overflow-hidden">
+                    <div className="bg-surface-white border-b border-outline-variant/15 overflow-hidden">
                       {group.items.map(({ station, cats, pct, complete }, idx) => {
                         const isExpanded = expandedId === station.id;
                         return (
-                          <div key={station.id} className={idx > 0 ? "border-t border-outline-variant/10" : ""}>
+                          <div key={station.id} className={idx > 0 ? "border-t border-outline-variant/15" : ""}>
                             <button
                               onClick={() => setExpandedId(isExpanded ? null : station.id)}
-                              className={`w-full text-left transition-colors ${isExpanded ? 'bg-surface-low/60' : 'hover:bg-surface-low/40'}`}
+                              className={`w-full text-left transition-colors ${isExpanded ? 'bg-surface-low/60' : 'hover:bg-surface-low/35'}`}
                             >
-                              <div className="flex items-center gap-3 px-4 py-3">
-                                <div className="flex-1 min-w-0">
-                                  <h3 className="font-display text-[14px] font-extrabold text-text-primary leading-tight tracking-[-0.01em] truncate uppercase">
+                              <div className="grid grid-cols-[minmax(0,1fr)_auto_20px] sm:grid-cols-[minmax(260px,2fr)_minmax(120px,0.8fr)_minmax(150px,1fr)_minmax(130px,0.8fr)_28px] items-center gap-x-3 sm:gap-x-4 px-3 sm:px-4 py-2.5 min-h-[58px]">
+                                <div className="min-w-0">
+                                  <h3 className="font-display text-[13px] font-extrabold text-text-primary leading-tight truncate uppercase">
                                     {station.naam_msr}
                                   </h3>
-                                  <div className="text-[11px] text-text-muted font-mono mt-0.5 truncate">
+                                  <div className="text-[10px] text-text-muted font-mono mt-1 truncate">
                                     {station.behuizingsnummer || '—'}
+                                    <span className="sm:hidden font-sans"> · {station.ingevuld_door || 'Geen monteur'}</span>
                                   </div>
                                 </div>
 
-                                {/* Progress pill */}
-                                <div className="w-24 flex justify-center flex-shrink-0">
-                                  <span className={`text-[9px] font-extrabold uppercase tracking-[0.1em] px-2.5 py-1 rounded-full font-display ${
+                                {/* Status */}
+                                <div className="flex justify-end sm:justify-start">
+                                  <span className={`text-[9px] font-extrabold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full font-display whitespace-nowrap ${
                                     complete
                                       ? 'bg-accent-gold/15 text-accent-gold'
                                       : cats === 0
@@ -337,12 +339,12 @@ export default function Dashboard() {
                                 </div>
 
                                 {/* Monteur */}
-                                <div className="hidden sm:block w-32 text-center text-[11px] font-medium text-text-secondary truncate flex-shrink-0">
+                                <div className="hidden sm:block text-[11px] font-medium text-text-secondary truncate">
                                   {station.ingevuld_door || '—'}
                                 </div>
 
                                 {/* Type */}
-                                <div className="hidden sm:block w-24 text-right flex-shrink-0">
+                                <div className="hidden sm:block">
                                   {station.type_ruimte && (
                                     <span className={`text-[9px] font-bold uppercase tracking-[0.1em] px-2 py-1 rounded-full font-display ${
                                       station.type_ruimte === 'Compact Station' ? 'bg-orange/10 text-orange' : 'bg-purple-100 text-purple-700'
@@ -352,7 +354,7 @@ export default function Dashboard() {
                                   )}
                                 </div>
 
-                                <span className={`material-symbols-rounded text-text-muted text-[18px] flex-shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}>
+                                <span className={`material-symbols-rounded text-text-muted text-[18px] transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}>
                                   expand_more
                                 </span>
                               </div>
@@ -360,8 +362,8 @@ export default function Dashboard() {
 
                             {/* Expanded action panel */}
                             {isExpanded && (
-                              <div className="bg-surface-low/40 px-4 pb-4 pt-3 animate-fade-up border-t border-outline-variant/10">
-                                <div className="flex gap-2.5">
+                              <div className="bg-surface-low/40 px-3 sm:px-4 pb-3 pt-3 animate-fade-up border-t border-outline-variant/10">
+                                <div className="flex gap-2.5 max-w-xl">
                                   <button
                                     onClick={() => navigate(`/stations/${station.id}`)}
                                     className="flex-1 min-w-0 min-h-[44px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-2xl font-display text-[15px] font-bold shadow-[0_6px_20px_-4px_rgba(0,100,47,0.35)] active:scale-[0.97] transition-all flex items-center justify-center gap-2.5"
