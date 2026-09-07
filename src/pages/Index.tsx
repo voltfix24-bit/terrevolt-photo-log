@@ -329,18 +329,18 @@ export default function Dashboard() {
 
                   {/* Expanded action panel */}
                   {isExpanded && (
-                    <div className="bg-surface-white rounded-b-[28px] px-7 pb-7 pt-3 shadow-[0_12px_48px_-12px_rgba(19,30,18,0.12)] animate-fade-up border-t border-outline-variant/5">
+                    <div className="bg-surface-white rounded-b-2xl px-4 pb-4 pt-2 shadow-[0_8px_32px_-12px_rgba(19,30,18,0.12)] animate-fade-up border-t border-outline-variant/10">
                       <div className="flex gap-2.5">
                         <button
                           onClick={() => navigate(`/stations/${station.id}`)}
-                          className="flex-1 min-w-0 min-h-[52px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-2xl font-display text-[15px] font-bold shadow-[0_6px_20px_-4px_rgba(0,100,47,0.35)] active:scale-[0.97] transition-all flex items-center justify-center gap-2.5"
+                          className="flex-1 min-w-0 min-h-[44px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-2xl font-display text-[15px] font-bold shadow-[0_6px_20px_-4px_rgba(0,100,47,0.35)] active:scale-[0.97] transition-all flex items-center justify-center gap-2.5"
                         >
                           <span className="material-symbols-rounded text-[18px] flex-shrink-0">edit_note</span>
                           <span className="truncate">Invullen</span>
                         </button>
                         <button
                           onClick={() => openPdf(station)}
-                          className="h-[52px] w-[48px] flex items-center justify-center rounded-2xl bg-surface-low hover:bg-surface transition-all active:scale-[0.93] flex-shrink-0"
+                          className="h-[44px] w-[44px] flex items-center justify-center rounded-2xl bg-surface-low hover:bg-surface transition-all active:scale-[0.93] flex-shrink-0"
                           title="PDF rapport"
                         >
                           <span className="material-symbols-rounded text-text-secondary text-[20px]">description</span>
@@ -357,7 +357,7 @@ export default function Dashboard() {
                             setZipProgress(null);
                           }}
                           disabled={zipProgress !== null}
-                          className="relative h-[52px] w-[48px] flex items-center justify-center rounded-2xl bg-surface-low hover:bg-surface transition-all active:scale-[0.93] flex-shrink-0 disabled:opacity-60 overflow-hidden"
+                          className="relative h-[44px] w-[44px] flex items-center justify-center rounded-2xl bg-surface-low hover:bg-surface transition-all active:scale-[0.93] flex-shrink-0 disabled:opacity-60 overflow-hidden"
                           title="Foto's als ZIP"
                         >
                           {zipProgress !== null && (
@@ -369,7 +369,7 @@ export default function Dashboard() {
                         </button>
                         <button
                           onClick={() => handleDeleteStation(station.id, station.naam_msr)}
-                          className="h-[52px] w-[48px] flex items-center justify-center rounded-2xl bg-destructive/[0.06] hover:bg-destructive/[0.12] active:scale-[0.93] transition-all flex-shrink-0"
+                          className="h-[44px] w-[44px] flex items-center justify-center rounded-2xl bg-destructive/[0.06] hover:bg-destructive/[0.12] active:scale-[0.93] transition-all flex-shrink-0"
                           title="Station verwijderen"
                         >
                           <span className="material-symbols-rounded text-destructive/70 text-[20px]">delete</span>
