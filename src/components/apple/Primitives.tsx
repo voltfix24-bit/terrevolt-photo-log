@@ -1,4 +1,4 @@
-import { CSSProperties, HTMLAttributes, ButtonHTMLAttributes, useState } from "react";
+import { CSSProperties, HTMLAttributes, ButtonHTMLAttributes, ReactNode, useState } from "react";
 
 export const T = {
   bg: "#E8F2E2",
@@ -61,7 +61,7 @@ export function Hairline({ inset = INSET_ROW }: { inset?: number }) {
   return <div aria-hidden="true" style={{ height: "0.5px", background: T.hairline, marginLeft: inset }} />;
 }
 
-export function GlassBar({ children, position = "bottom", style }: { children: React.ReactNode; position?: "top" | "bottom"; style?: CSSProperties }) {
+export function GlassBar({ children, position = "bottom", style }: { children: ReactNode; position?: "top" | "bottom"; style?: CSSProperties }) {
   const isBottom = position === "bottom";
   return (
     <div

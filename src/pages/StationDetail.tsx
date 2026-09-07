@@ -22,6 +22,7 @@ import "yet-another-react-lightbox/styles.css";
 import { generatePdfHtml } from "@/lib/pdf-generator";
 import { useVoorbeelden } from "@/components/CategorieSettings";
 import { useInstellingen } from "@/hooks/use-theme";
+import { GlassBar, Group, Hairline, Pressable, T, R, M, ROW_MIN, ROW_PAD_X, ICON, ICON_GAP, INSET_HEAD, INSET_ROW } from "@/components/apple/Primitives";
 
 const MAX_SIZE = 10 * 1024 * 1024;
 const ACCEPTED = ["image/jpeg", "image/png", "image/heic", "image/webp"];
@@ -188,78 +189,25 @@ function CategoryRow({ cat, fotos, isSkipped, skipReason, hasOpmerking, onOpen }
 }) {
   const hasPhotos = fotos.length > 0;
 
-  // OPEN — no photos, not skipped
-  if (!hasPhotos && !isSkipped) {
-    return (
-      <button
-        data-cat-id={cat.id}
-        onClick={onOpen}
-        className="flex min-h-[64px] items-center justify-between w-full p-3 rounded-lg
-                   bg-orange/[0.08] border border-orange/35 text-left
-                   active:scale-[0.99] group"
-      >
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-lg border border-orange/30 bg-orange/10 flex items-center
-                          justify-center text-orange flex-shrink-0">
-            <span className="material-symbols-rounded text-base">photo_camera</span>
-          </div>
-          <div>
-            <h4 className="font-display font-semibold text-on-surface text-sm">{cat.effectiveName}</h4>
-            <span className="text-[11px] text-orange font-bold">0 van {cat.id === 31 ? 3 : 1} foto{cat.id === 31 ? "'s" : ""}</span>
-          </div>
-        </div>
-        <span className="material-symbols-rounded text-muted-foreground/40 group-hover:text-primary transition-colors">
-          chevron_right
-        </span>
-      </button>
-    );
-  }
-
-  // NVT / SKIPPED
-  if (isSkipped && !hasPhotos) {
-    return (
-      <button
-        data-cat-id={cat.id}
-        onClick={onOpen}
-        className="flex min-h-[56px] items-start justify-between w-full py-2.5 text-left
-                   border-b border-outline-variant/20 active:scale-[0.99] group"
-      >
-        <div className="flex min-w-0 items-start gap-3">
-          <div className="w-8 h-8 flex items-center justify-center text-text-muted flex-shrink-0">
-            <span className="material-symbols-rounded text-base">block</span>
-          </div>
-          <div className="min-w-0 pt-1">
-            <h4 className="font-display font-semibold text-text-muted line-through text-[13px]">{cat.effectiveName}</h4>
-            {skipReason && <p className="mt-0.5 text-[11px] text-text-muted">{skipReason}</p>}
-          </div>
-        </div>
-        <span className="mt-1 rounded-full bg-surface-container px-2 py-1 text-[10px] font-bold text-text-muted">nvt</span>
-      </button>
-    );
-  }
-
-  // VOLTOOID — has photos (always green/completed per individual category)
+  const nvt = Boolean(isSkipped && !hasPhotos);
+  const icon = nvt ? "block" : hasPhotos ? "check_circle" : "photo_camera";
+  const iconColor = nvt ? T.muted : hasPhotos ? T.done : T.green;
   return (
-    <button
+    <Pressable
       data-cat-id={cat.id}
       onClick={onOpen}
-      className="flex min-h-[48px] items-center justify-between w-full py-2.5
-                 border-b border-outline-variant/20 text-left active:scale-[0.99] group"
+      scale={0.985}
+      style={{ width: "100%", minHeight: ROW_MIN, display: "flex", alignItems: "center", gap: ICON_GAP, padding: `15px ${ROW_PAD_X}px`, textAlign: "left" }}
     >
-      <div className="flex min-w-0 items-center gap-3">
-        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center
-                        justify-center text-primary flex-shrink-0">
-          <span className="material-symbols-rounded text-base" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-        </div>
-        <div>
-          <h4 className="font-display font-semibold text-on-surface text-[13px] flex items-center gap-1.5">
-            {cat.effectiveName}
-            {hasOpmerking && <span className="material-symbols-rounded text-accent-gold text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>sticky_note_2</span>}
-          </h4>
-        </div>
+      <span className="material-symbols-rounded shrink-0" style={{ fontSize: ICON, color: iconColor, fontVariationSettings: hasPhotos ? "'FILL' 1" : undefined }}>{icon}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 17, color: nvt || hasPhotos ? T.rowSub : T.rowText, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{cat.effectiveName}</div>
+        {nvt && skipReason && <div style={{ fontSize: 14, color: T.muted, marginTop: 1 }}>{skipReason}</div>}
       </div>
-      <span className="shrink-0 text-[11px] font-semibold text-text-muted">{fotos.length} foto{fotos.length === 1 ? "" : "'s"}</span>
-    </button>
+      {hasPhotos && <span style={{ fontSize: 15, color: T.muted, fontFamily: "ui-monospace, monospace" }}>{fotos.length}</span>}
+      {hasOpmerking && <span className="sr-only">Met opmerking</span>}
+      <span className="material-symbols-rounded shrink-0" style={{ fontSize: 19, color: T.chevron }}>chevron_right</span>
+    </Pressable>
   );
 }
 
