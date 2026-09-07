@@ -143,6 +143,7 @@ html, body, #root {
 }
 
 @supports not (backdrop-filter: blur(1px)) {
+  .glass { background: #E8F2E2 !important; }
   .tv-glas { background: #E4F1DE !important; }
   .apple-glass { background: #E8F2E2 !important; }
 }
