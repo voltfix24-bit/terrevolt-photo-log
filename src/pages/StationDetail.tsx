@@ -771,71 +771,38 @@ export default function StationDetail() {
         />
       )}
 
-      <main className="pt-2 pb-0 px-4 max-w-3xl mx-auto animate-fade-up">
+      <main className="pb-0 px-3 max-w-3xl mx-auto animate-fade-up" style={{ paddingTop: "calc(10px + env(safe-area-inset-top))" }}>
         {/* ── 1. HERO ── */}
-        <div className="px-5 pt-4 pb-5">
+        <div className="px-2 pt-2 pb-5">
           {/* ROW 1: Navigation bar */}
           <div className="flex items-center justify-between mb-4">
-            <button
-              onClick={() => navigate('/')}
-              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-primary font-semibold transition-colors active:scale-95 min-h-[44px] min-w-[44px]"
-            >
-              <span className="material-symbols-rounded text-lg">arrow_back_ios</span>
-              <span className="hidden sm:inline">Stations</span>
-            </button>
+            <Pressable onClick={() => navigate('/')} style={{ minHeight: 44, minWidth: 70, textAlign: "left", color: T.green, fontSize: 17 }}>Stations</Pressable>
             <div className="flex items-center gap-2">
-              <button
-                onClick={openPdf}
-                className="w-10 h-10 rounded-xl bg-surface-low border border-outline-variant/20 flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/30 transition-all active:scale-95"
-              >
-                <span className="material-symbols-rounded text-lg">picture_as_pdf</span>
-              </button>
-              <button
-                onClick={() => setEditOpen(true)}
-                className="w-10 h-10 rounded-xl bg-surface-low border border-outline-variant/20 flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/30 transition-all active:scale-95"
-              >
-                <span className="material-symbols-rounded text-lg">edit</span>
-              </button>
+              <Pressable onClick={openPdf} style={{ minHeight: 44, padding: "0 8px", color: T.green, fontSize: 17 }}>Pdf</Pressable>
+              <Pressable onClick={() => setEditOpen(true)} style={{ minHeight: 44, padding: "0 4px 0 8px", color: T.green, fontSize: 17 }}>Wijzig</Pressable>
             </div>
           </div>
 
           {/* ROW 2: Station info */}
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full ${
-              station.type_ruimte === 'Compact Station'
-                ? 'bg-orange/10 text-orange'
-                : 'bg-primary/10 text-primary'
-            }`}>
-              {station.type_ruimte || '—'}
-            </span>
-            {station.behuizingsnummer && (
-              <span className="text-xs text-muted-foreground font-mono">
-                {station.behuizingsnummer}
-              </span>
-            )}
-          </div>
-          <h2 className="font-display text-[24px] font-extrabold tracking-tight text-on-surface leading-tight mb-1">
+          {station.behuizingsnummer && <div style={{ fontSize: 14, color: T.subOnBg, fontFamily: "ui-monospace, monospace", marginBottom: 4 }}>{station.behuizingsnummer}</div>}
+          <h1 className="font-display leading-tight mb-1" style={{ fontSize: 28, fontWeight: 500, color: T.titleOnBg }}>
             {station.naam_msr}
-          </h2>
-          <p className="text-xs text-muted-foreground mb-4">
+          </h1>
+          <p className="mb-5" style={{ fontSize: 14, color: T.subOnBg }}>
             {[station.datum, station.ingevuld_door].filter(Boolean).join(' · ')}
           </p>
 
           {/* Progress row */}
-          <div className="mb-3">
-            <div className="font-display text-[22px] font-medium leading-tight text-on-surface">
+          <div>
+            <div className="font-display leading-tight" style={{ fontSize: 34, fontWeight: 500, color: T.titleOnBg }}>
               {allDone ? 'Alle taken afgerond' : `${applicableCategories.length - filledCount - skipped.length} taken open`}
             </div>
-            <div className="mt-1 text-[12px] text-text-muted">{filledCount} van {applicableCategories.length} · {fotos?.length ?? 0} foto's · {pct}%</div>
-          </div>
-          {/* Progress bar */}
-          <div className="h-[5px] bg-primary/15 rounded-full overflow-hidden">
-            <div className="h-full rounded-full bg-primary transition-all duration-700" style={{ width: `${pct}%` }} />
+            <div className="mt-1" style={{ fontSize: 15, color: T.subOnBg }}>{filledCount} ingevuld · {fotos?.length ?? 0} foto&apos;s</div>
           </div>
         </div>
 
         {/* ── 2. SECTION ACCORDION ── */}
-        <div className="space-y-3 mb-8">
+        <div className="mb-8">
           {sectionGroups.map(({ section, categories: cats }) => {
             const doneCats = cats.filter(c => fotosByCategorie(c.name).length > 0);
             const openCats = cats.filter(c => fotosByCategorie(c.name).length === 0 && !isSkipped(c.name));
@@ -847,68 +814,36 @@ export default function StationDetail() {
             const sortedCats = [...openCats, ...doneCats, ...skippedCats];
 
             return (
-              <div ref={el => { sectionRefs.current[section.id] = el; }} key={section.id}
-                className={`rounded-xl overflow-hidden mb-3 ${
-                  isComplete
-                    ? 'bg-primary/10 border border-primary/15'
-                    : isSectionOpen
-                    ? 'bg-surface-low border-y border-r border-orange/25 border-l-[3px] border-l-orange rounded-l-none'
-                    : 'bg-surface-low hover:bg-surface-container transition-all duration-300'
-                }`}
-              >
+              <Group ref={el => { sectionRefs.current[section.id] = el; }} key={section.id}>
                 {/* Section header */}
-                <button
+                <Pressable
                   onClick={() => toggleSection(section.id)}
-                  className={`flex min-h-[72px] items-center justify-between p-4 w-full cursor-pointer text-left ${
-                    isSectionOpen ? 'bg-surface-low' : ''
-                  }`}
+                  style={{ display: "flex", minHeight: ROW_MIN, alignItems: "center", justifyContent: "space-between", padding: `15px ${ROW_PAD_X}px`, width: "100%", textAlign: "left" }}
                 >
-                  <div className="flex items-center gap-4">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                      isComplete
-                        ? 'bg-primary text-primary-foreground shadow-primary/30'
-                        : 'bg-primary/10 text-primary'
-                    }`}>
-                      <span className={`material-symbols-rounded text-xl ${isComplete ? '' : ''}`} style={isComplete ? { fontVariationSettings: "'FILL' 1" } : undefined}>
-                        {isComplete ? 'check' : getSectionIcon(section.id)}
-                      </span>
-                    </div>
-                    <div>
-                      <h3 className={`font-display font-bold text-[17px] ${
-                        'text-on-surface'
-                      }`}>
+                  <div>
+                      <h2 className="font-display" style={{ fontSize: 18, fontWeight: 600, color: isComplete ? T.done : T.rowText }}>
                         {section.label}
-                      </h3>
-                      <p className="text-xs mt-0.5 text-on-surface-variant">
-                        {cats.length} taken
-                        {openCats.length > 0 && <> · <span className="text-orange font-semibold">{openCats.length} open</span></>}
-                        {isComplete && <> · <span className="text-primary font-semibold">voltooid</span></>}
+                      </h2>
+                      <p style={{ fontSize: 14, marginTop: 2, color: isComplete ? T.done : T.rowSub }}>
+                        {isComplete ? "Voltooid" : `${openCats.length} open`}
                       </p>
-                    </div>
                   </div>
-                  <span className={`material-symbols-rounded text-xl transition-transform ${
-                    isSectionOpen ? 'text-primary rotate-180' : 'text-muted-foreground/40'
-                  }`}>
+                  <span className="material-symbols-rounded" style={{ fontSize: 20, color: T.chevron, transform: isSectionOpen ? "rotate(180deg)" : "rotate(0deg)", transition: `transform 0.3s ${M.spring}` }}>
                     expand_more
                   </span>
-                </button>
+                </Pressable>
 
                 {/* Expanded content */}
                 {isSectionOpen && (
-                  <div className="px-4 pb-4">
-                    {openCats.length > 0 && <div className="pb-2 pt-1 text-[11px] font-bold uppercase tracking-wider text-orange">Nog te doen</div>}
-                    <div className="space-y-2">
-                      {openCats.map(cat => <CategoryRow key={cat.id} cat={cat} fotos={[]} hasOpmerking={!!opmerkingen?.some(o => o.categorie === cat.name)} onOpen={() => openWizardAt(cat)} />)}
-                    </div>
-                    {(doneCats.length > 0 || skippedCats.length > 0) && <div className="pb-1 pt-4 text-[11px] font-bold uppercase tracking-wider text-text-muted">Afgerond · {doneCats.length + skippedCats.length}</div>}
-                    <div>
-                      {[...doneCats, ...skippedCats].map(cat => (
-                        <CategoryRow key={cat.id} cat={cat} fotos={fotosByCategorie(cat.name)} isSkipped={isSkipped(cat.name)} skipReason={skippedReasons[cat.name]} hasOpmerking={!!opmerkingen?.some(o => o.categorie === cat.name)} onOpen={() => openWizardAt(cat)} />
-                      ))}
-                    </div>
+                  <div>
+                    <Hairline inset={INSET_HEAD} />
+                    {sortedCats.map((cat, index) => <div key={cat.id}>
+                      {index > 0 && <Hairline />}
+                      <CategoryRow cat={cat} fotos={fotosByCategorie(cat.name)} isSkipped={isSkipped(cat.name)} skipReason={skippedReasons[cat.name]} hasOpmerking={!!opmerkingen?.some(o => o.categorie === cat.name)} onOpen={() => openWizardAt(cat)} />
+                    </div>)}
                   </div>
                 )}
-              </div>
+              </Group>
             );
           })}
         </div>
@@ -916,15 +851,14 @@ export default function StationDetail() {
 
       {/* ── BOTTOM CTA ── */}
       {nextIncomplete && !wizardOpen && (
-        <div className="fixed bottom-0 left-0 right-0 z-[50] p-4 bg-surface-white/95 backdrop-blur-xl border-t border-outline-variant/10 pb-[max(16px,env(safe-area-inset-bottom))]">
-          <button
+        <GlassBar style={{ position: "fixed", left: 0, right: 0 }}>
+          <Pressable
             onClick={() => openWizardAt(nextIncomplete)}
-            className="w-full max-w-3xl mx-auto min-h-[52px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-2xl font-display font-bold text-[15px] shadow-[0_6px_20px_-4px_rgba(0,100,47,0.35)] active:scale-[0.97] transition-all flex items-center justify-center gap-2.5"
+            style={{ width: "100%", maxWidth: 768, margin: "0 auto", minHeight: ROW_MIN, background: T.green, color: T.surface, borderRadius: R.control, fontSize: 17, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", gap: 9, padding: "0 16px" }}
           >
-            <span className="material-symbols-rounded text-[20px]">arrow_forward</span>
-            Doorgaan: <span className="truncate max-w-[220px]">{nextIncomplete.name}</span>
-          </button>
-        </div>
+            Doorgaan: <span className="truncate">{nextIncomplete.name}</span><span className="material-symbols-rounded" style={{ fontSize: 20 }}>arrow_forward</span>
+          </Pressable>
+        </GlassBar>
       )}
       {allDone && !wizardOpen && (
         <div className="fixed bottom-0 left-0 right-0 z-[50] p-4 bg-surface-white/95 backdrop-blur-xl border-t border-outline-variant/10 pb-[max(16px,env(safe-area-inset-bottom))]">
