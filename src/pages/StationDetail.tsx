@@ -80,6 +80,7 @@ function DropZone({ onFiles, disabled, onClick, children }: {
 function useSkippedCategories(stationId: string | undefined) {
   const key = `skipped-${stationId}`;
   const reasonsKey = `skip-reasons-${stationId}`;
+  const queryClient = useQueryClient();
   const [skipped, setSkippedRaw] = useState<string[]>(() => {
     try {
       const raw = localStorage.getItem(key);
@@ -92,6 +93,27 @@ function useSkippedCategories(stationId: string | undefined) {
       return raw ? JSON.parse(raw) : {};
     } catch { return {}; }
   });
+  const { data: storedSkips } = useQuery({
+    queryKey: ['categorie-skips', stationId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('categorie_skips').select('categorie, reden').eq('station_id', stationId ?? '');
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!stationId,
+  });
+
+  useEffect(() => {
+    if (!storedSkips) return;
+    const names = storedSkips.map(item => item.categorie);
+    const reasons = Object.fromEntries(storedSkips.map(item => [item.categorie, item.reden]));
+    setSkippedRaw(names);
+    setSkippedReasons(reasons);
+    try {
+      localStorage.setItem(key, JSON.stringify(names));
+      localStorage.setItem(reasonsKey, JSON.stringify(reasons));
+    } catch { /* */ }
+  }, [key, reasonsKey, storedSkips]);
 
   const setSkipped = useCallback((fn: (prev: string[]) => string[]) => {
     setSkippedRaw(prev => {
@@ -109,8 +131,13 @@ function useSkippedCategories(stationId: string | undefined) {
         try { localStorage.setItem(reasonsKey, JSON.stringify(next)); } catch { /* */ }
         return next;
       });
+      if (stationId) {
+        void supabase.from('categorie_skips').upsert({ station_id: stationId, categorie: catName, reden: reason, updated_at: new Date().toISOString() }, { onConflict: 'station_id,categorie' }).then(() => {
+          queryClient.invalidateQueries({ queryKey: ['categorie-skips', stationId] });
+        });
+      }
     }
-  }, [reasonsKey, setSkipped]);
+  }, [queryClient, reasonsKey, setSkipped, stationId]);
 
   const removeSkip = useCallback((catName: string) => {
     setSkipped(prev => prev.filter(n => n !== catName));
@@ -120,7 +147,12 @@ function useSkippedCategories(stationId: string | undefined) {
       try { localStorage.setItem(reasonsKey, JSON.stringify(next)); } catch { /* */ }
       return next;
     });
-  }, [reasonsKey, setSkipped]);
+    if (stationId) {
+      void supabase.from('categorie_skips').delete().eq('station_id', stationId).eq('categorie', catName).then(() => {
+        queryClient.invalidateQueries({ queryKey: ['categorie-skips', stationId] });
+      });
+    }
+  }, [queryClient, reasonsKey, setSkipped, stationId]);
 
   const toggleSkip = useCallback((catName: string) => {
     setSkipped(prev =>
