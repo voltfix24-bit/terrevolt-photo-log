@@ -53,13 +53,14 @@ function AppContent() {
       <AppHeader />
       <Routes>
         <Route path="/" element={<Index />} />
-        <Route path="/stations/new" element={<NewStation />} />
-        <Route path="/stations/:id" element={<StationDetail />} />
-        <Route path="/stations/:id/opleveren" element={<Opleveren />} />
-        <Route path="/beoordelen" element={<Beoordelen />} />
-        <Route path="/beoordelen/:id" element={<BeoordeelDossier />} />
-        <Route path="/instellingen" element={<Instellingen />} />
-        <Route path="/instellingen/categorieen" element={<CategorieenBeheren />} />
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/stations/new" element={<RequireAuth><NewStation /></RequireAuth>} />
+        <Route path="/stations/:id" element={<RequireAuth><StationDetail /></RequireAuth>} />
+        <Route path="/stations/:id/opleveren" element={<RequireAuth><Opleveren /></RequireAuth>} />
+        <Route path="/beoordelen" element={<RequireAuth><Beoordelen /></RequireAuth>} />
+        <Route path="/beoordelen/:id" element={<RequireAuth><BeoordeelDossier /></RequireAuth>} />
+        <Route path="/instellingen" element={<RequireAuth><Instellingen /></RequireAuth>} />
+        <Route path="/instellingen/categorieen" element={<RequireAuth><CategorieenBeheren /></RequireAuth>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>
