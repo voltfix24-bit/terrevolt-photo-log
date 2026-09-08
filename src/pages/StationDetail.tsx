@@ -764,7 +764,14 @@ export default function StationDetail() {
         <div className="px-2 pt-2 pb-5">
           {/* ROW 1: Navigation bar */}
           <div className="flex items-center justify-between mb-4">
-            <Pressable onClick={() => navigate('/')} style={{ minHeight: 44, minWidth: 70, textAlign: "left", color: T.green, fontSize: 17 }}>Stations</Pressable>
+            <Pressable
+              onClick={() => navigate('/')}
+              aria-label="Terug naar stations"
+              style={{ minHeight: 44, minWidth: 70, display: "flex", alignItems: "center", gap: 2, color: T.green, fontSize: 17, fontWeight: 500, textAlign: "left", marginLeft: -10, padding: "0 10px" }}
+            >
+              <span className="material-symbols-rounded" style={{ fontSize: 21 }}>chevron_left</span>
+              <span>Stations</span>
+            </Pressable>
             <div className="flex items-center gap-2">
               <Pressable onClick={openPdf} style={{ minHeight: 44, padding: "0 8px", color: T.green, fontSize: 17 }}>Pdf</Pressable>
               <Pressable onClick={() => setEditOpen(true)} style={{ minHeight: 44, padding: "0 4px 0 8px", color: T.green, fontSize: 17 }}>Wijzig</Pressable>
