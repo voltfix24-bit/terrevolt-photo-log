@@ -247,6 +247,21 @@ export default function Dashboard() {
           ...glass(gekrompen ? 0.8 : 0),
         }}
       >
+        {instellingenData?.logo_url && (
+          <img
+            src={instellingenData.logo_url}
+            alt={instellingenData.bedrijfsnaam || "Logo"}
+            style={{
+              position: "absolute",
+              left: 14,
+              top: "50%",
+              transform: "translateY(-50%)",
+              height: 26,
+              maxWidth: 108,
+              objectFit: "contain",
+            }}
+          />
+        )}
         <span
           className="font-display"
           style={{
@@ -260,6 +275,23 @@ export default function Dashboard() {
         >
           Stations
         </span>
+        {instellingenData?.profielfoto_url && (
+          <img
+            src={instellingenData.profielfoto_url}
+            alt="Profielfoto"
+            style={{
+              position: "absolute",
+              right: 58,
+              top: "50%",
+              transform: "translateY(-50%)",
+              width: 30,
+              height: 30,
+              borderRadius: 15,
+              objectFit: "cover",
+            }}
+          />
+        )}
+
         <button
           type="button"
           aria-label="Instellingen"
