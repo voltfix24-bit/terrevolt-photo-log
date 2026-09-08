@@ -11,7 +11,6 @@ import { requirePin } from "@/lib/require-pin";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Group, Hairline, M, R, ROW_MIN, ROW_PAD_X, T, glass } from "@/components/apple/Primitives";
-import { SwipeRow } from "@/components/apple/SwipeRow";
 import { toast } from "sonner";
 
 type PendingCounts = Record<string, number>;
@@ -27,6 +26,8 @@ type StationItem = {
 
 const requiredPhotos = (category: Category) => category.id === 31 ? 3 : 1;
 const abbreviations = new Set(["ls", "ms", "to", "atr"]);
+const ACTIVE_BG = "#F4F8F2";
+const PANEL_MAX = 80;
 
 const formatStationName = (name: string) => name
   .toLocaleLowerCase("nl-NL")
@@ -37,49 +38,138 @@ const formatStationName = (name: string) => name
 
 const dateValue = (value?: string | null) => value ? new Date(value).getTime() : 0;
 
-function StationRij({ item }: { item: StationItem }) {
-  const { station, done, total, complete, pending } = item;
+function IconActie({ icon, label, onClick, gevaar }: { icon: string; label: string; onClick: () => void; gevaar?: boolean }) {
+  const [down, setDown] = useState(false);
   return (
-    <div
+    <button
+      type="button"
+      onClick={(event) => { event.stopPropagation(); onClick(); }}
+      onPointerDown={(event) => { event.stopPropagation(); setDown(true); }}
+      onPointerUp={() => setDown(false)}
+      onPointerLeave={() => setDown(false)}
+      onPointerCancel={() => setDown(false)}
+      aria-label={label}
       style={{
-        minHeight: ROW_MIN,
-        padding: `12px ${ROW_PAD_X}px`,
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
+        width: 54, minHeight: 54, display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center", gap: 2, borderRadius: 13,
+        border: "none",
+        background: gevaar ? T.dangerBg : T.soft,
+        transform: down ? "scale(0.94)" : "scale(1)",
+        transition: `transform 0.14s ${M.spring}`,
       }}
     >
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <h2
-          className="font-display"
+      <span className="material-symbols-rounded" style={{ fontSize: 20, color: gevaar ? T.danger : T.green, fontVariationSettings: gevaar ? undefined : "'FILL' 0" }}>{icon}</span>
+      <span style={{ fontSize: 10, color: gevaar ? T.danger : T.subOnBg }}>{label}</span>
+    </button>
+  );
+}
+
+function StationRij({ item, open, onToggle, onInvullen, onPdf, onDelen, onVerwijder }: {
+  item: StationItem;
+  open: boolean;
+  onToggle: () => void;
+  onInvullen: () => void;
+  onPdf: () => void;
+  onDelen: () => void;
+  onVerwijder: () => void;
+}) {
+  const { station, done, total, complete, pending } = item;
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (open && ref.current) {
+      const id = window.setTimeout(() => {
+        ref.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }, 340);
+      return () => window.clearTimeout(id);
+    }
+  }, [open]);
+
+  return (
+    <div ref={ref}>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        style={{
+          width: "100%", textAlign: "left", border: "none",
+          background: open ? ACTIVE_BG : "transparent",
+          padding: `12px ${ROW_PAD_X}px`, minHeight: ROW_MIN,
+          display: "flex", alignItems: "center", gap: 12,
+          transition: "background 0.2s ease",
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h2
+            className="font-display"
+            style={{
+              margin: 0,
+              color: T.green,
+              fontSize: 17,
+              fontWeight: 500,
+              lineHeight: 1.25,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {formatStationName(station.naam_msr)}
+          </h2>
+          <div className="font-mono" style={{ marginTop: 2, color: complete ? T.muted : T.rowSub, fontSize: 14 }}>
+            {station.behuizingsnummer || "Geen nummer"}
+          </div>
+        </div>
+        {complete ? (
+          <span className="material-symbols-rounded" aria-label="Afgerond" style={{ color: T.done, fontSize: 21, flexShrink: 0, fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+        ) : pending > 0 ? (
+          <span style={{ display: "flex", alignItems: "center", gap: 5, color: T.upload, fontSize: 15, flexShrink: 0 }}>
+            <span className="material-symbols-rounded" style={{ fontSize: 18 }}>cloud_upload</span>
+            {pending}
+          </span>
+        ) : (
+          <span className="font-mono" style={{ color: T.rowSub, fontSize: 15, flexShrink: 0 }}>{done} / {total}</span>
+        )}
+        <span
+          className="material-symbols-rounded"
+          aria-hidden="true"
           style={{
-            margin: 0,
-            color: complete ? T.rowSub : T.rowText,
-            fontSize: 17,
-            fontWeight: 500,
-            lineHeight: 1.25,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
+            color: T.chevron,
+            fontSize: 19,
+            flexShrink: 0,
+            transform: open ? "rotate(180deg)" : "rotate(0deg)",
+            transition: `transform 0.3s ${M.spring}`,
           }}
         >
-          {formatStationName(station.naam_msr)}
-        </h2>
-        <div className="font-mono" style={{ marginTop: 2, color: complete ? T.muted : T.rowSub, fontSize: 14 }}>
-          {station.behuizingsnummer || "Geen nummer"}
+          expand_more
+        </span>
+      </button>
+      <div
+        style={{
+          overflow: "hidden",
+          background: open ? ACTIVE_BG : "transparent",
+          maxHeight: open ? PANEL_MAX : 0,
+          opacity: open ? 1 : 0,
+          transition: `max-height 0.34s ${M.ease}, opacity 0.22s ease`,
+        }}
+      >
+        <div style={{ padding: "2px 12px 13px", display: "flex", gap: 8, alignItems: "stretch" }}>
+          <button
+            type="button"
+            onClick={(event) => { event.stopPropagation(); onInvullen(); }}
+            style={{
+              flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              background: T.green, color: "#fff", fontSize: 16, fontWeight: 500,
+              padding: "14px 8px", borderRadius: 13, border: "none", minHeight: 54,
+            }}
+          >
+            <span className="material-symbols-rounded" style={{ fontSize: 19 }}>edit_document</span>
+            Invullen
+          </button>
+          <IconActie icon="picture_as_pdf" label="Pdf" onClick={onPdf} />
+          <IconActie icon="share" label="Delen" onClick={onDelen} />
+          <IconActie icon="delete" label="Wis" onClick={onVerwijder} gevaar />
         </div>
       </div>
-      {complete ? (
-        <span className="material-symbols-rounded" aria-label="Afgerond" style={{ color: T.done, fontSize: 21, flexShrink: 0, fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-      ) : pending > 0 ? (
-        <span style={{ display: "flex", alignItems: "center", gap: 5, color: T.upload, fontSize: 15, flexShrink: 0 }}>
-          <span className="material-symbols-rounded" style={{ fontSize: 18 }}>cloud_upload</span>
-          {pending}
-        </span>
-      ) : (
-        <span className="font-mono" style={{ color: T.rowSub, fontSize: 15, flexShrink: 0 }}>{done} / {total}</span>
-      )}
-      <span className="material-symbols-rounded" aria-hidden="true" style={{ color: T.chevron, fontSize: 19, flexShrink: 0 }}>chevron_right</span>
     </div>
   );
 }
@@ -96,7 +186,6 @@ export default function Dashboard() {
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
   const [pendingCounts, setPendingCounts] = useState<PendingCounts>({});
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; naam: string } | null>(null);
   const [gekrompen, setGekrompen] = useState(false);
@@ -189,7 +278,7 @@ export default function Dashboard() {
     if (!deleteTarget) return;
     const target = deleteTarget;
     setDeleteTarget(null);
-    const unlocked = await requirePin("Station verwijderen", `Voer de toegangscode in om “${target.naam}” definitief te verwijderen.`);
+    const unlocked = await requirePin("Station verwijderen", `Voer de toegangscode in om "${target.naam}" definitief te verwijderen.`);
     if (!unlocked) return;
     const { data: photos } = await supabase.from("fotos").select("storage_path").eq("station_id", target.id);
     if (photos?.length) {
@@ -199,36 +288,24 @@ export default function Dashboard() {
     const { error } = await supabase.from("stations").delete().eq("id", target.id);
     if (error) { toast.error("Verwijderen mislukt"); return; }
     setExpandedId(null);
-    setOpenSwipeId(null);
     queryClient.invalidateQueries({ queryKey: ["stations"] });
     toast.success("Station verwijderd");
   };
 
   const syncLabel = !isOnline ? "Offline" : totalPending > 0 ? `${totalPending} wachten` : "Gesynct";
 
-  const swipeActies = (item: StationItem) => (action: "pdf" | "share" | "delete") => {
-    if (action === "pdf") openPdf(item.station);
-    if (action === "share") shareStation(item.station);
-    if (action === "delete") setDeleteTarget({ id: item.station.id, naam: item.station.naam_msr });
-  };
-
-  const closeOthers = (id: string | null) => {
-    setOpenSwipeId(id);
-    setExpandedId(id);
-  };
-
   const stationRijen = (items: StationItem[]) => items.map((item, index) => (
     <div key={item.station.id}>
       {index > 0 && <Hairline inset={ROW_PAD_X} />}
-      <SwipeRow
-        id={item.station.id}
-        openSwipeId={openSwipeId}
-        onOpen={() => navigate(`/stations/${item.station.id}`)}
-        onAction={swipeActies(item)}
-        onCloseOthers={closeOthers}
-      >
-        <StationRij item={item} />
-      </SwipeRow>
+      <StationRij
+        item={item}
+        open={expandedId === item.station.id}
+        onToggle={() => setExpandedId(expandedId === item.station.id ? null : item.station.id)}
+        onInvullen={() => navigate(`/stations/${item.station.id}`)}
+        onPdf={() => openPdf(item.station)}
+        onDelen={() => shareStation(item.station)}
+        onVerwijder={() => setDeleteTarget({ id: item.station.id, naam: item.station.naam_msr })}
+      />
     </div>
   ));
 
