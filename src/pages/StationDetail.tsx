@@ -20,6 +20,7 @@ import { queuePhoto } from "@/lib/offline-queue";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { generatePdfHtml } from "@/lib/pdf-generator";
+import { downloadStationZip } from "@/lib/zip-download";
 import { useVoorbeelden } from "@/components/CategorieSettings";
 import { useInstellingen } from "@/hooks/use-theme";
 import { GlassBar, Group, Hairline, Pressable, T, R, M, ROW_MIN, ROW_PAD_X, ICON, ICON_GAP, INSET_HEAD, INSET_ROW } from "@/components/apple/Primitives";
@@ -919,6 +920,31 @@ export default function StationDetail() {
                 </div>
               </button>
             </div>
+            <button
+              onClick={async () => {
+                if (!station || !fotos || fotos.length === 0) {
+                  toast.error("Geen foto's om te downloaden");
+                  return;
+                }
+                const toastId = toast.loading("ZIP wordt voorbereid...");
+                try {
+                  await downloadStationZip(station.naam_msr, fotos, (pct) => toast.loading(`ZIP wordt voorbereid... ${pct}%`, { id: toastId }));
+                  toast.success("ZIP gedownload", { id: toastId });
+                } catch {
+                  toast.error("ZIP download mislukt", { id: toastId });
+                }
+                setShareOpen(false);
+              }}
+              className="w-full flex items-center gap-3 p-4 rounded-2xl bg-primary/5 border border-primary/15 hover:bg-primary/[0.08] transition-all active:scale-[0.97] mb-3"
+            >
+              <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-rounded text-primary-foreground text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>folder_zip</span>
+              </div>
+              <div className="text-left">
+                <div className="font-bold text-sm text-on-surface">Foto's als ZIP</div>
+                <div className="text-xs text-muted-foreground">Alle foto's van dit station</div>
+              </div>
+            </button>
             {typeof navigator !== 'undefined' && navigator.share && (
               <button
                 onClick={async () => {
