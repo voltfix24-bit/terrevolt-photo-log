@@ -585,7 +585,7 @@ export default function StationDetail() {
   const { data: fotos } = useQuery({
     queryKey: ["fotos", id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("fotos").select("*").eq("station_id", id!).order("volgorde", { ascending: true });
+      const { data, error } = await supabase.from("fotos").select("*").eq("station_id", id!).neq("review_status", "rejected").order("volgorde", { ascending: true });
       if (error) throw error;
       return data;
     },
@@ -699,6 +699,7 @@ export default function StationDetail() {
   }, [fotosByCategorie, isSkipped, applicableCategories]);
 
   const allDone = !nextIncomplete;
+  const vergrendeld = station?.status === 'opgeleverd' || station?.status === 'goedgekeurd';
 
   // Auto-expand first incomplete section on load
   useEffect(() => {
@@ -788,6 +789,13 @@ export default function StationDetail() {
             {[station.datum, station.ingevuld_door].filter(Boolean).join(' · ')}
           </p>
 
+          {station.status === 'in uitvoering' && station.review_reden && (
+            <div style={{ background: T.dangerBg, borderRadius: R.group, padding: "12px 14px", marginBottom: 16 }}>
+              <div style={{ fontSize: 13, color: T.danger, marginBottom: 3 }}>Afgekeurd door {station.opdrachtgever ?? 'de opdrachtgever'}</div>
+              <div style={{ fontSize: 15, color: T.rowText, lineHeight: 1.4 }}>{station.review_reden}</div>
+            </div>
+          )}
+
           {/* Progress row */}
           <div>
             <div className="font-display leading-tight" style={{ fontSize: 34, fontWeight: 500, color: T.titleOnBg }}>
@@ -846,7 +854,7 @@ export default function StationDetail() {
       </main>
 
       {/* ── BOTTOM CTA ── */}
-      {nextIncomplete && !wizardOpen && (
+      {nextIncomplete && !wizardOpen && !vergrendeld && (
         <GlassBar style={{ position: "fixed", left: 0, right: 0 }}>
           <Pressable
             onClick={() => openWizardAt(nextIncomplete)}
@@ -856,15 +864,17 @@ export default function StationDetail() {
           </Pressable>
         </GlassBar>
       )}
-      {allDone && !wizardOpen && (
+      {allDone && !wizardOpen && !vergrendeld && (
         <GlassBar style={{ position: "fixed", left: 0, right: 0 }}>
           <div className="flex gap-2.5 max-w-3xl mx-auto">
             <Pressable
-              onClick={openPdf}
+              onClick={() => navigate(`/stations/${id}/opleveren`)}
               style={{ flex: 1, minHeight: ROW_MIN, background: T.green, color: T.surface, borderRadius: R.control, fontSize: 17, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", gap: 9 }}
             >
-              Pdf downloaden
+              Opleveren
+              <span className="material-symbols-rounded" style={{ fontSize: 20 }}>arrow_forward</span>
             </Pressable>
+            <Pressable onClick={openPdf} style={{ minHeight: ROW_MIN, padding: "0 8px", color: T.green, fontSize: 17, flexShrink: 0 }}>Pdf</Pressable>
             <Pressable
               onClick={() => { setShareStation(station?.naam_msr || ''); setShareOpen(true); }}
               style={{ minHeight: ROW_MIN, padding: "0 8px", color: T.green, fontSize: 17, flexShrink: 0 }}
@@ -874,7 +884,15 @@ export default function StationDetail() {
           </div>
         </GlassBar>
       )}
-
+      {vergrendeld && !wizardOpen && (
+        <GlassBar style={{ position: "fixed", left: 0, right: 0 }}>
+          <div className="max-w-3xl mx-auto" style={{ textAlign: "center", fontSize: 14, color: T.subOnBg, lineHeight: 1.4 }}>
+            {station?.status === 'goedgekeurd'
+              ? `Goedgekeurd door ${station?.opdrachtgever ?? 'de opdrachtgever'}. Dit dossier is afgesloten.`
+              : `Opgeleverd aan ${station?.opdrachtgever ?? 'de opdrachtgever'}. Wijzigen kan niet meer.`}
+          </div>
+        </GlassBar>
+      )}
       {/* Share bottom sheet */}
       {shareOpen && (
         <div className="fixed inset-0 z-[80] flex items-end">
