@@ -674,10 +674,14 @@ export default function StationDetail() {
   };
 
   const openWizardAt = useCallback((cat: MergedCategory | Category) => {
+    if (station?.status === 'opgeleverd' || station?.status === 'goedgekeurd') {
+      toast.info('Dit dossier is opgeleverd en kan niet meer worden gewijzigd');
+      return;
+    }
     const idx = applicableCategories.findIndex(c => c.id === cat.id);
     setWizardStartIndex(idx >= 0 ? idx : 0);
     setWizardOpen(true);
-  }, [applicableCategories]);
+  }, [applicableCategories, station?.status]);
 
   useEffect(() => {
     const categoryId = Number(searchParams.get("categorie"));
