@@ -37,10 +37,11 @@ export const glass = (alpha = 0.8): CSSProperties => ({
   backdropFilter: "saturate(180%) blur(24px)",
 });
 
-export function Pressable({ children, style, scale = 0.94, type = "button", onPointerDown, onPointerUp, onPointerLeave, onPointerCancel, ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & { scale?: number }) {
+export const Pressable = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLButtonElement> & { scale?: number }>(function Pressable({ children, style, scale = 0.94, type = "button", onPointerDown, onPointerUp, onPointerLeave, onPointerCancel, ...rest }, ref) {
   const [down, setDown] = useState(false);
   return (
     <button
+      ref={ref}
       {...rest}
       type={type}
       onPointerDown={(event) => { setDown(true); onPointerDown?.(event); }}
@@ -52,7 +53,7 @@ export function Pressable({ children, style, scale = 0.94, type = "button", onPo
       {children}
     </button>
   );
-}
+});
 
 export const Group = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(function Group({ children, style, ...rest }, ref) {
   return <div ref={ref} {...rest} style={{ background: T.surface, borderRadius: R.group, overflow: "hidden", marginBottom: 20, ...style }}>{children}</div>;
