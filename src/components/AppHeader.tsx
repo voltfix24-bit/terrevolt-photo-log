@@ -44,12 +44,8 @@ export default function AppHeader() {
             </button>
           </nav>
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate("/instellingen")} className="w-10 h-10 rounded-full overflow-hidden border-2 border-primary bg-gradient-to-br from-primary to-primary-light flex items-center justify-center text-primary-foreground font-display text-sm font-bold active:scale-90 transition-transform shadow-sm">
-              {instellingen?.profielfoto_url ? (
-                <img src={instellingen.profielfoto_url} alt="Profiel" className="w-full h-full object-cover" />
-              ) : (
-                'TV'
-              )}
+            <button onClick={() => navigate("/instellingen")} aria-label="Instellingen" className="w-10 h-10 rounded-full flex items-center justify-center text-primary active:scale-90 transition-transform">
+              <span className="material-symbols-rounded" style={{ fontSize: 24 }}>settings</span>
             </button>
           </div>
         </div>
