@@ -20,6 +20,7 @@ import { queuePhoto } from "@/lib/offline-queue";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { generatePdfHtml } from "@/lib/pdf-generator";
+import { downloadStationZip } from "@/lib/zip-download";
 import { useVoorbeelden } from "@/components/CategorieSettings";
 import { useInstellingen } from "@/hooks/use-theme";
 import { GlassBar, Group, Hairline, Pressable, T, R, M, ROW_MIN, ROW_PAD_X, ICON, ICON_GAP, INSET_HEAD, INSET_ROW } from "@/components/apple/Primitives";
