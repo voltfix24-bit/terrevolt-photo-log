@@ -257,6 +257,29 @@ export default function Dashboard() {
         >
           Stations
         </span>
+        <button
+          type="button"
+          aria-label="Instellingen"
+          onClick={async () => { if (await requirePin()) navigate("/instellingen"); }}
+          className="active:scale-90 transition-transform"
+          style={{
+            position: "absolute",
+            right: 12,
+            top: "50%",
+            transform: "translateY(-50%)",
+            width: 44,
+            height: 44,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            border: 0,
+            background: "transparent",
+            color: T.green,
+            padding: 0,
+          }}
+        >
+          <span className="material-symbols-rounded" style={{ fontSize: 24 }}>settings</span>
+        </button>
       </header>
 
       <main style={{ padding: "calc(62px + env(safe-area-inset-top)) 12px 118px" }}>
