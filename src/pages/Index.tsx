@@ -7,6 +7,7 @@ import { getPendingPhotos } from "@/lib/offline-queue";
 import { useOnline } from "@/hooks/use-online";
 import { useInstellingen } from "@/hooks/use-theme";
 import { generatePdfHtml } from "@/lib/pdf-generator";
+import { downloadStationZip } from "@/lib/zip-download";
 import { requirePin } from "@/lib/require-pin";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -64,13 +65,13 @@ function IconActie({ icon, label, onClick, gevaar }: { icon: string; label: stri
   );
 }
 
-function StationRij({ item, open, onToggle, onInvullen, onPdf, onDelen, onVerwijder }: {
+function StationRij({ item, open, onToggle, onInvullen, onPdf, onZip, onVerwijder }: {
   item: StationItem;
   open: boolean;
   onToggle: () => void;
   onInvullen: () => void;
   onPdf: () => void;
-  onDelen: () => void;
+  onZip: () => void;
   onVerwijder: () => void;
 }) {
   const { station, done, total, complete, pending } = item;
@@ -166,7 +167,7 @@ function StationRij({ item, open, onToggle, onInvullen, onPdf, onDelen, onVerwij
             Invullen
           </button>
           <IconActie icon="picture_as_pdf" label="Pdf" onClick={onPdf} />
-          <IconActie icon="share" label="Delen" onClick={onDelen} />
+          <IconActie icon="folder_zip" label="Zip" onClick={onZip} />
           <IconActie icon="delete" label="Wis" onClick={onVerwijder} gevaar />
         </div>
       </div>
@@ -264,14 +265,13 @@ export default function Dashboard() {
     if (reportWindow) { reportWindow.document.write(html); reportWindow.document.close(); }
   };
 
-  const shareStation = async (station: any) => {
-    const url = `${window.location.origin}/stations/${station.id}`;
-    if (navigator.share) {
-      try { await navigator.share({ title: `TO-foto's · ${station.naam_msr}`, text: `Bekijk station ${station.naam_msr}`, url }); } catch { /* geannuleerd */ }
-      return;
+  const downloadZip = async (station: any) => {
+    try {
+      await downloadStationZip(station.naam_msr, station.fotos ?? []);
+      toast.success("Zip gedownload");
+    } catch {
+      toast.error("Zip downloaden mislukt");
     }
-    await navigator.clipboard.writeText(url);
-    toast.success("Link gekopieerd");
   };
 
   const handleDeleteStation = async () => {
@@ -303,7 +303,7 @@ export default function Dashboard() {
         onToggle={() => setExpandedId(expandedId === item.station.id ? null : item.station.id)}
         onInvullen={() => navigate(`/stations/${item.station.id}`)}
         onPdf={() => openPdf(item.station)}
-        onDelen={() => shareStation(item.station)}
+        onZip={() => downloadZip(item.station)}
         onVerwijder={() => setDeleteTarget({ id: item.station.id, naam: item.station.naam_msr })}
       />
     </div>
