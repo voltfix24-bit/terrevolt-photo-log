@@ -145,7 +145,12 @@ export type Database = {
         Row: {
           categorie: string
           created_at: string | null
+          gps_afstand_m: number | null
           id: string
+          review_reden: string | null
+          review_status: string
+          reviewed_at: string | null
+          scherpte: string | null
           station_id: string
           storage_path: string
           uploaded_at: string | null
@@ -155,7 +160,12 @@ export type Database = {
         Insert: {
           categorie: string
           created_at?: string | null
+          gps_afstand_m?: number | null
           id?: string
+          review_reden?: string | null
+          review_status?: string
+          reviewed_at?: string | null
+          scherpte?: string | null
           station_id: string
           storage_path: string
           uploaded_at?: string | null
@@ -165,7 +175,12 @@ export type Database = {
         Update: {
           categorie?: string
           created_at?: string | null
+          gps_afstand_m?: number | null
           id?: string
+          review_reden?: string | null
+          review_status?: string
+          reviewed_at?: string | null
+          scherpte?: string | null
           station_id?: string
           storage_path?: string
           uploaded_at?: string | null
@@ -245,6 +260,24 @@ export type Database = {
         }
         Relationships: []
       }
+      opdrachtgevers: {
+        Row: {
+          created_at: string
+          id: string
+          naam: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          naam: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          naam?: string
+        }
+        Relationships: []
+      }
       push_subscriptions: {
         Row: {
           auth: string
@@ -281,7 +314,11 @@ export type Database = {
           id: string
           ingevuld_door: string | null
           naam_msr: string
+          opdrachtgever: string | null
+          review_reden: string | null
           status: string | null
+          submitted_at: string | null
+          submitted_by: string | null
           type_ruimte: string | null
           updated_at: string | null
           vermogensveld: boolean | null
@@ -294,7 +331,11 @@ export type Database = {
           id?: string
           ingevuld_door?: string | null
           naam_msr: string
+          opdrachtgever?: string | null
+          review_reden?: string | null
           status?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
           type_ruimte?: string | null
           updated_at?: string | null
           vermogensveld?: boolean | null
@@ -307,7 +348,11 @@ export type Database = {
           id?: string
           ingevuld_door?: string | null
           naam_msr?: string
+          opdrachtgever?: string | null
+          review_reden?: string | null
           status?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
           type_ruimte?: string | null
           updated_at?: string | null
           vermogensveld?: boolean | null
