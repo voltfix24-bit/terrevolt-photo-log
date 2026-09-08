@@ -105,7 +105,7 @@ export default function Dashboard() {
   const { data: stations, isLoading } = useQuery({
     queryKey: ["stations"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("stations").select("*, fotos(categorie, id, url, storage_path, created_at, uploaded_at)").order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("stations").select("*, fotos(categorie, id, url, storage_path, created_at, uploaded_at, review_status)").order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
@@ -140,7 +140,7 @@ export default function Dashboard() {
   const enriched = useMemo<StationItem[]>(() => (stations ?? []).map((station) => {
     const applicable = getApplicableCategories(station);
     const photosByCategory = new Map<string, number>();
-    for (const photo of station.fotos ?? []) photosByCategory.set(photo.categorie, (photosByCategory.get(photo.categorie) ?? 0) + 1);
+    for (const photo of (station.fotos ?? []).filter((foto: any) => foto.review_status !== "rejected")) photosByCategory.set(photo.categorie, (photosByCategory.get(photo.categorie) ?? 0) + 1);
     const total = applicable.reduce((sum, category) => sum + requiredPhotos(category), 0);
     const done = applicable.reduce((sum, category) => sum + Math.min(photosByCategory.get(category.name) ?? 0, requiredPhotos(category)), 0);
     const nextTaskName = applicable.find((category) => (photosByCategory.get(category.name) ?? 0) < requiredPhotos(category))?.name ?? null;
@@ -160,9 +160,12 @@ export default function Dashboard() {
     return !query || item.station.naam_msr.toLocaleLowerCase("nl-NL").includes(query) || item.station.behuizingsnummer?.toLocaleLowerCase("nl-NL").includes(query);
   }).sort((a, b) => b.updatedAt - a.updatedAt), [enriched, search]);
 
-  const laatste = filtered.find((item) => !item.complete);
-  const lopend = filtered.filter((item) => !item.complete && item.station.id !== laatste?.station.id);
-  const afgerond = filtered.filter((item) => item.complete);
+  const opgeleverdStatus = (item: StationItem) => item.station.status === "opgeleverd" || item.station.status === "goedgekeurd";
+  const opgeleverd = filtered.filter(opgeleverdStatus);
+  const actief = filtered.filter((item) => !opgeleverdStatus(item));
+  const laatste = actief.find((item) => item.station.review_reden) ?? actief.find((item) => !item.complete);
+  const lopend = actief.filter((item) => !item.complete && item.station.id !== laatste?.station.id);
+  const afgerond = actief.filter((item) => item.complete && item.station.id !== laatste?.station.id);
   const totalPending = Object.values(pendingCounts).reduce((sum, count) => sum + count, 0);
 
   const openPdf = async (station: any) => {
@@ -335,6 +338,9 @@ export default function Dashboard() {
                       </div>
                       <span className="font-mono" style={{ color: T.rowSub, fontSize: 15, flexShrink: 0 }}>{laatste.done} / {laatste.total}</span>
                     </div>
+                    {laatste.station.review_reden && (
+                      <div style={{ marginTop: 12, color: T.danger, fontSize: 15, lineHeight: 1.4 }}>Afgekeurd: {laatste.station.review_reden}</div>
+                    )}
                     {laatste.nextTaskName && <div style={{ marginTop: 12, color: T.rowText, fontSize: 15 }}>Volgende: {laatste.nextTaskName}</div>}
                   </button>
                   <Hairline inset={ROW_PAD_X} />
@@ -352,6 +358,7 @@ export default function Dashboard() {
 
             {lopend.length > 0 && <><SectieLabel>In uitvoering</SectieLabel><Group>{stationRijen(lopend)}</Group></>}
             {afgerond.length > 0 && <><SectieLabel>Afgerond</SectieLabel><Group>{stationRijen(afgerond)}</Group></>}
+            {opgeleverd.length > 0 && <><SectieLabel>Opgeleverd</SectieLabel><Group>{stationRijen(opgeleverd)}</Group></>}
           </>
         )}
       </main>
