@@ -83,3 +83,58 @@ export function GlassBar({ children, position = "bottom", style }: { children: R
     </div>
   );
 }
+export function NavText({ children, style, ...rest }: ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <Pressable {...rest} style={{ minHeight: 44, minWidth: 58, display: "flex", alignItems: "center", color: T.green, fontSize: 17, fontWeight: 500, ...style }}>
+      {children}
+    </Pressable>
+  );
+}
+
+export function Row({
+  icon, iconColor, title, subtitle, trailing, chevron, onClick,
+}: {
+  icon?: string;
+  iconColor?: string;
+  title: ReactNode;
+  subtitle?: ReactNode;
+  trailing?: ReactNode;
+  chevron?: boolean;
+  onClick?: () => void;
+}) {
+  const showChevron = chevron ?? Boolean(onClick);
+  const inner = (
+    <div style={{ minHeight: ROW_MIN, padding: `12px ${ROW_PAD_X}px`, display: "flex", alignItems: "center", gap: ICON_GAP, width: "100%", textAlign: "left" }}>
+      {icon && <span className="material-symbols-rounded" aria-hidden="true" style={{ fontSize: ICON, color: iconColor ?? T.green, flexShrink: 0 }}>{icon}</span>}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ color: T.rowText, fontSize: 17, lineHeight: 1.3, overflowWrap: "anywhere" }}>{title}</div>
+        {subtitle && <div style={{ marginTop: 2, color: T.rowSub, fontSize: 14 }}>{subtitle}</div>}
+      </div>
+      {trailing}
+      {showChevron && <span className="material-symbols-rounded" aria-hidden="true" style={{ fontSize: 19, color: T.chevron, flexShrink: 0 }}>chevron_right</span>}
+    </div>
+  );
+  if (!onClick) return inner;
+  return <Pressable onClick={onClick} scale={0.98} style={{ display: "block", width: "100%" }}>{inner}</Pressable>;
+}
+
+export function PrimaryButton({ children, caption, disabled, style, ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & { caption?: ReactNode }) {
+  return (
+    <div style={{ maxWidth: 768, margin: "0 auto" }}>
+      <Pressable
+        {...rest}
+        disabled={disabled}
+        style={{
+          width: "100%", minHeight: ROW_MIN, borderRadius: R.control,
+          background: disabled ? T.done : T.green, color: T.surface,
+          fontSize: 17, fontWeight: 500,
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 9,
+          padding: "0 16px", ...style,
+        }}
+      >
+        {children}
+      </Pressable>
+      {caption && <div style={{ marginTop: 8, textAlign: "center", fontSize: 13, color: T.subOnBg, lineHeight: 1.4 }}>{caption}</div>}
+    </div>
+  );
+}
