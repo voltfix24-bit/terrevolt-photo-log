@@ -11,6 +11,8 @@ import CategorieenBeheren from "./pages/CategorieenBeheren";
 import Opleveren from "./pages/Opleveren";
 import Beoordelen from "./pages/Beoordelen";
 import BeoordeelDossier from "./pages/BeoordeelDossier";
+import Auth from "./pages/Auth";
+import RequireAuth from "@/components/RequireAuth";
 import NotFound from "./pages/NotFound";
 import { useInstellingen } from "@/hooks/use-theme";
 import { useOnline } from "@/hooks/use-online";
