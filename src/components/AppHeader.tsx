@@ -43,11 +43,15 @@ export default function AppHeader() {
               Dashboard
             </button>
           </nav>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            {instellingen?.profielfoto_url && (
+              <img src={instellingen.profielfoto_url} alt="Profielfoto" className="w-8 h-8 rounded-full object-cover" />
+            )}
             <button onClick={() => navigate("/instellingen")} aria-label="Instellingen" className="w-10 h-10 rounded-full flex items-center justify-center text-primary active:scale-90 transition-transform">
               <span className="material-symbols-rounded" style={{ fontSize: 24 }}>settings</span>
             </button>
           </div>
+
         </div>
       </header>
 
