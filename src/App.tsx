@@ -8,6 +8,9 @@ import NewStation from "./pages/NewStation";
 import StationDetail from "./pages/StationDetail";
 import Instellingen from "./pages/Instellingen";
 import CategorieenBeheren from "./pages/CategorieenBeheren";
+import Opleveren from "./pages/Opleveren";
+import Beoordelen from "./pages/Beoordelen";
+import BeoordeelDossier from "./pages/BeoordeelDossier";
 import NotFound from "./pages/NotFound";
 import { useInstellingen } from "@/hooks/use-theme";
 import { useOnline } from "@/hooks/use-online";
@@ -50,6 +53,9 @@ function AppContent() {
         <Route path="/" element={<Index />} />
         <Route path="/stations/new" element={<NewStation />} />
         <Route path="/stations/:id" element={<StationDetail />} />
+        <Route path="/stations/:id/opleveren" element={<Opleveren />} />
+        <Route path="/beoordelen" element={<Beoordelen />} />
+        <Route path="/beoordelen/:id" element={<BeoordeelDossier />} />
         <Route path="/instellingen" element={<Instellingen />} />
         <Route path="/instellingen/categorieen" element={<CategorieenBeheren />} />
         <Route path="*" element={<NotFound />} />
