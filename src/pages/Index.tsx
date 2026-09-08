@@ -278,6 +278,12 @@ export default function Dashboard() {
     if (!deleteTarget) return;
     const target = deleteTarget;
     setDeleteTarget(null);
+    const { data: sessie } = await supabase.auth.getSession();
+    if (!sessie.session) {
+      toast.error("Log in om een station te verwijderen");
+      navigate("/auth", { state: { from: "/" } });
+      return;
+    }
     const unlocked = await requirePin("Station verwijderen", `Voer de toegangscode in om "${target.naam}" definitief te verwijderen.`);
     if (!unlocked) return;
     const { data: photos } = await supabase.from("fotos").select("storage_path").eq("station_id", target.id);
