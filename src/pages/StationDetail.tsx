@@ -290,7 +290,13 @@ export default function StationDetail() {
     [fotos]
   );
 
-  const filledCount = new Set(fotos?.map((f) => f.categorie).filter(c => applicableCategories.some(ac => ac.name === c))).size;
+  // Categorie 31 ("Stroomtransformatoren") vereist 3 foto's, alle anderen 1.
+  const catDone = useCallback(
+    (c: { id: number; name: string }) => fotosByCategorie(c.name).length >= (c.id === 31 ? 3 : 1),
+    [fotosByCategorie]
+  );
+
+  const filledCount = applicableCategories.filter(catDone).length;
 
   const compressImage = async (file: File): Promise<File> => {
     if (file.type === "image/heic") return file;
@@ -389,12 +395,12 @@ export default function StationDetail() {
   // Find next incomplete category across applicable categories
   const nextIncomplete = useMemo(() => {
     for (const cat of applicableCategories) {
-      if (fotosByCategorie(cat.name).length === 0 && !isSkipped(cat.name)) {
+      if (!catDone(cat) && !isSkipped(cat.name)) {
         return cat;
       }
     }
     return null;
-  }, [fotosByCategorie, isSkipped, applicableCategories]);
+  }, [catDone, isSkipped, applicableCategories]);
 
   const allDone = !nextIncomplete;
   const vergrendeld = station?.status === 'opgeleverd' || station?.status === 'goedgekeurd';
