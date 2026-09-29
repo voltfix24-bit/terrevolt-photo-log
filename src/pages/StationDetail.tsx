@@ -410,7 +410,7 @@ export default function StationDetail() {
     if (!fotos) return;
     const firstIncomplete = SECTIONS.find(s => {
       const cats = applicableCategories.filter(c => c.section === s.id);
-      return cats.some(c => fotosByCategorie(c.name).length === 0 && !isSkipped(c.name));
+      return cats.some(c => !catDone(c) && !isSkipped(c.name));
     });
     if (firstIncomplete && openSections.length === 0) {
       setOpenSections([firstIncomplete.id]);
@@ -513,7 +513,7 @@ export default function StationDetail() {
         <div className="mb-8">
           {sectionGroups.map(({ section, categories: cats }) => {
             const doneCats = cats.filter(c => fotosByCategorie(c.name).length > 0);
-            const openCats = cats.filter(c => fotosByCategorie(c.name).length === 0 && !isSkipped(c.name));
+            const openCats = cats.filter(c => !catDone(c) && !isSkipped(c.name));
             const skippedCats = cats.filter(c => fotosByCategorie(c.name).length === 0 && isSkipped(c.name));
             const isComplete = openCats.length === 0 && skippedCats.length === 0;
             const isSectionOpen = openSections.includes(section.id);
