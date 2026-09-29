@@ -290,7 +290,13 @@ export default function StationDetail() {
     [fotos]
   );
 
-  const filledCount = new Set(fotos?.map((f) => f.categorie).filter(c => applicableCategories.some(ac => ac.name === c))).size;
+  // Categorie 31 ("Stroomtransformatoren") vereist 3 foto's, alle anderen 1.
+  const catDone = useCallback(
+    (c: { id: number; name: string }) => fotosByCategorie(c.name).length >= (c.id === 31 ? 3 : 1),
+    [fotosByCategorie]
+  );
+
+  const filledCount = applicableCategories.filter(catDone).length;
 
   const compressImage = async (file: File): Promise<File> => {
     if (file.type === "image/heic") return file;
@@ -389,12 +395,12 @@ export default function StationDetail() {
   // Find next incomplete category across applicable categories
   const nextIncomplete = useMemo(() => {
     for (const cat of applicableCategories) {
-      if (fotosByCategorie(cat.name).length === 0 && !isSkipped(cat.name)) {
+      if (!catDone(cat) && !isSkipped(cat.name)) {
         return cat;
       }
     }
     return null;
-  }, [fotosByCategorie, isSkipped, applicableCategories]);
+  }, [catDone, isSkipped, applicableCategories]);
 
   const allDone = !nextIncomplete;
   const vergrendeld = station?.status === 'opgeleverd' || station?.status === 'goedgekeurd';
@@ -404,7 +410,7 @@ export default function StationDetail() {
     if (!fotos) return;
     const firstIncomplete = SECTIONS.find(s => {
       const cats = applicableCategories.filter(c => c.section === s.id);
-      return cats.some(c => fotosByCategorie(c.name).length === 0 && !isSkipped(c.name));
+      return cats.some(c => !catDone(c) && !isSkipped(c.name));
     });
     if (firstIncomplete && openSections.length === 0) {
       setOpenSections([firstIncomplete.id]);
@@ -507,7 +513,7 @@ export default function StationDetail() {
         <div className="mb-8">
           {sectionGroups.map(({ section, categories: cats }) => {
             const doneCats = cats.filter(c => fotosByCategorie(c.name).length > 0);
-            const openCats = cats.filter(c => fotosByCategorie(c.name).length === 0 && !isSkipped(c.name));
+            const openCats = cats.filter(c => !catDone(c) && !isSkipped(c.name));
             const skippedCats = cats.filter(c => fotosByCategorie(c.name).length === 0 && isSkipped(c.name));
             const isComplete = openCats.length === 0 && skippedCats.length === 0;
             const isSectionOpen = openSections.includes(section.id);
