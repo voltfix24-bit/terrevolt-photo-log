@@ -25,7 +25,6 @@ type StationItem = {
   nextTaskName: string | null;
 };
 
-const requiredPhotos = (category: Category) => category.id === 31 ? 3 : 1;
 const abbreviations = new Set(["ls", "ms", "to", "atr"]);
 const ACTIVE_BG = "#F4F8F2";
 const PANEL_MAX = 80;
