@@ -25,7 +25,6 @@ type StationItem = {
   nextTaskName: string | null;
 };
 
-const requiredPhotos = (category: Category) => category.id === 31 ? 3 : 1;
 const abbreviations = new Set(["ls", "ms", "to", "atr"]);
 const ACTIVE_BG = "#F4F8F2";
 const PANEL_MAX = 80;
@@ -201,6 +200,15 @@ export default function Dashboard() {
     },
   });
 
+  const { data: skips } = useQuery({
+    queryKey: ["categorie-skips-all"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("categorie_skips").select("station_id, categorie");
+      if (error) throw error;
+      return data;
+    },
+  });
+
   useEffect(() => {
     let mounted = true;
     const updatePending = async () => {
@@ -227,23 +235,32 @@ export default function Dashboard() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const enriched = useMemo<StationItem[]>(() => (stations ?? []).map((station) => {
-    const applicable = getApplicableCategories(station);
-    const photosByCategory = new Map<string, number>();
-    for (const photo of (station.fotos ?? []).filter((foto: any) => foto.review_status !== "rejected")) photosByCategory.set(photo.categorie, (photosByCategory.get(photo.categorie) ?? 0) + 1);
-    const total = applicable.reduce((sum, category) => sum + requiredPhotos(category), 0);
-    const done = applicable.reduce((sum, category) => sum + Math.min(photosByCategory.get(category.name) ?? 0, requiredPhotos(category)), 0);
-    const nextTaskName = applicable.find((category) => (photosByCategory.get(category.name) ?? 0) < requiredPhotos(category))?.name ?? null;
-    return {
-      station,
-      done,
-      total,
-      complete: done === total && total > 0,
-      pending: pendingCounts[station.id] ?? 0,
-      updatedAt: dateValue(station.updated_at ?? station.created_at),
-      nextTaskName,
-    };
-  }), [stations, pendingCounts]);
+  const enriched = useMemo<StationItem[]>(() => {
+    const skippedByStation = new Map<string, Set<string>>();
+    for (const skip of skips ?? []) {
+      if (!skippedByStation.has(skip.station_id)) skippedByStation.set(skip.station_id, new Set());
+      skippedByStation.get(skip.station_id)!.add(skip.categorie);
+    }
+    return (stations ?? []).map((station) => {
+      const applicable = getApplicableCategories(station);
+      const skipped = skippedByStation.get(station.id) ?? new Set<string>();
+      const photosByCategory = new Map<string, number>();
+      for (const photo of (station.fotos ?? []).filter((foto: any) => foto.review_status !== "rejected")) photosByCategory.set(photo.categorie, (photosByCategory.get(photo.categorie) ?? 0) + 1);
+      const isDone = (category: Category) => (photosByCategory.get(category.name) ?? 0) > 0 || skipped.has(category.name);
+      const total = applicable.length;
+      const done = applicable.filter(isDone).length;
+      const nextTaskName = applicable.find((category) => !isDone(category))?.name ?? null;
+      return {
+        station,
+        done,
+        total,
+        complete: done === total && total > 0,
+        pending: pendingCounts[station.id] ?? 0,
+        updatedAt: dateValue(station.updated_at ?? station.created_at),
+        nextTaskName,
+      };
+    });
+  }, [stations, skips, pendingCounts]);
 
   const filtered = useMemo(() => enriched.filter((item) => {
     const query = search.trim().toLocaleLowerCase("nl-NL");
