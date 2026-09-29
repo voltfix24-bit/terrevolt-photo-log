@@ -201,6 +201,15 @@ export default function Dashboard() {
     },
   });
 
+  const { data: skips } = useQuery({
+    queryKey: ["categorie-skips-all"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("categorie_skips").select("station_id, categorie");
+      if (error) throw error;
+      return data;
+    },
+  });
+
   useEffect(() => {
     let mounted = true;
     const updatePending = async () => {
