@@ -22,6 +22,10 @@ const W = {
   chip: "rgba(255,255,255,0.12)",
   chipBorder: "rgba(255,255,255,0.18)",
   thumb: "#C9D6C4",
+  gold: "#FCC934",
+  goldInk: "#3D2E00",
+  goldBg: "rgba(252,201,52,0.12)",
+  goldBorder: "rgba(252,201,52,0.5)",
 };
 const AUTO_NEXT_MS = 1500;
 
@@ -74,6 +78,46 @@ function StatusBadge({ status, pct, groot }: { status: "ok" | "upload" | "wachtr
       <span className="material-symbols-rounded" style={{ fontSize: 18, fontVariationSettings: cfg.fill ? "'FILL' 1" : undefined }}>{cfg.icon}</span>
       {cfg.label}
     </span>
+  );
+}
+
+function VoorbeeldKaart({ url, onOpen }: { url?: string; onOpen: () => void }) {
+  if (!url) return null;
+  return (
+    <button type="button" onClick={onOpen} aria-label="Voorbeeldfoto vergroten"
+      style={{ marginTop: 16, width: "100%", display: "flex", alignItems: "center", gap: 10, padding: 10, borderRadius: 16, background: W.goldBg, border: `1.5px solid ${W.goldBorder}`, textAlign: "left" }}>
+      <span style={{ width: 96, height: 72, flexShrink: 0, borderRadius: 10, position: "relative", background: `${W.thumb} center/cover url(${url})` }}>
+        <span style={{ position: "absolute", left: 4, top: 4, background: W.gold, color: W.goldInk, fontSize: 10, fontWeight: 800, letterSpacing: "0.04em", padding: "2px 5px", borderRadius: 4 }}>VOORBEELD</span>
+      </span>
+      <span style={{ flex: 1, display: "flex", flexDirection: "column", gap: 3 }}>
+        <span style={{ fontSize: 15, fontWeight: 700, color: W.gold }}>Zo moet het eruitzien</span>
+        <span style={{ fontSize: 14, color: W.body }}>Tik om te vergroten</span>
+      </span>
+      <span className="material-symbols-rounded" style={{ fontSize: 22, color: W.gold }}>open_in_full</span>
+    </button>
+  );
+}
+
+function Vergelijk({ voorbeeldUrl, fotoUrl, onVoorbeeld, onFoto }: { voorbeeldUrl: string; fotoUrl: string; onVoorbeeld: () => void; onFoto?: () => void }) {
+  const kop = (kleur: string, icon: string, tekst: string, fill = false) => (
+    <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 700, letterSpacing: "0.03em", color: kleur }}>
+      <span className="material-symbols-rounded" style={{ fontSize: 16, fontVariationSettings: fill ? "'FILL' 1" : undefined }}>{icon}</span>{tekst}
+    </span>
+  );
+  return (
+    <div style={{ marginTop: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <button type="button" onClick={onVoorbeeld} style={{ display: "flex", flexDirection: "column", gap: 6, background: "none", border: 0, padding: 0, textAlign: "left" }}>
+          {kop(W.gold, "lightbulb", "VOORBEELD")}
+          <span style={{ width: "100%", aspectRatio: "3 / 4", borderRadius: 14, border: `2.5px dashed ${W.gold}`, background: `${W.thumb} center/cover url(${voorbeeldUrl})` }} />
+        </button>
+        <button type="button" onClick={onFoto} disabled={!onFoto} style={{ display: "flex", flexDirection: "column", gap: 6, background: "none", border: 0, padding: 0, textAlign: "left" }}>
+          {kop(W.label, "check_circle", "JOUW FOTO", true)}
+          <span style={{ width: "100%", aspectRatio: "3 / 4", borderRadius: 14, boxShadow: `0 0 0 2.5px ${W.label}`, background: `${W.thumb} center/cover url(${fotoUrl})` }} />
+        </button>
+      </div>
+      <p style={{ margin: "14px 4px 0", fontSize: 15, lineHeight: 1.45, color: W.body }}>Lijkt het erop? Zo niet, tik op je foto om hem opnieuw te maken.</p>
+    </div>
   );
 }
 
@@ -299,7 +343,14 @@ export function WizardView({
         </div>
 
         {/* Voorbeeld (geen foto) → 1 grote foto (4a/4b/4d) → vakjes bij meerdere (4c) */}
-        {totaal > 0 && required === 1 && tegels.length === 1 ? (
+        {totaal > 0 && required === 1 && tegels.length === 1 && tegels[0].status === "ok" && !autoNext && catVoorbeelden[0] ? (
+          <Vergelijk
+            voorbeeldUrl={catVoorbeelden[0].url}
+            fotoUrl={tegels[0].url}
+            onVoorbeeld={() => setVoorbeeldLightbox(0)}
+            onFoto={tegels[0].onClick}
+          />
+        ) : totaal > 0 && required === 1 && tegels.length === 1 ? (
           <button
             type="button"
             onClick={tegels[0].onClick}
@@ -325,38 +376,31 @@ export function WizardView({
             )}
           </button>
         ) : totaal > 0 ? (
-          <div className="grid grid-cols-3 gap-2" style={{ marginTop: 20 }}>
-            {tegels.map((t) => (
-              <button key={t.key} type="button" onClick={t.onClick} disabled={!t.onClick} style={{ aspectRatio: "3 / 4", borderRadius: 14, border: "none", padding: 0, position: "relative", overflow: "hidden", background: `${W.thumb} center/cover url(${t.url})` }}>
-                <StatusBadge status={t.status} />
-              </button>
-            ))}
-            {Array.from({ length: Math.max(required - totaal, 0) }).map((_, i) => (
-              <button key={`leeg-${i}`} type="button" onClick={() => cameraRef.current?.click()} style={{ aspectRatio: "3 / 4", borderRadius: 14, border: "2px dashed rgba(255,255,255,0.4)", background: "transparent", color: W.body, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 14, fontWeight: 600 }}>
-                <span className="material-symbols-rounded" style={{ fontSize: 28 }}>add_a_photo</span>
-                {i === 0 ? `Nog ${required - totaal}` : ""}
-              </button>
-            ))}
-          </div>
+          <>
+            <VoorbeeldKaart url={catVoorbeelden[0]?.url} onOpen={() => setVoorbeeldLightbox(0)} />
+            <div className="grid grid-cols-3 gap-2" style={{ marginTop: 12 }}>
+              {tegels.map((t) => (
+                <button key={t.key} type="button" onClick={t.onClick} disabled={!t.onClick} style={{ aspectRatio: "3 / 4", borderRadius: 14, border: "none", padding: 0, position: "relative", overflow: "hidden", background: `${W.thumb} center/cover url(${t.url})` }}>
+                  <StatusBadge status={t.status} />
+                </button>
+              ))}
+              {Array.from({ length: Math.max(required - totaal, 0) }).map((_, i) => (
+                <button key={`leeg-${i}`} type="button" onClick={() => cameraRef.current?.click()} style={{ aspectRatio: "3 / 4", borderRadius: 14, border: "2px dashed rgba(255,255,255,0.4)", background: "transparent", color: W.body, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 14, fontWeight: 600 }}>
+                  <span className="material-symbols-rounded" style={{ fontSize: 28 }}>add_a_photo</span>
+                  {i === 0 ? `Nog ${required - totaal}` : ""}
+                </button>
+              ))}
+            </div>
+          </>
         ) : (
-          <button
-            type="button"
-            onClick={() => catVoorbeelden[0] && setVoorbeeldLightbox(0)}
-            disabled={!catVoorbeelden[0]}
-            aria-label="Voorbeeldfoto bekijken"
-            style={{
-              marginTop: 20, width: "100%", aspectRatio: "4 / 3", borderRadius: 18, border: "none", padding: 0, position: "relative",
-              background: catVoorbeelden[0] ? `${W.thumb} center/cover url(${catVoorbeelden[0].url})` : W.chip,
-              display: "flex", alignItems: "center", justifyContent: "center", color: W.body,
-            }}
-          >
-            {!catVoorbeelden[0] && <span style={{ fontSize: 15 }}>Geen voorbeeldfoto</span>}
-            {catVoorbeelden[0] && (
-              <span style={{ position: "absolute", left: 12, bottom: 12, background: "rgba(10,42,24,0.85)", color: W.text, fontSize: 13, fontWeight: 600, padding: "6px 10px", borderRadius: 8, display: "flex", alignItems: "center", gap: 6 }}>
-                <span className="material-symbols-rounded" style={{ fontSize: 16 }}>photo</span>Voorbeeldfoto
-              </span>
-            )}
-          </button>
+          <>
+            <VoorbeeldKaart url={catVoorbeelden[0]?.url} onOpen={() => setVoorbeeldLightbox(0)} />
+            <button type="button" onClick={() => cameraRef.current?.click()} disabled={uploading}
+              style={{ marginTop: 12, width: "100%", aspectRatio: "4 / 3", borderRadius: 18, border: "2px dashed rgba(255,255,255,0.35)", background: "transparent", color: W.body, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <span className="material-symbols-rounded" style={{ fontSize: 40 }}>add_a_photo</span>
+              <span style={{ fontSize: 16, fontWeight: 600 }}>Jouw foto komt hier</span>
+            </button>
+          </>
         )}
 
         {required > 1 && totaal > 0 && (
