@@ -158,6 +158,7 @@ export function WizardView({
   const uploading = cat ? isUploading === cat.name : false;
   const totaal = catFotos.length + lokaal.length;
   const taakKlaar = totaal >= required;
+  console.log("WIZDBG render", { lokaal: lokaal.length, catFotos: catFotos.length, required });
   const volgendeNaam = applicableCategories[currentIndex + 1]?.effectiveName;
   const tegels = [
     ...catFotos.map((f, i) => ({ key: f.id, url: f.url, status: "ok" as const, onClick: () => setPhotoPreview({ foto: f, index: i }) })),
