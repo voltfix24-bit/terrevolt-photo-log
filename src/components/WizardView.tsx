@@ -421,11 +421,6 @@ export function WizardView({
             <Pressable onClick={goPrev} disabled={currentIndex === 0} style={{ minHeight: 44, display: "flex", alignItems: "center", gap: 4, fontSize: 15, color: currentIndex === 0 ? "rgba(255,255,255,0.35)" : W.body }}>
               <span className="material-symbols-rounded" style={{ fontSize: 20 }}>arrow_back</span>Vorige
             </Pressable>
-            {!taakKlaar && !autoNext && (
-              <Pressable onClick={goNext} style={{ minHeight: 44, display: "flex", alignItems: "center", gap: 4, fontSize: 15, color: W.body }}>
-                Later doen<span className="material-symbols-rounded" style={{ fontSize: 20 }}>arrow_forward</span>
-              </Pressable>
-            )}
           </div>
         </div>
       </div>
