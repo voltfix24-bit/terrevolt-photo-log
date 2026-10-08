@@ -99,6 +99,18 @@
   }
 }
 
+html, body {
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+@media (max-width: 768px) {
+  input, select, textarea {
+    font-size: max(16px, 1em);
+  }
+}
+
 @layer utilities {
   .font-mono {
     font-family: monospace;
