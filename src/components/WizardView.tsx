@@ -146,7 +146,7 @@ export function WizardView({
   const [autoNext, setAutoNext] = useState(false); // aftellen loopt
   const [aftel, setAftel] = useState(false);       // start animatie aftelbalk
   // Direct zichtbare foto's (lokale preview) tot de echte foto binnen is; offline blijven ze als 'wachtrij'
-  const [lokaal, setLokaal] = useState<{ url: string; wachtrij: boolean }[]>([]);
+  const [lokaal, setLokaal] = useState<{ name: string; url: string; wachtrij: boolean }[]>([]);
 
   const cat = applicableCategories[currentIndex];
   const catFotos = cat ? fotosByCategorie(cat.name) : [];
@@ -158,7 +158,6 @@ export function WizardView({
   const uploading = cat ? isUploading === cat.name : false;
   const totaal = catFotos.length + lokaal.length;
   const taakKlaar = totaal >= required;
-  console.log("WIZDBG render", { lokaal: lokaal.length, catFotos: catFotos.length, required });
   const volgendeNaam = applicableCategories[currentIndex + 1]?.effectiveName;
   const tegels = [
     ...catFotos.map((f, i) => ({ key: f.id, url: f.url, status: "ok" as const, onClick: () => setPhotoPreview({ foto: f, index: i }) })),
@@ -223,29 +222,21 @@ export function WizardView({
     if (!cat) return;
     const offline = !navigator.onLine;
     const eerste = totaal < required && totaal + files.length >= required;
-    const entries = Array.from(files).map((f) => ({ url: URL.createObjectURL(f), wachtrij: offline }));
+    // Namen direct vastleggen: de FileList wordt leeg zodra het invoerveld gewist is.
+    const entries = Array.from(files).map((f) => ({ name: f.name, url: URL.createObjectURL(f), wachtrij: offline }));
     setLokaal((l) => [...l, ...entries]);
     void Promise.resolve(onUpload(cat.name, files)).then((mislukt) => {
       // Foto's die niet zijn opgeslagen (te groot, ongeldig type of mislukte upload)
       // verdwijnen weer uit beeld zodat de taak niet als afgerond telt.
-      console.log("WIZDBG result", mislukt, "offline", offline);
-      try {
-        if (Array.isArray(mislukt) && mislukt.length > 0) {
-          const faalSet = new Set(mislukt);
-          const weg = entries.filter((e, i) => faalSet.has(files[i].name)).map((e) => e.url);
-          console.log("WIZDBG weg", weg.length, "entries", entries.length);
-          weg.forEach((u) => URL.revokeObjectURL(u));
-          if (weg.length > 0) {
-            const wegSet = new Set(weg);
-            setLokaal((l) => {
-              console.log("WIZDBG filter voor", l.length);
-              const n = l.filter((x) => !wegSet.has(x.url));
-              console.log("WIZDBG filter na", n.length);
-              return n;
-            });
-          }
+      if (Array.isArray(mislukt) && mislukt.length > 0) {
+        const faalSet = new Set(mislukt);
+        const weg = entries.filter((e) => faalSet.has(e.name)).map((e) => e.url);
+        weg.forEach((u) => URL.revokeObjectURL(u));
+        if (weg.length > 0) {
+          const wegSet = new Set(weg);
+          setLokaal((l) => l.filter((x) => !wegSet.has(x.url)));
         }
-      } catch (e) { console.log("WIZDBG ERR", String(e)); }
+      }
       if (eerste) setArmed(true);
     });
   };
