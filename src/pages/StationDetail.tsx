@@ -305,11 +305,14 @@ export default function StationDetail() {
     } catch { return file; }
   };
 
-  const handleUpload = async (categorie: string, files: FileList) => {
+  // Geeft de bestandsnamen terug die NIET zijn opgeslagen (te groot, ongeldig type of mislukte upload),
+  // zodat de wizard de bijbehorende lokale previews kan verwijderen.
+  const handleUpload = async (categorie: string, files: FileList): Promise<string[]> => {
+    const mislukt: string[] = [];
     if (!isOnline) {
       let queued = 0;
       for (const file of Array.from(files)) {
-        if (file.size > MAX_SIZE) { toast.error(`${file.name} is groter dan 10MB`); continue; }
+        if (file.size > MAX_SIZE) { toast.error(`${file.name} is groter dan 10MB`); mislukt.push(file.name); continue; }
         await queuePhoto(id!, categorie, file);
         queued++;
       }
@@ -318,7 +321,7 @@ export default function StationDetail() {
           duration: 4000,
         });
       }
-      return;
+      return mislukt;
     }
 
     setUploadingCat(categorie);
@@ -327,13 +330,13 @@ export default function StationDetail() {
     let done = 0;
 
     for (const file of Array.from(files)) {
-      if (file.size > MAX_SIZE) { toast.error(`${file.name} is groter dan 10MB`); continue; }
-      if (!ACCEPTED.includes(file.type) && !file.name.toLowerCase().endsWith(".heic")) { toast.error(`${file.name}: ongeldig bestandstype`); continue; }
+      if (file.size > MAX_SIZE) { toast.error(`${file.name} is groter dan 10MB`); mislukt.push(file.name); continue; }
+      if (!ACCEPTED.includes(file.type) && !file.name.toLowerCase().endsWith(".heic")) { toast.error(`${file.name}: ongeldig bestandstype`); mislukt.push(file.name); continue; }
 
       const compressed = await compressImage(file);
       const storagePath = `stations/${id}/${catSlug}/${Date.now()}_${file.name}`;
       const { error: uploadError } = await supabase.storage.from("to-fotos").upload(storagePath, compressed);
-      if (uploadError) { toast.error(`Upload mislukt: ${uploadError.message}`); continue; }
+      if (uploadError) { toast.error(`Upload mislukt: ${uploadError.message}`); mislukt.push(file.name); continue; }
 
       const { data: urlData } = supabase.storage.from("to-fotos").getPublicUrl(storagePath);
       await supabase.from("fotos").insert({ station_id: id!, categorie, storage_path: storagePath, url: urlData.publicUrl, volgorde: fotosByCategorie(categorie).length + done, uploaded_at: new Date().toISOString() });
@@ -347,6 +350,7 @@ export default function StationDetail() {
     setUploadingCat(null);
     setUploadProgress((p) => { const next = { ...p }; delete next[categorie]; return next; });
     if (done > 0) toast.success("Foto's geüpload ✓");
+    return mislukt;
   };
 
   const handleDelete = async (fotoId: string, storagePath: string) => {
@@ -512,7 +516,7 @@ export default function StationDetail() {
         {/* ── 2. SECTION ACCORDION ── */}
         <div className="mb-8">
           {sectionGroups.map(({ section, categories: cats }) => {
-            const doneCats = cats.filter(c => fotosByCategorie(c.name).length > 0);
+            const doneCats = cats.filter(c => catDone(c) && !isSkipped(c.name));
             const openCats = cats.filter(c => !catDone(c) && !isSkipped(c.name));
             const skippedCats = cats.filter(c => fotosByCategorie(c.name).length === 0 && isSkipped(c.name));
             const isComplete = openCats.length === 0 && skippedCats.length === 0;

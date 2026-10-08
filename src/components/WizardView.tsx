@@ -42,7 +42,7 @@ export interface WizardViewProps {
   fotosByCategorie: (cat: string) => FotoRow[];
   isUploading: string | null;
   uploadProgress: Record<string, number>;
-  onUpload: (cat: string, files: FileList) => void | Promise<void>;
+  onUpload: (cat: string, files: FileList) => void | string[] | Promise<void | string[]>;
   onDelete: (id: string, path: string) => void;
   onClickThumb: (cat: string, idx: number) => void;
   onOpenPdf: () => void;
@@ -146,7 +146,7 @@ export function WizardView({
   const [autoNext, setAutoNext] = useState(false); // aftellen loopt
   const [aftel, setAftel] = useState(false);       // start animatie aftelbalk
   // Direct zichtbare foto's (lokale preview) tot de echte foto binnen is; offline blijven ze als 'wachtrij'
-  const [lokaal, setLokaal] = useState<{ url: string; wachtrij: boolean }[]>([]);
+  const [lokaal, setLokaal] = useState<{ name: string; url: string; wachtrij: boolean }[]>([]);
 
   const cat = applicableCategories[currentIndex];
   const catFotos = cat ? fotosByCategorie(cat.name) : [];
@@ -222,8 +222,23 @@ export function WizardView({
     if (!cat) return;
     const offline = !navigator.onLine;
     const eerste = totaal < required && totaal + files.length >= required;
-    setLokaal((l) => [...l, ...Array.from(files).map((f) => ({ url: URL.createObjectURL(f), wachtrij: offline }))]);
-    void Promise.resolve(onUpload(cat.name, files)).then(() => { if (eerste) setArmed(true); });
+    // Namen direct vastleggen: de FileList wordt leeg zodra het invoerveld gewist is.
+    const entries = Array.from(files).map((f) => ({ name: f.name, url: URL.createObjectURL(f), wachtrij: offline }));
+    setLokaal((l) => [...l, ...entries]);
+    void Promise.resolve(onUpload(cat.name, files)).then((mislukt) => {
+      // Foto's die niet zijn opgeslagen (te groot, ongeldig type of mislukte upload)
+      // verdwijnen weer uit beeld zodat de taak niet als afgerond telt.
+      if (Array.isArray(mislukt) && mislukt.length > 0) {
+        const faalSet = new Set(mislukt);
+        const weg = entries.filter((e) => faalSet.has(e.name)).map((e) => e.url);
+        weg.forEach((u) => URL.revokeObjectURL(u));
+        if (weg.length > 0) {
+          const wegSet = new Set(weg);
+          setLokaal((l) => l.filter((x) => !wegSet.has(x.url)));
+        }
+      }
+      if (eerste) setArmed(true);
+    });
   };
 
   const confirmSkip = () => {
