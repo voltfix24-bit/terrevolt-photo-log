@@ -335,64 +335,36 @@ export function WizardView({
           {cat.id === 1 && station.type_ruimte === "Betreedbaar station" && <p style={{ margin: 0, fontSize: 15, color: W.body }}>Bij een betreedbaar station kan deze taak worden overgeslagen.</p>}
         </div>
 
-        {/* Voorbeeld (geen foto) → 1 grote foto (4a/4b/4d) → vakjes bij meerdere (4c) */}
-        {totaal > 0 && required === 1 && tegels.length === 1 && tegels[0].status === "ok" && !autoNext && catVoorbeelden[0] ? (
-          <Vergelijk
-            voorbeeldUrl={catVoorbeelden[0].url}
-            fotoUrl={tegels[0].url}
-            onVoorbeeld={() => setVoorbeeldLightbox(0)}
-            onFoto={tegels[0].onClick}
-          />
-        ) : totaal > 0 && required === 1 && tegels.length === 1 ? (
-          <button
-            type="button"
-            onClick={tegels[0].onClick}
-            disabled={!tegels[0].onClick}
-            aria-label="Foto bekijken"
-            style={{
-              marginTop: 20, width: "100%", aspectRatio: "4 / 3", borderRadius: 18, border: "none", padding: 0, position: "relative", overflow: "hidden",
-              background: `${W.thumb} center/cover url(${tegels[0].url})`,
-              boxShadow: autoNext ? `0 0 0 3px ${W.label}` : "none", transition: "box-shadow 0.25s ease",
-            }}
-          >
-            {tegels[0].status === "upload" && <span style={{ position: "absolute", inset: 0, background: "rgba(10,42,24,0.35)" }} />}
-            <StatusBadge status={tegels[0].status} pct={pct} groot />
-            {tegels[0].status === "upload" && pct !== undefined && (
-              <span style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 6, background: "rgba(255,255,255,0.3)" }}>
-                <span style={{ display: "block", height: 6, width: `${pct}%`, background: W.label, transition: "width 0.2s ease" }} />
-              </span>
-            )}
-            {tegels[0].onClick && (
-              <span style={{ position: "absolute", right: 12, bottom: 12, width: 40, height: 40, borderRadius: 20, background: "rgba(10,42,24,0.85)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <span className="material-symbols-rounded" style={{ fontSize: 22, color: W.text }}>open_in_full</span>
-              </span>
-            )}
+        <VoorbeeldKaart url={catVoorbeelden[0]?.url} onOpen={() => setVoorbeeldLightbox(0)} />
+        {totaal === 0 ? (
+          <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading} aria-label="Foto toevoegen"
+            style={{ marginTop: 12, width: "100%", aspectRatio: "4 / 3", borderRadius: 18, border: "2px dashed rgba(255,255,255,0.35)", background: "transparent", color: W.body, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <span className="material-symbols-rounded" style={{ fontSize: 40 }}>add_a_photo</span>
+            <span style={{ fontSize: 16, fontWeight: 600 }}>Jouw foto komt hier</span>
+            <span style={{ fontSize: 14, color: W.body, opacity: 0.85 }}>Camera, fotobibliotheek of bestand</span>
           </button>
-        ) : totaal > 0 ? (
+        ) : (
           <>
-            <VoorbeeldKaart url={catVoorbeelden[0]?.url} onOpen={() => setVoorbeeldLightbox(0)} />
             <div className="grid grid-cols-3 gap-2" style={{ marginTop: 12 }}>
               {tegels.map((t) => (
-                <button key={t.key} type="button" onClick={t.onClick} disabled={!t.onClick} style={{ aspectRatio: "3 / 4", borderRadius: 14, border: "none", padding: 0, position: "relative", overflow: "hidden", background: `${W.thumb} center/cover url(${t.url})` }}>
+                <button key={t.key} type="button" onClick={t.onClick} disabled={!t.onClick} aria-label="Foto bekijken"
+                  style={{ aspectRatio: "3 / 4", borderRadius: 14, border: "none", padding: 0, position: "relative", overflow: "hidden", background: `${W.thumb} center/cover url(${t.url})`, boxShadow: autoNext ? `0 0 0 2.5px ${W.label}` : "none" }}>
                   <StatusBadge status={t.status} />
                 </button>
               ))}
-              {Array.from({ length: Math.max(required - totaal, 0) }).map((_, i) => (
-                <button key={`leeg-${i}`} type="button" onClick={() => cameraRef.current?.click()} style={{ aspectRatio: "3 / 4", borderRadius: 14, border: "2px dashed rgba(255,255,255,0.4)", background: "transparent", color: W.body, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 14, fontWeight: 600 }}>
-                  <span className="material-symbols-rounded" style={{ fontSize: 28 }}>add_a_photo</span>
-                  {i === 0 ? `Nog ${required - totaal}` : ""}
+              {Array.from({ length: Math.max(required - totaal, 1) }).map((_, i) => (
+                <button key={`leeg-${i}`} type="button" onClick={() => fileRef.current?.click()} disabled={uploading} aria-label="Nog een foto toevoegen"
+                  style={{ aspectRatio: "3 / 4", borderRadius: 14, border: "2px dashed rgba(255,255,255,0.4)", background: "transparent", color: W.body, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 14, fontWeight: 600 }}>
+                  <span className="material-symbols-rounded" style={{ fontSize: 28 }}>add</span>
+                  {required - totaal > 0 && i === 0 ? `Nog ${required - totaal}` : ""}
                 </button>
               ))}
             </div>
-          </>
-        ) : (
-          <>
-            <VoorbeeldKaart url={catVoorbeelden[0]?.url} onOpen={() => setVoorbeeldLightbox(0)} />
-            <button type="button" onClick={() => cameraRef.current?.click()} disabled={uploading}
-              style={{ marginTop: 12, width: "100%", aspectRatio: "4 / 3", borderRadius: 18, border: "2px dashed rgba(255,255,255,0.35)", background: "transparent", color: W.body, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
-              <span className="material-symbols-rounded" style={{ fontSize: 40 }}>add_a_photo</span>
-              <span style={{ fontSize: 16, fontWeight: 600 }}>Jouw foto komt hier</span>
-            </button>
+            {uploading && pct !== undefined && (
+              <div style={{ marginTop: 10, height: 4, borderRadius: 2, overflow: "hidden", background: "rgba(255,255,255,0.16)" }}>
+                <div style={{ height: "100%", width: `${pct}%`, background: W.label, transition: "width 0.2s ease" }} />
+              </div>
+            )}
           </>
         )}
 
