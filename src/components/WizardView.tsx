@@ -98,28 +98,6 @@ function VoorbeeldKaart({ url, onOpen }: { url?: string; onOpen: () => void }) {
   );
 }
 
-function Vergelijk({ voorbeeldUrl, fotoUrl, onVoorbeeld, onFoto }: { voorbeeldUrl: string; fotoUrl: string; onVoorbeeld: () => void; onFoto?: () => void }) {
-  const kop = (kleur: string, icon: string, tekst: string, fill = false) => (
-    <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 700, letterSpacing: "0.03em", color: kleur }}>
-      <span className="material-symbols-rounded" style={{ fontSize: 16, fontVariationSettings: fill ? "'FILL' 1" : undefined }}>{icon}</span>{tekst}
-    </span>
-  );
-  return (
-    <div style={{ marginTop: 20 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        <button type="button" onClick={onVoorbeeld} style={{ display: "flex", flexDirection: "column", gap: 6, background: "none", border: 0, padding: 0, textAlign: "left" }}>
-          {kop(W.gold, "lightbulb", "VOORBEELD")}
-          <span style={{ width: "100%", aspectRatio: "3 / 4", borderRadius: 14, border: `2.5px dashed ${W.gold}`, background: `${W.thumb} center/cover url(${voorbeeldUrl})` }} />
-        </button>
-        <button type="button" onClick={onFoto} disabled={!onFoto} style={{ display: "flex", flexDirection: "column", gap: 6, background: "none", border: 0, padding: 0, textAlign: "left" }}>
-          {kop(W.label, "check_circle", "JOUW FOTO", true)}
-          <span style={{ width: "100%", aspectRatio: "3 / 4", borderRadius: 14, boxShadow: `0 0 0 2.5px ${W.label}`, background: `${W.thumb} center/cover url(${fotoUrl})` }} />
-        </button>
-      </div>
-      <p style={{ margin: "14px 4px 0", fontSize: 15, lineHeight: 1.45, color: W.body }}>Lijkt het erop? Zo niet, tik op je foto om hem opnieuw te maken.</p>
-    </div>
-  );
-}
 
 export function WizardView({
   startIndex, stationId, onClose, onSkip, onUnskip, skipped, skippedReasons, station,
