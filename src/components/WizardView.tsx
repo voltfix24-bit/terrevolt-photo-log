@@ -404,26 +404,18 @@ export function WizardView({
               </span>
               <Pressable onClick={() => setAutoNext(false)} style={{ position: "relative", minHeight: 48, padding: "0 14px", borderRadius: 12, background: "rgba(255,255,255,0.18)", color: W.text, fontSize: 15, fontWeight: 600 }}>Blijf hier</Pressable>
             </div>
-          ) : uploading && required === 1 && totaal > 0 ? (
-            <div style={{ width: "100%", minHeight: 88, borderRadius: 22, background: "rgba(255,255,255,0.85)", color: T.green, display: "flex", alignItems: "center", justifyContent: "center", gap: 12, fontSize: 21, fontWeight: 700 }} className="font-display">
-              <span className="material-symbols-rounded animate-spin" style={{ fontSize: 30 }}>progress_activity</span>
-              Uploaden…
-            </div>
-          ) : taakKlaar ? (
+          ) : (
             <div style={{ display: "flex", gap: 10 }}>
-              <Pressable onClick={() => cameraRef.current?.click()} disabled={uploading} aria-label="Nog een foto" style={{ width: 88, minHeight: 88, borderRadius: 22, background: W.chip, border: `1px solid ${W.chipBorder}`, color: W.text, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <span className="material-symbols-rounded" style={{ fontSize: 30 }}>add_a_photo</span>
+              <Pressable onClick={() => cameraRef.current?.click()} disabled={uploading} aria-label="Camera openen"
+                style={{ width: 88, minHeight: 88, borderRadius: 22, background: W.chip, border: `1px solid ${W.chipBorder}`, color: W.text, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <span className={`material-symbols-rounded${uploading ? " animate-spin" : ""}`} style={{ fontSize: 32 }}>{uploading ? "progress_activity" : "photo_camera"}</span>
               </Pressable>
-              <Pressable onClick={goNext} style={{ flex: 1, minHeight: 88, borderRadius: 22, background: W.text, color: T.green, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, fontSize: 21, fontWeight: 700 }} className="font-display">
+              <Pressable onClick={goNext} className="font-display"
+                style={{ flex: 1, minHeight: 88, borderRadius: 22, background: W.text, color: T.green, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, fontSize: 21, fontWeight: 700 }}>
                 {isLast ? "Afronden" : "Volgende"}
                 <span className="material-symbols-rounded" style={{ fontSize: 26 }}>arrow_forward</span>
               </Pressable>
             </div>
-          ) : (
-            <Pressable onClick={() => cameraRef.current?.click()} disabled={uploading} style={{ width: "100%", minHeight: 88, borderRadius: 22, background: W.text, color: T.green, display: "flex", alignItems: "center", justifyContent: "center", gap: 12, fontSize: 21, fontWeight: 700 }} className="font-display">
-              <span className="material-symbols-rounded" style={{ fontSize: 34 }}>photo_camera</span>
-              {uploading ? "Uploaden…" : required > 1 ? `Foto ${totaal + 1} van ${required}` : "Foto maken"}
-            </Pressable>
           )}
           <div style={{ display: "flex", justifyContent: "space-between", padding: "0 2px" }}>
             <Pressable onClick={goPrev} disabled={currentIndex === 0} style={{ minHeight: 44, display: "flex", alignItems: "center", gap: 4, fontSize: 15, color: currentIndex === 0 ? "rgba(255,255,255,0.35)" : W.body }}>
