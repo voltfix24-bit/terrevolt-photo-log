@@ -227,6 +227,7 @@ export function WizardView({
     void Promise.resolve(onUpload(cat.name, files)).then((mislukt) => {
       // Foto's die niet zijn opgeslagen (te groot, ongeldig type of mislukte upload)
       // verdwijnen weer uit beeld zodat de taak niet als afgerond telt.
+      console.log("WIZDBG result", mislukt, "offline", offline);
       if (Array.isArray(mislukt) && mislukt.length > 0) {
         const faalSet = new Set(mislukt);
         const weg = entries.filter((e, i) => faalSet.has(files[i].name)).map((e) => e.url);
