@@ -229,15 +229,23 @@ export function WizardView({
       // Foto's die niet zijn opgeslagen (te groot, ongeldig type of mislukte upload)
       // verdwijnen weer uit beeld zodat de taak niet als afgerond telt.
       console.log("WIZDBG result", mislukt, "offline", offline);
-      if (Array.isArray(mislukt) && mislukt.length > 0) {
-        const faalSet = new Set(mislukt);
-        const weg = entries.filter((e, i) => faalSet.has(files[i].name)).map((e) => e.url);
-        weg.forEach((u) => URL.revokeObjectURL(u));
-        if (weg.length > 0) {
-          const wegSet = new Set(weg);
-          setLokaal((l) => l.filter((x) => !wegSet.has(x.url)));
+      try {
+        if (Array.isArray(mislukt) && mislukt.length > 0) {
+          const faalSet = new Set(mislukt);
+          const weg = entries.filter((e, i) => faalSet.has(files[i].name)).map((e) => e.url);
+          console.log("WIZDBG weg", weg.length, "entries", entries.length);
+          weg.forEach((u) => URL.revokeObjectURL(u));
+          if (weg.length > 0) {
+            const wegSet = new Set(weg);
+            setLokaal((l) => {
+              console.log("WIZDBG filter voor", l.length);
+              const n = l.filter((x) => !wegSet.has(x.url));
+              console.log("WIZDBG filter na", n.length);
+              return n;
+            });
+          }
         }
-      }
+      } catch (e) { console.log("WIZDBG ERR", String(e)); }
       if (eerste) setArmed(true);
     });
   };
