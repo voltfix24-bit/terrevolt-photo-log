@@ -376,7 +376,6 @@ export function WizardView({
         )}
 
         <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-          <Chip icon="photo_library" label="Galerij" onClick={() => fileRef.current?.click()} disabled={uploading} />
           <Chip icon="edit_note" label={opmerkingText ? "Opmerking ✓" : "Opmerking"} onClick={() => setOpmerkingOpen(!opmerkingOpen)} />
         </div>
         {opmerkingOpen && (
