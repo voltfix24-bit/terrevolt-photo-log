@@ -70,7 +70,7 @@ function Voortgangsring({ item, color }: { item: StationItem; color: string }) {
 
 function StationKaart({ item, onOpen, onMeer }: { item: StationItem; onOpen: () => void; onMeer: () => void }) {
   const s = rijStatus(item);
-  const caseLabel = [item.station.casenummer, item.station.casenaam].filter(Boolean).join(" · ");
+  const caseLabel = caseLabelOf(item.station);
   return (
     <div style={{ background: T.surface, borderRadius: R.group, display: "flex", alignItems: "center" }}>
       <Pressable onClick={onOpen} scale={0.98} style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 14, padding: "14px 4px 14px 16px", textAlign: "left" }}>
@@ -319,7 +319,7 @@ export default function Dashboard() {
       <Sheet open={Boolean(actieTarget)} onOpenChange={(o) => !o && setActieTarget(null)}>
         <SheetContent side="bottom" className="rounded-t-[20px] border-0 bg-white px-4 pb-[calc(20px+env(safe-area-inset-bottom))] pt-6">
           <SheetHeader className="pr-7 text-left">
-            <SheetTitle>{actieTarget ? formatStationName(actieTarget.naam_msr) : ""}</SheetTitle>
+            <SheetTitle>{actieTarget ? (caseLabelOf(actieTarget) || formatStationName(actieTarget.naam_msr)) : ""}</SheetTitle>
             <SheetDescription className="font-mono">{actieTarget?.behuizingsnummer || "Geen nummer"}</SheetDescription>
           </SheetHeader>
           <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 8 }}>
