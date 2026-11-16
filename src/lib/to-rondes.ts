@@ -53,7 +53,18 @@ export const fmtDatum = (d?: string | null) => {
   return new Date(d).toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
 };
 export const actieWie = (a: Pick<ToActie, "bij" | "derde_naam">) => (a.bij === "Derden" ? a.derde_naam || "Derden" : a.bij);
-export const caseTitel = (s: any) => s?.naam_msr ?? "";
+
+const AFK = new Set(["ls", "ms", "to", "atr", "nst", "ov", "wic", "msr", "ebk"]);
+export const netjes = (t?: string | null) => {
+  if (!t) return "";
+  const allCaps = t === t.toLocaleUpperCase("nl-NL");
+  if (!allCaps) return t;
+  return t.toLocaleLowerCase("nl-NL").replace(/(^|[\s\-/·.])([\p{L}\p{N}]+)/gu, (_m, p, w) => AFK.has(w) ? p + w.toUpperCase() : p + w.charAt(0).toLocaleUpperCase("nl-NL") + w.slice(1));
+};
+export const caseNr = (s: any) => s?.casenummer || s?.behuizingsnummer || "Geen casenummer";
+export const caseNaam = (s: any) => netjes(s?.casenaam) || netjes(s?.naam_msr) || "Naamloos";
+export const caseSub = (s: any) => (s?.casenaam && s?.naam_msr ? netjes(s.naam_msr) : "");
+export const dagenTekst = (d: number) => (d <= 0 ? "vandaag" : d === 1 ? "1 dag" : `${d} dagen`);
 
 export function balVan(station: any, rondes: ToRonde[]): BalItem[] {
   const n = rondes.length;
