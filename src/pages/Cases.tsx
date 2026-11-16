@@ -36,20 +36,25 @@ function Bal({ cases, open }: { cases: CaseItem[]; open: (id: string) => void })
             <div style={{ padding: "0 4px" }}>
               <div className="font-display" style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, fontSize: 19, color: T.titleOnBg }}>
                 <span className="material-symbols-rounded" style={{ fontSize: 22, color: st.fg }}>{st.icon}</span>
-                {lane.titel}<span style={{ fontFamily: "Inter, sans-serif", fontWeight: 500, fontSize: 15, color: SUB }}>{list.length}</span>
+                {lane.titel}<span style={{ fontFamily: "Inter, sans-serif", fontWeight: 500, fontSize: 15, color: SUB }}>{list.length} case{list.length === 1 ? "" : "s"}</span>
               </div>
               <div style={{ fontSize: 13, color: SUB }}>{lane.sub}</div>
             </div>
             {list.length === 0 && <div style={{ ...card, padding: 14, fontSize: 14, color: SUB, background: "rgba(255,255,255,0.6)" }}>Niets open</div>}
             {list.map((i, k) => (
-              <Pressable key={i.c.station.id + k} onClick={() => open(i.c.station.id)} scale={0.98} style={{ ...card, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 5, textAlign: "left" }}>
-                <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.35, color: T.titleOnBg }}>{i.txt}</div>
-                <div style={{ fontSize: 13, color: SUB, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", width: "100%" }}>
-                  <span className="font-mono">{i.c.station.casenummer || "—"}</span> · {i.c.station.naam_msr}{lane.key === "Derden" ? ` · ${i.label}` : ""}
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+              <Pressable key={i.c.station.id + k} onClick={() => open(i.c.station.id)} scale={0.98} style={{ ...card, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 8, textAlign: "left" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, width: "100%" }}>
+                  <span className="font-mono" style={{ fontSize: 14, fontWeight: 600, color: T.bodyOnBg }}>{caseNr(i.c.station)}</span>
                   <StatusPil status={i.c.last?.status ?? "open"} prefix={`R${Math.max(1, i.c.rondes.length)} · `} />
-                  <span style={{ fontSize: 12, fontWeight: 700, color: i.dagen >= 10 ? T.danger : SUB }}>{i.dagen} d</span>
+                </div>
+                <div className="font-display" style={{ fontSize: 17, fontWeight: 700, lineHeight: 1.25, color: T.titleOnBg, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{caseNaam(i.c.station)}</div>
+                {caseSub(i.c.station) && <div style={{ fontSize: 13, color: T.subOnBg, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{caseSub(i.c.station)}</div>}
+                <div style={{ borderTop: `1px solid ${T.hairline}`, paddingTop: 8, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, width: "100%" }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, fontWeight: 600, color: PARTIJ_STIJL[lane.key].fg, minWidth: 0 }}>
+                    <span className="material-symbols-rounded" style={{ fontSize: 18 }}>arrow_forward</span>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{i.txt}{lane.key === "Derden" ? ` · ${i.label}` : ""}</span>
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: i.dagen >= 10 ? T.danger : T.bodyOnBg, whiteSpace: "nowrap" }}>{dagenTekst(i.dagen)}</span>
                 </div>
               </Pressable>
             ))}
