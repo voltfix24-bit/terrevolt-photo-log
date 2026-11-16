@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Pressable, R, T } from "@/components/apple/Primitives";
-import { CaseItem, PARTIJ_STIJL, Partij, TO_STATUS, scoreVan, useCases } from "@/lib/to-rondes";
+import { CaseItem, PARTIJ_STIJL, Partij, TO_STATUS, caseNaam, caseNr, caseSub, dagenTekst, scoreVan, useCases } from "@/lib/to-rondes";
 
 const SUB = T.bodyOnBg;
 const card = { background: T.surface, borderRadius: 14 } as const;
