@@ -292,7 +292,7 @@ export default function StationDetail() {
 
   // Categorie 31 ("Stroomtransformatoren") vereist 3 foto's, alle anderen 1.
   const catDone = useCallback(
-    (c: { id: number; name: string }) => fotosByCategorie(c.name).length >= (c.id === 31 ? 3 : 1),
+    (c: { id: number; name: string }) => fotosByCategorie(c.name).length >= 1,
     [fotosByCategorie]
   );
 
@@ -508,7 +508,7 @@ export default function StationDetail() {
           {/* Progress row */}
           <div>
             <div className="font-display leading-tight" style={{ fontSize: 34, fontWeight: 500, color: T.titleOnBg }}>
-              {allDone ? 'Alle taken afgerond' : `${applicableCategories.length - filledCount - skipped.length} taken open`}
+              {allDone ? 'Alle taken afgerond' : `${applicableCategories.filter(c => !catDone(c) && !isSkipped(c.name)).length} taken open`}
             </div>
             <div className="mt-1" style={{ fontSize: 15, color: T.subOnBg }}>{filledCount} ingevuld · {fotos?.length ?? 0} foto&apos;s</div>
           </div>
@@ -520,7 +520,7 @@ export default function StationDetail() {
             const doneCats = cats.filter(c => catDone(c) && !isSkipped(c.name));
             const openCats = cats.filter(c => !catDone(c) && !isSkipped(c.name));
             const skippedCats = cats.filter(c => fotosByCategorie(c.name).length === 0 && isSkipped(c.name));
-            const isComplete = openCats.length === 0 && skippedCats.length === 0;
+            const isComplete = openCats.length === 0;
             const isSectionOpen = openSections.includes(section.id);
 
             // Sort: open first, then in-progress (has photos), then skipped

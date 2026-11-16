@@ -129,7 +129,7 @@ export function WizardView({
   const cat = applicableCategories[currentIndex];
   const catFotos = cat ? fotosByCategorie(cat.name) : [];
   const isCatSkipped = cat ? skipped.includes(cat.name) : false;
-  const required = cat?.id === 31 ? 3 : 1;
+  const required = 1;
   const section = cat ? SECTIONS.find((s) => s.id === cat.section) : null;
   const catVoorbeelden = cat ? voorbeelden.filter((v) => v.categorie === cat.name) : [];
   const isLast = currentIndex >= applicableCategories.length - 1;
@@ -215,7 +215,7 @@ export function WizardView({
           setLokaal((l) => l.filter((x) => !wegSet.has(x.url)));
         }
       }
-      if (eerste) setArmed(true);
+      void eerste; // niet meer automatisch door naar de volgende taak
     });
   };
 
