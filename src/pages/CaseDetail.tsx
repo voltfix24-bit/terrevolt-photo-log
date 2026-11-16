@@ -255,6 +255,36 @@ export default function CaseDetail() {
               })}
               <Notitie value={station.dossier_notitie} placeholder="Notitie, bijv. navraag gedaan bij Van Gelder op 12 nov" onSave={(v) => updStation({ dossier_notitie: v || null })} />
             </div>
+            <div style={{ ...card, display: "flex", flexDirection: "column", gap: 12 }}>
+              <div className="font-display" style={{ fontWeight: 700, fontSize: 17 }}>
+                {station.case_verborgen ? "Terugzetten in cases" : "Uit cases-overzicht halen"}
+              </div>
+              <div style={{ fontSize: 14, color: SUB }}>
+                Het station en de foto's blijven bestaan. Alleen verborgen in Cases &amp; TO.
+              </div>
+              <Pressable
+                onClick={async () => {
+                  if (station.case_verborgen) {
+                    await run(db.from("stations").update({ case_verborgen: false }).eq("id", station.id));
+                    qc.invalidateQueries({ queryKey: ["cases"] });
+                  } else if (window.confirm("Deze case verbergen uit het overzicht?")) {
+                    await run(db.from("stations").update({ case_verborgen: true }).eq("id", station.id));
+                    qc.invalidateQueries({ queryKey: ["cases"] });
+                    navigate("/cases");
+                  }
+                }}
+                scale={0.98}
+                style={{
+                  minHeight: 46, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center",
+                  gap: 8, fontSize: 15, fontWeight: 600, width: "100%",
+                  background: station.case_verborgen ? T.soft : T.dangerBg,
+                  color: station.case_verborgen ? T.green : T.danger,
+                }}
+              >
+                <span className="material-symbols-rounded" style={{ fontSize: 20 }}>{station.case_verborgen ? "visibility" : "visibility_off"}</span>
+                {station.case_verborgen ? "Terugzetten in cases" : "Verbergen uit cases"}
+              </Pressable>
+            </div>
           </div>
         </div>
       </main>
