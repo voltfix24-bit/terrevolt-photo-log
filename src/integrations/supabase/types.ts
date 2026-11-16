@@ -313,6 +313,8 @@ export type Database = {
           created_at: string | null
           da_kast: boolean | null
           datum: string | null
+          dossier_notitie: string | null
+          dossier_status: string
           id: string
           ingevuld_door: string | null
           naam_msr: string
@@ -332,6 +334,8 @@ export type Database = {
           created_at?: string | null
           da_kast?: boolean | null
           datum?: string | null
+          dossier_notitie?: string | null
+          dossier_status?: string
           id?: string
           ingevuld_door?: string | null
           naam_msr: string
@@ -351,6 +355,8 @@ export type Database = {
           created_at?: string | null
           da_kast?: boolean | null
           datum?: string | null
+          dossier_notitie?: string | null
+          dossier_status?: string
           id?: string
           ingevuld_door?: string | null
           naam_msr?: string
@@ -364,6 +370,104 @@ export type Database = {
           vermogensveld?: boolean | null
         }
         Relationships: []
+      }
+      to_acties: {
+        Row: {
+          afgehandeld_op: string | null
+          bij: string
+          created_at: string
+          derde_naam: string | null
+          id: string
+          notitie: string | null
+          omschrijving: string
+          ronde_id: string
+          station_id: string
+        }
+        Insert: {
+          afgehandeld_op?: string | null
+          bij: string
+          created_at?: string
+          derde_naam?: string | null
+          id?: string
+          notitie?: string | null
+          omschrijving: string
+          ronde_id: string
+          station_id: string
+        }
+        Update: {
+          afgehandeld_op?: string | null
+          bij?: string
+          created_at?: string
+          derde_naam?: string | null
+          id?: string
+          notitie?: string | null
+          omschrijving?: string
+          ronde_id?: string
+          station_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "to_acties_ronde_id_fkey"
+            columns: ["ronde_id"]
+            isOneToOne: false
+            referencedRelation: "to_rondes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "to_acties_station_id_fkey"
+            columns: ["station_id"]
+            isOneToOne: false
+            referencedRelation: "stations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      to_rondes: {
+        Row: {
+          created_at: string
+          id: string
+          ingediend_bij: string | null
+          ingediend_op: string | null
+          notitie: string | null
+          nummer: number
+          reactie_op: string | null
+          redenen: string[]
+          station_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ingediend_bij?: string | null
+          ingediend_op?: string | null
+          notitie?: string | null
+          nummer: number
+          reactie_op?: string | null
+          redenen?: string[]
+          station_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ingediend_bij?: string | null
+          ingediend_op?: string | null
+          notitie?: string | null
+          nummer?: number
+          reactie_op?: string | null
+          redenen?: string[]
+          station_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "to_rondes_station_id_fkey"
+            columns: ["station_id"]
+            isOneToOne: false
+            referencedRelation: "stations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

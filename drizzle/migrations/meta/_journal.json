@@ -8,6 +8,13 @@
       "when": 1794841425833,
       "tag": "0000_add_case_fields_to_stations",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794845137008,
+      "tag": "0001_to_rondes",
+      "breakpoints": true
     }
   ]
 }
