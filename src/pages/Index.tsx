@@ -76,7 +76,7 @@ function StationKaart({ item, onOpen, onMeer }: { item: StationItem; onOpen: () 
       <Pressable onClick={onOpen} scale={0.98} style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 14, padding: "14px 4px 14px 16px", textAlign: "left" }}>
         <Voortgangsring item={item} color={s.ring} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="font-display" style={{ color: T.titleOnBg, fontSize: 17, fontWeight: 600, lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <div className="font-display" style={{ color: T.titleOnBg, fontSize: 17, fontWeight: 600, lineHeight: 1.25, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", whiteSpace: caseLabel ? "normal" : "nowrap", textOverflow: "ellipsis" }}>
             {caseLabel || formatStationName(item.station.naam_msr)}
           </div>
           <div style={{ marginTop: 3, color: s.fg, fontSize: 14, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
