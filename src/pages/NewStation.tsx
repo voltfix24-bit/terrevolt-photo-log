@@ -41,6 +41,8 @@ export default function NewStation() {
   const [form, setForm] = useState({
     naam_msr: "",
     behuizingsnummer: "",
+    casenummer: "",
+    casenaam: "",
     type_ruimte: "",
     datum: new Date().toISOString().split("T")[0],
     vermogensveld: false,
@@ -84,6 +86,8 @@ export default function NewStation() {
       .insert({
         naam_msr: form.naam_msr,
         behuizingsnummer: form.behuizingsnummer || null,
+        casenummer: form.casenummer || null,
+        casenaam: form.casenaam || null,
         type_ruimte: form.type_ruimte,
         ingevuld_door: selectedMonteur || null,
         datum: form.datum || null,
@@ -133,6 +137,14 @@ export default function NewStation() {
           <Hairline inset={ROW_PAD_X} />
           <Veld label="Behuizingsnummer">
             <input style={{ ...inputStyle, fontFamily: "ui-monospace, monospace" }} value={form.behuizingsnummer} onChange={(e) => setForm({ ...form, behuizingsnummer: e.target.value })} placeholder="bv. MSR-9920-X" autoComplete="off" autoCapitalize="characters" />
+          </Veld>
+          <Hairline inset={ROW_PAD_X} />
+          <Veld label="Casenummer">
+            <input style={{ ...inputStyle, fontFamily: "ui-monospace, monospace" }} value={form.casenummer} onChange={(e) => setForm({ ...form, casenummer: e.target.value })} placeholder="bv. 2026-0142" autoComplete="off" autoCapitalize="characters" />
+          </Veld>
+          <Hairline inset={ROW_PAD_X} />
+          <Veld label="Casenaam">
+            <input style={inputStyle} value={form.casenaam} onChange={(e) => setForm({ ...form, casenaam: e.target.value })} placeholder="bv. Renovatie Heyendaal" autoComplete="off" />
           </Veld>
           <Hairline inset={ROW_PAD_X} />
           <label style={{ position: "relative", minHeight: ROW_MIN, padding: `0 ${ROW_PAD_X}px`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
