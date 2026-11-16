@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1794841425833,
+      "tag": "0000_add_case_fields_to_stations",
+      "breakpoints": true
+    }
+  ]
+}

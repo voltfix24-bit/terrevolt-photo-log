@@ -490,6 +490,7 @@ export default function StationDetail() {
 
           {/* ROW 2: Station info */}
           {station.behuizingsnummer && <div style={{ fontSize: 14, color: T.subOnBg, fontFamily: "ui-monospace, monospace", marginBottom: 4 }}>{station.behuizingsnummer}</div>}
+          {(station.casenummer || station.casenaam) && <div style={{ fontSize: 14, color: T.subOnBg, marginBottom: 4 }}>Case: {[station.casenummer, station.casenaam].filter(Boolean).join(" · ")}</div>}
           <h1 className="font-display leading-tight mb-1" style={{ fontSize: 28, fontWeight: 500, color: T.titleOnBg }}>
             {station.naam_msr}
           </h1>
@@ -698,17 +699,17 @@ export default function StationDetail() {
 /* ==================== EDIT STATION DIALOG ==================== */
 
 interface EditStationDialogProps {
-  station: { id: string; naam_msr: string; behuizingsnummer: string | null; type_ruimte: string | null; ingevuld_door: string | null; datum: string | null };
+  station: { id: string; naam_msr: string; behuizingsnummer: string | null; casenummer: string | null; casenaam: string | null; type_ruimte: string | null; ingevuld_door: string | null; datum: string | null };
   open: boolean; onOpenChange: (open: boolean) => void; onSaved: () => void;
 }
 
 function EditStationDialog({ station, open, onOpenChange, onSaved }: EditStationDialogProps) {
-  const [form, setForm] = useState({ naam_msr: station.naam_msr, behuizingsnummer: station.behuizingsnummer || "", type_ruimte: station.type_ruimte || "", ingevuld_door: station.ingevuld_door || "", datum: station.datum || "" });
+  const [form, setForm] = useState({ naam_msr: station.naam_msr, behuizingsnummer: station.behuizingsnummer || "", casenummer: station.casenummer || "", casenaam: station.casenaam || "", type_ruimte: station.type_ruimte || "", ingevuld_door: station.ingevuld_door || "", datum: station.datum || "" });
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
     setSaving(true);
-    const { error } = await supabase.from("stations").update({ naam_msr: form.naam_msr, behuizingsnummer: form.behuizingsnummer || null, type_ruimte: form.type_ruimte, ingevuld_door: form.ingevuld_door || null, datum: form.datum || null }).eq("id", station.id);
+    const { error } = await supabase.from("stations").update({ naam_msr: form.naam_msr, behuizingsnummer: form.behuizingsnummer || null, casenummer: form.casenummer || null, casenaam: form.casenaam || null, type_ruimte: form.type_ruimte, ingevuld_door: form.ingevuld_door || null, datum: form.datum || null }).eq("id", station.id);
     setSaving(false);
     if (error) { toast.error("Fout bij opslaan"); } else { toast.success("Station bijgewerkt"); onSaved(); onOpenChange(false); }
   };
@@ -720,6 +721,8 @@ function EditStationDialog({ station, open, onOpenChange, onSaved }: EditStation
         <div className="space-y-3">
           <div><Label>Naam MSR</Label><input value={form.naam_msr} onChange={(e) => setForm({ ...form, naam_msr: e.target.value })} className="w-full px-4 py-3 bg-surface-low border border-outline-variant/30 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/25 transition" /></div>
           <div><Label>Behuizingsnummer</Label><input value={form.behuizingsnummer} onChange={(e) => setForm({ ...form, behuizingsnummer: e.target.value })} className="w-full px-4 py-3 bg-surface-low border border-outline-variant/30 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/25 transition" /></div>
+          <div><Label>Casenummer</Label><input value={form.casenummer} onChange={(e) => setForm({ ...form, casenummer: e.target.value })} className="w-full px-4 py-3 bg-surface-low border border-outline-variant/30 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/25 transition" /></div>
+          <div><Label>Casenaam</Label><input value={form.casenaam} onChange={(e) => setForm({ ...form, casenaam: e.target.value })} className="w-full px-4 py-3 bg-surface-low border border-outline-variant/30 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/25 transition" /></div>
           <div><Label>Type ruimte</Label><Select value={form.type_ruimte} onValueChange={(v) => setForm({ ...form, type_ruimte: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Compact Station">Compact Station</SelectItem><SelectItem value="Betreedbaar station">Betreedbaar station</SelectItem></SelectContent></Select></div>
           <div><Label>Ingevuld door</Label><input value={form.ingevuld_door} onChange={(e) => setForm({ ...form, ingevuld_door: e.target.value })} className="w-full px-4 py-3 bg-surface-low border border-outline-variant/30 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/25 transition" /></div>
           <div><Label>Datum</Label><input type="date" value={form.datum} onChange={(e) => setForm({ ...form, datum: e.target.value })} className="w-full px-4 py-3 bg-surface-low border border-outline-variant/30 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/25 transition" /></div>
