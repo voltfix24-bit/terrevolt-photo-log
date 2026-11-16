@@ -115,7 +115,8 @@ function Score({ cases, open }: { cases: CaseItem[]; open: (id: string) => void 
 
 export default function Cases() {
   const navigate = useNavigate();
-  const { data: cases, isLoading } = useCases();
+  const [toonVerborgen, setToonVerborgen] = useState(false);
+  const { data: cases, isLoading } = useCases({ inclVerborgen: toonVerborgen });
   const [tab, setTab] = useState<"bal" | "score">("bal");
   const open = (id: string) => navigate(`/cases/${id}`);
   return (
@@ -130,6 +131,9 @@ export default function Cases() {
             <Pressable key={k} onClick={() => setTab(k)} scale={0.97} style={{ minHeight: 40, padding: "0 14px", borderRadius: 9, fontSize: 15, fontWeight: 600, background: tab === k ? T.green : "transparent", color: tab === k ? T.surface : T.titleOnBg }}>{l}</Pressable>
           ))}
         </div>
+        <Pressable onClick={() => setToonVerborgen((v) => !v)} scale={0.97} style={{ minHeight: 40, padding: "0 10px", fontSize: 14, fontWeight: 600, color: T.green }}>
+          {toonVerborgen ? "Verborgen verbergen" : "Verborgen tonen"}
+        </Pressable>
       </div>
       <main style={{ padding: "20px 24px 60px", maxWidth: 1400, margin: "0 auto" }}>
         {isLoading ? (
@@ -137,7 +141,7 @@ export default function Cases() {
             {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-40 rounded-2xl" />)}
           </div>
         ) : !cases?.length ? (
-          <div style={{ padding: "52px 20px", textAlign: "center", color: SUB, fontSize: 15 }}>Nog geen opgeleverde cases</div>
+          <div style={{ padding: "52px 20px", textAlign: "center", color: SUB, fontSize: 15 }}>Geen cases</div>
         ) : tab === "bal" ? <Bal cases={cases} open={open} /> : <Score cases={cases} open={open} />}
       </main>
     </div>

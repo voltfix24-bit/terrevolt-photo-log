@@ -15,6 +15,13 @@
       "when": 1794845137008,
       "tag": "0001_to_rondes",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794847848075,
+      "tag": "0002_add_case_verborgen_to_stations",
+      "breakpoints": true
     }
   ]
 }

@@ -308,6 +308,7 @@ export type Database = {
       stations: {
         Row: {
           behuizingsnummer: string | null
+          case_verborgen: boolean
           casenaam: string | null
           casenummer: string | null
           created_at: string | null
@@ -329,6 +330,7 @@ export type Database = {
         }
         Insert: {
           behuizingsnummer?: string | null
+          case_verborgen?: boolean
           casenaam?: string | null
           casenummer?: string | null
           created_at?: string | null
@@ -350,6 +352,7 @@ export type Database = {
         }
         Update: {
           behuizingsnummer?: string | null
+          case_verborgen?: boolean
           casenaam?: string | null
           casenummer?: string | null
           created_at?: string | null

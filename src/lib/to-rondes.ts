@@ -76,17 +76,25 @@ export function balVan(station: any, rondes: ToRonde[]): BalItem[] {
     : [];
 }
 
-export function useCases() {
+export function useCases(opts?: { inclVerborgen?: boolean }) {
+  const inclVerborgen = opts?.inclVerborgen ?? false;
   return useQuery({
-    queryKey: ["cases"],
+    queryKey: ["cases", inclVerborgen],
     queryFn: async (): Promise<CaseItem[]> => {
       const { data, error } = await db
         .from("stations")
-        .select("id, naam_msr, casenummer, casenaam, behuizingsnummer, status, dossier_status, dossier_notitie, created_at, to_rondes(*, to_acties(*))")
+        .select("id, naam_msr, casenummer, casenaam, behuizingsnummer, status, dossier_status, dossier_notitie, case_verborgen, created_at, to_rondes(*, to_acties(*))")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? [])
-        .filter((s: any) => (s.to_rondes?.length ?? 0) > 0 || s.status === "opgeleverd" || s.status === "goedgekeurd")
+        .filter((s: any) => inclVerborgen || !s.case_verborgen)
+        .sort((a: any, b: any) => {
+          const ca = a.casenummer ?? "", cb = b.casenummer ?? "";
+          if (!ca && cb) return 1;
+          if (ca && !cb) return -1;
+          if (ca !== cb) return ca.localeCompare(cb, "nl-NL", { numeric: true });
+          return (a.naam_msr ?? "").localeCompare(b.naam_msr ?? "", "nl-NL");
+        })
         .map((s: any) => {
           const rondes: ToRonde[] = [...(s.to_rondes ?? [])]
             .sort((a, b) => a.nummer - b.nummer)
