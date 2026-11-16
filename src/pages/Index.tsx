@@ -167,7 +167,7 @@ export default function Dashboard() {
       const skipped = skippedByStation.get(station.id) ?? new Set<string>();
       const perCat = new Map<string, number>();
       for (const f of (station.fotos ?? []).filter((f: any) => f.review_status !== "rejected")) perCat.set(f.categorie, (perCat.get(f.categorie) ?? 0) + 1);
-      const requiredPhotos = (c: Category) => (c.id === 31 ? 3 : 1);
+      const requiredPhotos = (_c: Category) => 1;
       const isDone = (c: Category) => skipped.has(c.name) || (perCat.get(c.name) ?? 0) >= requiredPhotos(c);
       const total = applicable.length;
       const done = applicable.filter(isDone).length;
