@@ -1,0 +1,118 @@
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+
+// Nieuwe tabellen: cast tot de Supabase-types opnieuw gegenereerd zijn
+export const db = supabase as any;
+
+export type ToStatus = "open" | "controle" | "afgekeurd" | "goedgekeurd";
+export type Partij = "TerreVolt" | "Van Gelder" | "Liander" | "Derden";
+export type DossierStatus = "ingediend" | "volledig" | "afgerond";
+export type ToActie = { id: string; ronde_id: string; station_id: string; omschrijving: string; bij: Partij; derde_naam: string | null; notitie: string | null; afgehandeld_op: string | null; created_at: string };
+export type ToRonde = { id: string; station_id: string; nummer: number; status: ToStatus; ingediend_op: string | null; ingediend_bij: "Van Gelder" | "Liander" | null; reactie_op: string | null; redenen: string[]; notitie: string | null; to_acties: ToActie[] };
+export type BalItem = { wie: Partij; label: string; txt: string; dagen: number };
+export type CaseItem = { station: any; rondes: ToRonde[]; last: ToRonde | null; bal: BalItem[] };
+
+export const TO_STATUS: Record<ToStatus, { label: string; dot: string; bg: string; fg: string }> = {
+  open: { label: "TO open", dot: "#8FA893", bg: "#EEF2ED", fg: "#3D4F42" },
+  controle: { label: "Ter controle", dot: "#1A4E8A", bg: "#E7EEF7", fg: "#1A4E8A" },
+  afgekeurd: { label: "Afgekeurd", dot: "#B3352C", bg: "#FBEDEC", fg: "#B3352C" },
+  goedgekeurd: { label: "Goedgekeurd", dot: "#1F5C3A", bg: "#1F5C3A", fg: "#FFFFFF" },
+};
+export const TO_ORDER: ToStatus[] = ["open", "controle", "afgekeurd", "goedgekeurd"];
+
+export const DOSSIER: { key: DossierStatus; label: string; icon: string }[] = [
+  { key: "ingediend", label: "Ingediend", icon: "upload_file" },
+  { key: "volledig", label: "Bevestigd volledig", icon: "fact_check" },
+  { key: "afgerond", label: "Afgerond", icon: "task_alt" },
+];
+
+export const PARTIJEN: Partij[] = ["TerreVolt", "Van Gelder", "Liander", "Derden"];
+export const PARTIJ_STIJL: Record<Partij, { bg: string; fg: string; icon: string }> = {
+  "TerreVolt": { bg: "#E3EFE0", fg: "#1F5C3A", icon: "apartment" },
+  "Van Gelder": { bg: "#E7EEF7", fg: "#1A4E8A", icon: "handshake" },
+  "Liander": { bg: "#FBF1E1", fg: "#8A5410", icon: "bolt" },
+  "Derden": { bg: "#EEF2ED", fg: "#3D4F42", icon: "engineering" },
+};
+
+export const REDENEN: { key: string; label: string }[] = [
+  { key: "foto_ontbreekt", label: "Foto ontbreekt" },
+  { key: "foto_onduidelijk", label: "Foto onduidelijk" },
+  { key: "meting", label: "Meetrapport ontbreekt" },
+  { key: "gegevens", label: "Gegevens onjuist" },
+  { key: "revisie", label: "Revisietekening" },
+  { key: "overig", label: "Overig" },
+];
+export const REDEN_LABEL = Object.fromEntries(REDENEN.map((r) => [r.key, r.label]));
+
+export const vandaag = () => new Date().toISOString().slice(0, 10);
+export const dagenSinds = (d?: string | null, tot?: string | null) =>
+  d ? Math.max(0, Math.round(((tot ? new Date(tot).getTime() : Date.now()) - new Date(d).getTime()) / 86400000)) : 0;
+export const fmtDatum = (d?: string | null) => {
+  if (!d) return "—";
+  if (d === vandaag()) return "vandaag";
+  return new Date(d).toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
+};
+export const actieWie = (a: Pick<ToActie, "bij" | "derde_naam">) => (a.bij === "Derden" ? a.derde_naam || "Derden" : a.bij);
+export const caseTitel = (s: any) => s?.naam_msr ?? "";
+
+export function balVan(station: any, rondes: ToRonde[]): BalItem[] {
+  const n = rondes.length;
+  const r = rondes[n - 1];
+  if (!r || r.status === "open") {
+    const prev = rondes[n - 2];
+    return [{ wie: "TerreVolt", label: "TerreVolt", txt: "TO klaarzetten en indienen", dagen: dagenSinds(prev?.reactie_op) }];
+  }
+  if (r.status === "controle") {
+    const wie = (r.ingediend_bij ?? "Van Gelder") as Partij;
+    return [{ wie, label: wie, txt: "TO beoordelen", dagen: dagenSinds(r.ingediend_op) }];
+  }
+  if (r.status === "afgekeurd") {
+    const open = r.to_acties.filter((a) => !a.afgehandeld_op);
+    if (open.length) return open.map((a) => ({ wie: a.bij, label: actieWie(a), txt: a.omschrijving, dagen: dagenSinds(r.reactie_op ?? a.created_at) }));
+    return [{ wie: "TerreVolt", label: "TerreVolt", txt: `Opnieuw indienen (ronde ${n + 1})`, dagen: dagenSinds(r.reactie_op) }];
+  }
+  return station.dossier_status !== "afgerond"
+    ? [{ wie: "TerreVolt", label: "TerreVolt", txt: "Goedgekeurd: case afronden", dagen: dagenSinds(r.reactie_op) }]
+    : [];
+}
+
+export function useCases() {
+  return useQuery({
+    queryKey: ["cases"],
+    queryFn: async (): Promise<CaseItem[]> => {
+      const { data, error } = await db
+        .from("stations")
+        .select("id, naam_msr, casenummer, casenaam, behuizingsnummer, status, dossier_status, dossier_notitie, created_at, to_rondes(*, to_acties(*))")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? [])
+        .filter((s: any) => (s.to_rondes?.length ?? 0) > 0 || s.status === "opgeleverd" || s.status === "goedgekeurd")
+        .map((s: any) => {
+          const rondes: ToRonde[] = [...(s.to_rondes ?? [])]
+            .sort((a, b) => a.nummer - b.nummer)
+            .map((r) => ({ ...r, redenen: r.redenen ?? [], to_acties: [...(r.to_acties ?? [])].sort((a, b) => a.created_at.localeCompare(b.created_at)) }));
+          return { station: s, rondes, last: rondes[rondes.length - 1] ?? null, bal: balVan(s, rondes) };
+        });
+    },
+  });
+}
+
+export function scoreVan(cases: CaseItem[]) {
+  const judged = cases.filter((c) => c.rondes[0] && ["afgekeurd", "goedgekeurd"].includes(c.rondes[0].status));
+  const ftrN = judged.filter((c) => c.rondes[0].status === "goedgekeurd").length;
+  const appr = cases.map((c) => c.rondes.findIndex((r) => r.status === "goedgekeurd")).filter((k) => k >= 0);
+  const cnt: Record<string, number> = {};
+  cases.forEach((c) => c.rondes.forEach((r) => r.redenen.forEach((k) => { cnt[k] = (cnt[k] ?? 0) + 1; })));
+  const controle = cases.filter((c) => c.last?.status === "controle");
+  return {
+    ftrPct: judged.length ? Math.round((ftrN / judged.length) * 100) : null,
+    ftrN, judgedN: judged.length,
+    gemRondes: appr.length ? appr.reduce((t, k) => t + k + 1, 0) / appr.length : null,
+    goedgekeurdN: appr.length,
+    controleN: controle.length,
+    controleVG: controle.filter((c) => c.last?.ingediend_bij !== "Liander").length,
+    controleLiander: controle.filter((c) => c.last?.ingediend_bij === "Liander").length,
+    afgekeurdN: cases.filter((c) => c.last?.status === "afgekeurd").length,
+    redenen: REDENEN.map((r) => ({ ...r, n: cnt[r.key] ?? 0 })).filter((r) => r.n).sort((a, b) => b.n - a.n),
+  };
+}
