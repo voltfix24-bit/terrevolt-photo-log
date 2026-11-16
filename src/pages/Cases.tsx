@@ -99,12 +99,15 @@ function Score({ cases, open }: { cases: CaseItem[]; open: (id: string) => void 
         </div>
         <div style={{ ...card, overflow: "auto", gridColumn: "span 2" }}>
           <div style={{ display: "grid", gridTemplateColumns: cols, gap: 12, padding: "12px 18px", fontSize: 12, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", color: SUB, borderBottom: `1px solid ${T.hairline}`, minWidth: 620 }}>
-            <span>Case</span><span>Locatie</span><span>Rondes</span><span>Nu</span><span>Bal bij</span>
+            <span>Case</span><span>Casenaam</span><span>Rondes</span><span>Nu</span><span>Bal bij</span>
           </div>
           {cases.map((c) => (
             <Pressable key={c.station.id} onClick={() => open(c.station.id)} scale={0.99} style={{ display: "grid", gridTemplateColumns: cols, gap: 12, padding: "11px 18px", alignItems: "center", fontSize: 14, borderBottom: "1px solid #F0F3EF", width: "100%", textAlign: "left", minWidth: 620 }}>
-              <span className="font-mono" style={{ fontWeight: 600 }}>{c.station.casenummer || "—"}</span>
-              <span style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.station.naam_msr}</span>
+              <span className="font-mono" style={{ fontWeight: 600 }}>{caseNr(c.station)}</span>
+              <span style={{ minWidth: 0 }}>
+                <span style={{ display: "block", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{caseNaam(c.station)}</span>
+                {caseSub(c.station) && <span style={{ display: "block", fontSize: 12, color: T.subOnBg, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{caseSub(c.station)}</span>}
+              </span>
               <span style={{ display: "flex", gap: 4 }}>
                 {(c.rondes.length ? c.rondes : [{ status: "open" } as any]).map((r, k) => <span key={k} style={{ width: 14, height: 14, borderRadius: 4, background: TO_STATUS[r.status as keyof typeof TO_STATUS].dot }} />)}
               </span>
