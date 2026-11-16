@@ -40,6 +40,8 @@ const formatStationName = (name: string) => name
 
 const dateValue = (value?: string | null) => value ? new Date(value).getTime() : 0;
 
+const caseLabelOf = (station: any) => [station?.casenummer, station?.casenaam].filter(Boolean).join(" · ");
+
 function rijStatus(item: StationItem) {
   const open = item.total - item.done;
   if (item.station.review_reden) return { ring: T.danger, fg: T.danger, hint: `Afgekeurd: ${item.station.review_reden}` };
@@ -68,17 +70,23 @@ function Voortgangsring({ item, color }: { item: StationItem; color: string }) {
 
 function StationKaart({ item, onOpen, onMeer }: { item: StationItem; onOpen: () => void; onMeer: () => void }) {
   const s = rijStatus(item);
+  const caseLabel = caseLabelOf(item.station);
   return (
     <div style={{ background: T.surface, borderRadius: R.group, display: "flex", alignItems: "center" }}>
       <Pressable onClick={onOpen} scale={0.98} style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 14, padding: "14px 4px 14px 16px", textAlign: "left" }}>
         <Voortgangsring item={item} color={s.ring} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="font-display" style={{ color: T.titleOnBg, fontSize: 17, fontWeight: 600, lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {formatStationName(item.station.naam_msr)}
+          <div className="font-display" style={{ color: T.titleOnBg, fontSize: caseLabel ? 16 : 17, fontWeight: 600, lineHeight: 1.25, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", whiteSpace: caseLabel ? "normal" : "nowrap", textOverflow: "ellipsis" }}>
+            {caseLabel || formatStationName(item.station.naam_msr)}
           </div>
           <div style={{ marginTop: 3, color: s.fg, fontSize: 14, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {s.hint}
           </div>
+          {caseLabel && (
+            <div style={{ marginTop: 2, color: T.subOnBg, fontSize: 14, fontWeight: 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {formatStationName(item.station.naam_msr)}
+            </div>
+          )}
         </div>
       </Pressable>
       <Pressable onClick={onMeer} aria-label="Meer acties" style={{ width: 48, alignSelf: "stretch", display: "flex", alignItems: "center", justifyContent: "center", color: T.subOnBg }}>
@@ -175,7 +183,11 @@ export default function Dashboard() {
 
   const filtered = useMemo(() => enriched.filter((item) => {
     const q = search.trim().toLocaleLowerCase("nl-NL");
-    return !q || item.station.naam_msr.toLocaleLowerCase("nl-NL").includes(q) || item.station.behuizingsnummer?.toLocaleLowerCase("nl-NL").includes(q);
+    return !q
+      || item.station.naam_msr.toLocaleLowerCase("nl-NL").includes(q)
+      || item.station.behuizingsnummer?.toLocaleLowerCase("nl-NL").includes(q)
+      || item.station.casenummer?.toLocaleLowerCase("nl-NL").includes(q)
+      || item.station.casenaam?.toLocaleLowerCase("nl-NL").includes(q);
   }).sort((a, b) => b.updatedAt - a.updatedAt), [enriched, search]);
 
   const isOpgeleverd = (i: StationItem) => i.station.status === "opgeleverd" || i.station.status === "goedgekeurd";
@@ -307,7 +319,7 @@ export default function Dashboard() {
       <Sheet open={Boolean(actieTarget)} onOpenChange={(o) => !o && setActieTarget(null)}>
         <SheetContent side="bottom" className="rounded-t-[20px] border-0 bg-white px-4 pb-[calc(20px+env(safe-area-inset-bottom))] pt-6">
           <SheetHeader className="pr-7 text-left">
-            <SheetTitle>{actieTarget ? formatStationName(actieTarget.naam_msr) : ""}</SheetTitle>
+            <SheetTitle>{actieTarget ? (caseLabelOf(actieTarget) || formatStationName(actieTarget.naam_msr)) : ""}</SheetTitle>
             <SheetDescription className="font-mono">{actieTarget?.behuizingsnummer || "Geen nummer"}</SheetDescription>
           </SheetHeader>
           <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 8 }}>
