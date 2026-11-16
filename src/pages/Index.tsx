@@ -40,6 +40,8 @@ const formatStationName = (name: string) => name
 
 const dateValue = (value?: string | null) => value ? new Date(value).getTime() : 0;
 
+const caseLabelOf = (station: any) => [station?.casenummer, station?.casenaam].filter(Boolean).join(" · ");
+
 function rijStatus(item: StationItem) {
   const open = item.total - item.done;
   if (item.station.review_reden) return { ring: T.danger, fg: T.danger, hint: `Afgekeurd: ${item.station.review_reden}` };
