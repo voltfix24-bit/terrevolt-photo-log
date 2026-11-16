@@ -11,6 +11,8 @@ import CategorieenBeheren from "./pages/CategorieenBeheren";
 import Opleveren from "./pages/Opleveren";
 import Beoordelen from "./pages/Beoordelen";
 import BeoordeelDossier from "./pages/BeoordeelDossier";
+import Cases from "./pages/Cases";
+import CaseDetail from "./pages/CaseDetail";
 import NotFound from "./pages/NotFound";
 import { useInstellingen } from "@/hooks/use-theme";
 import { useOnline } from "@/hooks/use-online";
@@ -58,6 +60,8 @@ function AppContent() {
         <Route path="/beoordelen/:id" element={<BeoordeelDossier />} />
         <Route path="/instellingen" element={<Instellingen />} />
         <Route path="/instellingen/categorieen" element={<CategorieenBeheren />} />
+        <Route path="/cases" element={<Cases />} />
+        <Route path="/cases/:id" element={<CaseDetail />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>

@@ -252,6 +252,9 @@ export default function Dashboard() {
             <h1 className="font-display" style={{ margin: 0, color: T.titleOnBg, fontSize: 32, fontWeight: 700, lineHeight: 1.1 }}>Stations</h1>
             <div style={{ marginTop: 4, color: SUB, fontSize: 14 }}>{syncLabel}</div>
           </div>
+          <Pressable aria-label="Cases & TO" onClick={async () => { if (await requirePin()) navigate("/cases"); }} style={{ width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", color: T.green }}>
+            <span className="material-symbols-rounded" style={{ fontSize: 26 }}>assignment</span>
+          </Pressable>
           <Pressable aria-label="Instellingen" onClick={async () => { if (await requirePin()) navigate("/instellingen"); }} style={{ width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", color: T.green }}>
             <span className="material-symbols-rounded" style={{ fontSize: 26 }}>settings</span>
           </Pressable>
