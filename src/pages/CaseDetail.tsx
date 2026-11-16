@@ -90,14 +90,15 @@ export default function CaseDetail() {
           <span className="material-symbols-rounded" style={{ fontSize: 22 }}>arrow_back</span>Wie moet wat doen
         </Pressable>
         <span style={{ color: T.softBorder }}>/</span>
-        <span className="font-mono" style={{ fontSize: 15, color: SUB }}>{station.casenummer || station.behuizingsnummer || "—"}</span>
+        <span className="font-mono" style={{ fontSize: 15, color: SUB }}>{caseNr(station)}</span>
       </div>
 
       <main style={{ padding: "24px 24px 60px", maxWidth: 1400, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 14, color: SUB }}>{[station.casenaam, "opdrachtgever Van Gelder", "netbeheerder Liander"].filter(Boolean).join(" · ")}</div>
-            <h1 className="font-display" style={{ margin: "4px 0 0", fontWeight: 800, fontSize: 30, lineHeight: 1.15, color: T.titleOnBg }}>{station.naam_msr}</h1>
+            <div className="font-mono" style={{ fontSize: 15, fontWeight: 600, color: T.bodyOnBg }}>Case {caseNr(station)}</div>
+            <h1 className="font-display" style={{ margin: "4px 0 0", fontWeight: 800, fontSize: 30, lineHeight: 1.15, color: T.titleOnBg }}>{caseNaam(station)}</h1>
+            <div style={{ fontSize: 14, color: SUB }}>{[caseSub(station), "opdrachtgever Van Gelder", "netbeheerder Liander"].filter(Boolean).join(" · ")}</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <span style={{ fontSize: 14, color: SUB }}>Bal ligt bij</span>
