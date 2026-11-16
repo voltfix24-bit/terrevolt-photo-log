@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Pressable, T } from "@/components/apple/Primitives";
 import {
   DOSSIER, PARTIJEN, PARTIJ_STIJL, Partij, REDENEN, REDEN_LABEL, TO_ORDER, TO_STATUS, ToRonde, ToStatus,
-  actieWie, dagenSinds, db, fmtDatum, useCases, vandaag,
+  actieWie, dagenSinds, dagenTekst, db, fmtDatum, useCases, vandaag, caseNaam, caseNr, caseSub,
 } from "@/lib/to-rondes";
 
 const SUB = T.bodyOnBg;
@@ -73,12 +73,12 @@ export default function CaseDetail() {
     { k: "Aantal keer ingediend", v: String(rondes.filter((r) => r.ingediend_op).length), fg: T.titleOnBg },
     { k: "First time right", v: ftr, fg: ftr === "Ja" ? T.green : ftr === "Nee" ? T.danger : SUB },
     { k: "Eerste indiening", v: fmtDatum(first?.ingediend_op), fg: T.titleOnBg },
-    { k: "Doorlooptijd", v: first?.ingediend_op ? `${dagenSinds(first.ingediend_op, apprIdx >= 0 ? rondes[apprIdx].reactie_op : null)} dagen` : "—", fg: T.titleOnBg },
+    { k: "Doorlooptijd", v: first?.ingediend_op ? dagenTekst(dagenSinds(first.ingediend_op, apprIdx >= 0 ? rondes[apprIdx].reactie_op : null)) : "—", fg: T.titleOnBg },
     { k: "Afkeurredenen totaal", v: String(rondes.reduce((t, r) => t + r.redenen.length, 0)), fg: T.titleOnBg },
   ];
   const dateLine = !cur?.ingediend_op ? "Nog niet ingediend"
     : `Ingediend ${fmtDatum(cur.ingediend_op)} bij ${cur.ingediend_bij ?? "Van Gelder"}` +
-      (cur.reactie_op ? ` · reactie ${fmtDatum(cur.reactie_op)} (${dagenSinds(cur.ingediend_op, cur.reactie_op)} d)` : ` · ${dagenSinds(cur.ingediend_op)} dagen in behandeling`);
+      (cur.reactie_op ? ` · reactie ${fmtDatum(cur.reactie_op)} (${dagenTekst(dagenSinds(cur.ingediend_op, cur.reactie_op))})` : ` · ${dagenTekst(dagenSinds(cur.ingediend_op))} in behandeling`);
   const placeholder = { open: "Bijv. wacht op laatste foto's", controle: "Bijv. Van Gelder heeft doorgezet naar Liander", afgekeurd: "Toelichting van Van Gelder / Liander", goedgekeurd: "Bijv. goedgekeurd door Liander, kenmerk …" }[curStatus];
 
   const chip = (on: boolean, onBg = T.titleOnBg) => ({ minHeight: 38, padding: "0 12px", borderRadius: 9, display: "flex", alignItems: "center", gap: 6, fontSize: 14, fontWeight: 600, background: on ? onBg : T.soft, color: on ? T.surface : T.titleOnBg } as const);
@@ -177,7 +177,7 @@ export default function CaseDetail() {
                           </div>
                           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, flexShrink: 0 }}>
                             <span style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 8px", borderRadius: 6, fontSize: 13, fontWeight: 600, background: ps.bg, color: ps.fg }}><span className="material-symbols-rounded" style={{ fontSize: 15 }}>{ps.icon}</span>{actieWie(a)}</span>
-                            <span style={{ fontSize: 13, color: SUB }}>{done ? `Afgehandeld ${fmtDatum(a.afgehandeld_op)}` : `${dagenSinds(cur.reactie_op ?? a.created_at)} dagen open`}</span>
+                            <span style={{ fontSize: 13, color: SUB }}>{done ? `Afgehandeld ${fmtDatum(a.afgehandeld_op)}` : `${dagenTekst(dagenSinds(cur.reactie_op ?? a.created_at))} open`}</span>
                           </div>
                         </div>
                       );
