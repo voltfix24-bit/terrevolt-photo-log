@@ -1,0 +1,1 @@
+ALTER TABLE public.stations ADD COLUMN IF NOT EXISTS case_verborgen boolean NOT NULL DEFAULT false;
