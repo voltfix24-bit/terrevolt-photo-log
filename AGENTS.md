@@ -1,3 +1,5 @@
 
-- SharePoint sync lives in edge function `sharepoint-sync` (Graph app-only); `supabase/functions/sharepoint-sync/categories.ts` is a copy of SECTIONS/CATEGORIES (id, section, name) and must be regenerated when categories change. Why: edge functions can't import src/.
+- SharePoint logic is shared in `supabase/functions/_shared/sharepoint.ts` (used by `sharepoint-sync` and `sharepoint-weekly`); `supabase/functions/_shared/sharepoint-categories.ts` is a copy of SECTIONS/CATEGORIES (id, section, name) and must be regenerated when categories change. Why: edge functions can't import src/.
 - `oplever-rapport` triggers `sharepoint-sync` in the background (waitUntil, anon JWT) and never fails on sync errors. Why: delivery must not depend on SharePoint.
+- `sharepoint-weekly` mirrors all stations; cron fires Sat/Sun 23:00+00:00 UTC and the function only runs when Amsterdam is Sunday 01:xx, chaining batches of 2 via the cron secret. Why: DST-safe and avoids edge time limits.
+- `sharepoint_sync` has no FK to stations so deleted stations' folders can be moved to `_Verwijderd`. Why: item id must survive station deletion.

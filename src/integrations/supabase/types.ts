@@ -310,6 +310,7 @@ export type Database = {
           aantal_bestanden: number
           fout: string | null
           gesynct_op: string
+          sharepoint_item_id: string | null
           sharepoint_url: string | null
           station_id: string
           status: string
@@ -318,6 +319,7 @@ export type Database = {
           aantal_bestanden?: number
           fout?: string | null
           gesynct_op?: string
+          sharepoint_item_id?: string | null
           sharepoint_url?: string | null
           station_id: string
           status?: string
@@ -326,19 +328,48 @@ export type Database = {
           aantal_bestanden?: number
           fout?: string | null
           gesynct_op?: string
+          sharepoint_item_id?: string | null
           sharepoint_url?: string | null
           station_id?: string
           status?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "sharepoint_sync_station_id_fkey"
-            columns: ["station_id"]
-            isOneToOne: true
-            referencedRelation: "stations"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
+      }
+      sharepoint_sync_runs: {
+        Row: {
+          fouten: Json
+          gestart_op: string
+          handmatig: boolean
+          id: string
+          klaar_op: string | null
+          stations: number
+          toegevoegd: number
+          verplaatst: number
+          verwijderd: number
+        }
+        Insert: {
+          fouten?: Json
+          gestart_op?: string
+          handmatig?: boolean
+          id?: string
+          klaar_op?: string | null
+          stations?: number
+          toegevoegd?: number
+          verplaatst?: number
+          verwijderd?: number
+        }
+        Update: {
+          fouten?: Json
+          gestart_op?: string
+          handmatig?: boolean
+          id?: string
+          klaar_op?: string | null
+          stations?: number
+          toegevoegd?: number
+          verplaatst?: number
+          verwijderd?: number
+        }
+        Relationships: []
       }
       stations: {
         Row: {

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { SharePointBeheer } from '@/components/SharePointBeheer';
 import { useInstellingen, DEFAULT_THEME, applyTheme, type AppInstellingen } from '@/hooks/use-theme';
 
 const COLOR_PRESETS = [
@@ -213,6 +214,8 @@ export default function Instellingen() {
             <p className="text-sm text-muted-foreground">{current?.bedrijfsnaam} · {current?.regio}</p>
           </div>
         </div>
+
+        <SharePointBeheer />
 
         {/* ── BRANDING ── */}
         <div className="bg-card rounded-2xl border border-outline-variant/10 shadow-sm mb-4 overflow-hidden">
