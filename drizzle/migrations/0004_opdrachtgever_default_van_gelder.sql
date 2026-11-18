@@ -1,0 +1,1 @@
+ALTER TABLE public.stations ALTER COLUMN opdrachtgever SET DEFAULT 'van Gelder';

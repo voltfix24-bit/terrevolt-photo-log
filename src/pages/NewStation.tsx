@@ -93,6 +93,7 @@ export default function NewStation() {
         datum: form.datum || null,
         vermogensveld: form.vermogensveld,
         da_kast: form.da_kast,
+        opdrachtgever: "van Gelder",
       })
       .select()
       .single();

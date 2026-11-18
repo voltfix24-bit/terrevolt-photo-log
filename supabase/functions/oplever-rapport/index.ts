@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
 
     if (!station) throw new Error("Station niet gevonden");
 
-    const opdrachtgever = body.opdrachtgever ?? station.opdrachtgever ?? "Opdrachtgever";
+    const opdrachtgever = body.opdrachtgever ?? station.opdrachtgever ?? "van Gelder";
     const submittedBy = body.submitted_by ?? station.ingevuld_door ?? "Onbekend";
     const submittedAt = new Date().toISOString();
 

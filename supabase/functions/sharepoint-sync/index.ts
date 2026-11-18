@@ -4,7 +4,10 @@ import { z } from "npm:zod@3";
 import { CATEGORIES, SECTIONS } from "./categories.ts";
 
 const GRAPH = "https://graph.microsoft.com/v1.0";
-const Body = z.object({ station_id: z.string().uuid() });
+const Body = z.union([
+  z.object({ station_id: z.string().uuid() }),
+  z.object({ opruimen_onbekend: z.literal(true) }),
+]);
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
@@ -98,23 +101,7 @@ async function parallel<T>(items: T[], n: number, fn: (t: T) => Promise<void>) {
   await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => { while (i < items.length) await fn(items[i++]); }));
 }
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  if (!req.headers.get("Authorization")?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
-
-  const parsed = Body.safeParse(await req.json().catch(() => ({})));
-  if (!parsed.success) return json({ error: parsed.error.flatten().fieldErrors }, 400);
-  const stationId = parsed.data.station_id;
-
-  const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-  const status = (v: Record<string, unknown>) =>
-    db.from("sharepoint_sync").upsert({ station_id: stationId, gesynct_op: new Date().toISOString(), ...v });
-
-  const { data: station } = await db.from("stations").select("*").eq("id", stationId).maybeSingle();
-  if (!station) return json({ error: "Station niet gevonden" }, 404);
-  await status({ status: "bezig", fout: null });
-
-  try {
+async function bepaalRoot() {
     const siteUrl = Deno.env.get("SHAREPOINT_SITE_URL");
     if (!siteUrl) throw new Error("SHAREPOINT_SITE_URL ontbreekt");
     const u = new URL(siteUrl);
@@ -136,6 +123,38 @@ Deno.serve(async (req) => {
       prefix = ["Opleveringen"];
     }
 
+    return { tok, root, prefix };
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (!req.headers.get("Authorization")?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
+
+  const parsed = Body.safeParse(await req.json().catch(() => ({})));
+  if (!parsed.success) return json({ error: parsed.error.flatten().fieldErrors }, 400);
+  if ("opruimen_onbekend" in parsed.data) {
+    // Verplaatst alleen de oude map "Onbekende opdrachtgever" naar de SharePoint-prullenbak
+    try {
+      const { tok, root, prefix } = await bepaalRoot();
+      const r = await graph(tok, `${root}:/${enc([...prefix, "Onbekende opdrachtgever"].join("/"))}`, { method: "DELETE" }, [404]);
+      return json({ ok: true, verwijderd: r.status !== 404 });
+    } catch (e) {
+      return json({ error: (e as Error).message }, 500);
+    }
+  }
+  const stationId = parsed.data.station_id;
+
+  const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+  const status = (v: Record<string, unknown>) =>
+    db.from("sharepoint_sync").upsert({ station_id: stationId, gesynct_op: new Date().toISOString(), ...v });
+
+  const { data: station } = await db.from("stations").select("*").eq("id", stationId).maybeSingle();
+  if (!station) return json({ error: "Station niet gevonden" }, 404);
+  await status({ status: "bezig", fout: null });
+
+  try {
+    const { tok, root, prefix } = await bepaalRoot();
+
     const [{ data: fotos }, { data: opm }, { data: skips }] = await Promise.all([
       db.from("fotos").select("categorie, storage_path, uploaded_at").eq("station_id", stationId).order("uploaded_at"),
       db.from("categorie_opmerkingen").select("categorie, opmerking").eq("station_id", stationId),
@@ -147,7 +166,7 @@ Deno.serve(async (req) => {
       ? veilig([station.casenummer, station.casenaam].filter(Boolean).join(" - "))
       : "Zonder case";
     const stationMap = veilig([station.behuizingsnummer, station.naam_msr].filter(Boolean).join(" - "));
-    const basis = [...prefix, veilig(station.opdrachtgever ?? "Onbekende opdrachtgever"), jaar, caseMap, stationMap];
+    const basis = [...prefix, veilig(station.opdrachtgever?.trim() || "van Gelder"), jaar, caseMap, stationMap];
     const sectieMap = (sid: string) => {
       const i = SECTIONS.findIndex((s) => s.id === sid);
       return i < 0 ? "99 Overig" : `${String(i + 1).padStart(2, "0")} ${veilig(SECTIONS[i].label)}`;
