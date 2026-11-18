@@ -305,6 +305,41 @@ export type Database = {
         }
         Relationships: []
       }
+      sharepoint_sync: {
+        Row: {
+          aantal_bestanden: number
+          fout: string | null
+          gesynct_op: string
+          sharepoint_url: string | null
+          station_id: string
+          status: string
+        }
+        Insert: {
+          aantal_bestanden?: number
+          fout?: string | null
+          gesynct_op?: string
+          sharepoint_url?: string | null
+          station_id: string
+          status?: string
+        }
+        Update: {
+          aantal_bestanden?: number
+          fout?: string | null
+          gesynct_op?: string
+          sharepoint_url?: string | null
+          station_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sharepoint_sync_station_id_fkey"
+            columns: ["station_id"]
+            isOneToOne: true
+            referencedRelation: "stations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stations: {
         Row: {
           behuizingsnummer: string | null

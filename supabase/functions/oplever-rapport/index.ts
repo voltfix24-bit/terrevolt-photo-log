@@ -95,6 +95,17 @@ ${(skips ?? []).length ? `<h2>Niet van toepassing</h2>${(skips ?? []).map((skip)
 
     await supabase.from("fotos").update({ review_status: "pending", review_reden: null }).eq("station_id", stationId).neq("review_status", "approved");
 
+    // SharePoint-sync op de achtergrond: een fout hier mag het opleveren niet laten mislukken
+    const spSync = fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/sharepoint-sync`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
+      body: JSON.stringify({ station_id: stationId }),
+    })
+      .then(async (sp) => { if (!sp.ok) console.error(`sharepoint-sync [${sp.status}]: ${await sp.text()}`); })
+      .catch((e) => console.error("sharepoint-sync niet bereikbaar:", (e as Error).message));
+    // deno-lint-ignore no-explicit-any
+    (globalThis as any).EdgeRuntime?.waitUntil?.(spSync);
+
     const { data: signed } = await supabase.storage.from("rapporten").createSignedUrl(pad, 60 * 60);
 
     return new Response(JSON.stringify({ ok: true, rapport_url: signed?.signedUrl, submitted_at: submittedAt }), {

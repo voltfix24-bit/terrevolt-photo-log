@@ -1,3 +1,6 @@
 project_id = "aiwpseouqechfsvagxkc"
 [functions.oplever-rapport]
 verify_jwt = false
+
+[functions.sharepoint-sync]
+verify_jwt = true

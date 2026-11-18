@@ -22,6 +22,13 @@
       "when": 1794847848075,
       "tag": "0002_add_case_verborgen_to_stations",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795033771802,
+      "tag": "0003_create_sharepoint_sync",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,6 @@
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { WizardView } from "@/components/WizardView";
+import { SharePointStatus } from "@/components/SharePointStatus";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { requirePin } from "@/lib/require-pin";
@@ -497,6 +498,7 @@ export default function StationDetail() {
           <p className="mb-5" style={{ fontSize: 14, color: T.subOnBg }}>
             {[station.datum, station.ingevuld_door].filter(Boolean).join(' · ')}
           </p>
+          <SharePointStatus stationId={station.id} opgeleverd={station.status === 'opgeleverd' || station.status === 'goedgekeurd'} />
 
           {station.status === 'in uitvoering' && station.review_reden && (
             <div style={{ background: T.dangerBg, borderRadius: R.group, padding: "12px 14px", marginBottom: 16 }}>
