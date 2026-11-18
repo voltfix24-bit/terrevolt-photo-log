@@ -346,7 +346,7 @@ export function WizardView({
                         <span className="material-symbols-rounded" style={{ fontSize: 24 }}>info</span>
                       </button>
                     </PopoverTrigger>
-                    <PopoverContent align="end" sideOffset={8} collisionPadding={12} style={{ width: "min(340px, calc(100vw - 24px))", maxHeight: "60vh", overflowY: "auto", borderRadius: 16, padding: 16, fontSize: 15, lineHeight: 1.5 }}>
+                    <PopoverContent align="end" sideOffset={8} collisionPadding={12} className="z-[90]" style={{ width: "min(340px, calc(100vw - 24px))", maxHeight: "60vh", overflowY: "auto", borderRadius: 16, padding: 16, fontSize: 15, lineHeight: 1.5 }}>
                       {cat.effectiveInstruction && <p style={{ margin: 0 }}>{cat.effectiveInstruction}</p>}
                       {cat.effectiveTip && <p style={{ margin: "8px 0 0" }}>{cat.effectiveTip}</p>}
                       {extra.map((t) => <p key={t} style={{ margin: "8px 0 0" }}>{t}</p>)}
