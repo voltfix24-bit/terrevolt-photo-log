@@ -498,7 +498,7 @@ export default function StationDetail() {
           <p className="mb-5" style={{ fontSize: 14, color: T.subOnBg }}>
             {[station.datum, station.ingevuld_door].filter(Boolean).join(' · ')}
           </p>
-          <SharePointStatus stationId={station.id} opgeleverd={station.status === 'opgeleverd' || station.status === 'goedgekeurd'} />
+          <SharePointStatus station={station} />
 
           {station.status === 'in uitvoering' && station.review_reden && (
             <div style={{ background: T.dangerBg, borderRadius: R.group, padding: "12px 14px", marginBottom: 16 }}>

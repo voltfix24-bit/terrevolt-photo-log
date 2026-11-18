@@ -3,3 +3,4 @@
 - `oplever-rapport` triggers `sharepoint-sync` in the background (waitUntil, anon JWT) and never fails on sync errors. Why: delivery must not depend on SharePoint.
 - `sharepoint-weekly` mirrors all stations; cron fires Sat/Sun 23:00+00:00 UTC and the function only runs when Amsterdam is Sunday 01:xx, chaining batches of 2 via the cron secret. Why: DST-safe and avoids edge time limits.
 - `sharepoint_sync` has no FK to stations so deleted stations' folders can be moved to `_Verwijderd`. Why: item id must survive station deletion.
+- SharePoint only syncs stations with status opgeleverd/goedgekeurd and trimmed casenummer+casenaam (`nietSyncReden`, mirrored in SharePointStatus.tsx); target is the case folder, a station subfolder only when a case has several stations; old {case}/{station} folders are flattened automatically on next sync. Why: one station per case, no half-finished data in SharePoint.

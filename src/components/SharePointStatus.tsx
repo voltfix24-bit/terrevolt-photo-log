@@ -5,7 +5,18 @@ import { Pressable, T } from "@/components/apple/Primitives";
 import { toast } from "sonner";
 
 // Klein statuslabel voor de SharePoint-koppeling + handmatig opnieuw synchroniseren
-export function SharePointStatus({ stationId, opgeleverd }: { stationId: string; opgeleverd: boolean }) {
+type StationInfo = { id: string; status: string | null; casenummer: string | null; casenaam: string | null };
+
+// Zelfde regel als de koppeling: alleen opgeleverd + casenummer én casenaam
+export function nietSyncReden(s: StationInfo): string | null {
+  if (!s.casenummer?.trim() || !s.casenaam?.trim()) return "case ontbreekt";
+  if (s.status !== "opgeleverd" && s.status !== "goedgekeurd") return "nog niet opgeleverd";
+  return null;
+}
+
+export function SharePointStatus({ station }: { station: StationInfo }) {
+  const stationId = station.id;
+  const reden = nietSyncReden(station);
   const qc = useQueryClient();
   const [bezig, setBezig] = useState(false);
   const { data: sync } = useQuery({
@@ -18,7 +29,13 @@ export function SharePointStatus({ stationId, opgeleverd }: { stationId: string;
     refetchInterval: (q) => (q.state.data?.status === "bezig" ? 3000 : false),
   });
 
-  if (!sync && !opgeleverd) return null;
+  if (reden) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: -8, marginBottom: 16, fontSize: 15, color: T.subOnBg, fontWeight: 600, minHeight: 44 }}>
+        <span className="material-symbols-rounded" style={{ fontSize: 20 }}>cloud_off</span>Nog niet naar SharePoint: {reden}
+      </div>
+    );
+  }
 
   const opnieuw = async () => {
     setBezig(true);

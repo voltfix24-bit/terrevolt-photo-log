@@ -1,7 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";
-import { context, enc, graph, syncStation } from "../_shared/sharepoint.ts";
+import { context, enc, graph, nietSyncReden, syncStation } from "../_shared/sharepoint.ts";
 
 const Body = z.union([
   z.object({ station_id: z.string().uuid() }),
@@ -32,6 +32,8 @@ Deno.serve(async (req) => {
   const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   const { data: station } = await db.from("stations").select("*").eq("id", stationId).maybeSingle();
   if (!station) return json({ error: "Station niet gevonden" }, 404);
+  const reden = nietSyncReden(station);
+  if (reden) return json({ ok: true, overgeslagen: reden });
   const { data: vorig } = await db.from("sharepoint_sync").select("sharepoint_item_id").eq("station_id", stationId).maybeSingle();
   const status = (v: Record<string, unknown>) =>
     db.from("sharepoint_sync").upsert({ station_id: stationId, gesynct_op: new Date().toISOString(), ...v });

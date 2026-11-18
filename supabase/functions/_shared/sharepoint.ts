@@ -137,13 +137,29 @@ const sectieMap = (sid: string) => {
 // Mappen die de app beheert: alleen hierin worden bestanden verwijderd
 export const BEHEERDE_MAPPEN = ["00 Rapport", ...SECTIONS.map((s) => sectieMap(s.id)), "99 Overig"];
 
-export function stationPad(prefix: string[], station: any) {
+const tr = (v: unknown) => String(v ?? "").trim();
+
+/** Alleen opgeleverde stations met casenummer én casenaam gaan naar SharePoint. Geeft de reden terug als het niet mag. */
+export function nietSyncReden(station: any): string | null {
+  if (!tr(station.casenummer) || !tr(station.casenaam)) return "case ontbreekt";
+  if (!["opgeleverd", "goedgekeurd"].includes(station.status)) return "nog niet opgeleverd";
+  return null;
+}
+
+const caseSleutel = (s: any) => `${tr(s.casenummer).toLowerCase()}|${tr(s.casenaam).toLowerCase()}`;
+const stationNaam = (s: any) => veilig([tr(s.behuizingsnummer), tr(s.naam_msr)].filter(Boolean).join(" - "));
+
+/** Doelmap: de casemap; alleen als een case meerdere stations heeft een submap per station. */
+export function stationPad(prefix: string[], station: any, meerdere = false) {
   const jaar = String(new Date(station.datum ?? station.submitted_at ?? Date.now()).getFullYear());
-  const caseMap = station.casenummer || station.casenaam
-    ? veilig([station.casenummer, station.casenaam].filter(Boolean).join(" - "))
-    : "Zonder case";
-  const stationMap = veilig([station.behuizingsnummer, station.naam_msr].filter(Boolean).join(" - "));
-  return [...prefix, veilig(station.opdrachtgever?.trim() || "van Gelder"), jaar, caseMap, stationMap];
+  const caseMap = veilig(`${tr(station.casenummer)} - ${tr(station.casenaam)}`);
+  const pad = [...prefix, veilig(tr(station.opdrachtgever) || "van Gelder"), jaar, caseMap];
+  return meerdere ? [...pad, stationNaam(station)] : pad;
+}
+
+async function caseHeeftMeerdere(db: any, station: any) {
+  const { data } = await db.from("stations").select("id, casenummer, casenaam, status").in("status", ["opgeleverd", "goedgekeurd"]);
+  return (data ?? []).filter((s: any) => !nietSyncReden(s) && caseSleutel(s) === caseSleutel(station)).length > 1;
 }
 
 // Pad van een drive-item relatief aan de drive-root, bv. "Opleveringen/van Gelder/2026/..."
@@ -194,14 +210,28 @@ async function verplaats(ctx: Ctx, id: string, ouderPad: string[], naam: string)
 /** Synchroniseer één station: hernoemen/verplaatsen, uploaden wat ontbreekt of anders is, en verwijderen wat niet meer in de app staat. */
 export async function syncStation(ctx: Ctx, db: any, station: any, vorigItemId: string | null, dryRun = false): Promise<Resultaat> {
   const res: Resultaat = { toegevoegd: [], verwijderd: [], verplaatst: [], leegVerwijderd: [], aantal_bestanden: 0, sharepoint_url: null, item_id: vorigItemId };
-  const basis = stationPad(ctx.prefix, station);
+  const reden = nietSyncReden(station);
+  if (reden) throw new Error(`Niet naar SharePoint: ${reden}`);
+  const basis = stationPad(ctx.prefix, station, await caseHeeftMeerdere(db, station));
   const doel = basis.join("/");
 
   // 1. Hernoemen/verplaatsen van de bestaande stationmap
   if (vorigItemId) {
     const it = await opId(ctx, vorigItemId);
     if (!it) res.item_id = null;
-    else if (itemPad(it) !== doel) {
+    else if (itemPad(it) === `${doel}/${stationNaam(station)}` && it.folder) {
+      // Oude structuur {case}/{station}/: inhoud één niveau omhoog en lege stationmap weg
+      res.verplaatst.push(`${itemPad(it)} → ${doel}`);
+      if (!dryRun) {
+        for (const k of await kinderen(ctx, `/drives/${ctx.driveId}/items/${it.id}`)) {
+          await (await graph(ctx.tok, `/drives/${ctx.driveId}/items/${k.id}`, {
+            method: "PATCH", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ parentReference: { id: it.parentReference.id } }),
+          })).body?.cancel();
+        }
+        await verwijderAlsLeeg(ctx, it.id, itemPad(it), false, res);
+      }
+    } else if (itemPad(it) !== doel) {
       const bestaat = await opPad(ctx, basis);
       if (bestaat && bestaat.id !== it.id) throw new Error(`Kan map niet verplaatsen: "${doel}" bestaat al`);
       res.verplaatst.push(`${itemPad(it)} → ${doel}`);

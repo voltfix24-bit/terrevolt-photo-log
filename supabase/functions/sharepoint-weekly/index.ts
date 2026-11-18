@@ -3,7 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";
 import { authenticateCronRequest } from "../_shared/cron-auth.ts";
-import { context, syncStation, verplaatsVerwijderd } from "../_shared/sharepoint.ts";
+import { context, nietSyncReden, syncStation, verplaatsVerwijderd } from "../_shared/sharepoint.ts";
 
 const BATCH = 2;
 const Body = z.union([
@@ -42,6 +42,7 @@ async function batch(runId: string, offset: number) {
     const ctx = await context();
     const { data: stations } = await sb.from("stations").select("*").order("created_at").range(offset, offset + BATCH - 1);
     for (const st of stations ?? []) {
+      if (nietSyncReden(st)) continue; // niet opgeleverd of geen case: SharePoint blijft zoals het is
       const { data: vorig } = await sb.from("sharepoint_sync").select("sharepoint_item_id").eq("station_id", st.id).maybeSingle();
       try {
         const res = await syncStation(ctx, sb, st, vorig?.sharepoint_item_id ?? null);
@@ -121,6 +122,8 @@ Deno.serve(async (req) => {
     ? await sb.from("stations").select("*").eq("id", b.station_id)
     : await sb.from("stations").select("*").order("created_at");
   for (const st of stations ?? []) {
+    const reden = nietSyncReden(st);
+    if (reden) { uit.push({ station: st.naam_msr, overgeslagen: reden }); continue; }
     const { data: vorig } = await sb.from("sharepoint_sync").select("sharepoint_item_id").eq("station_id", st.id).maybeSingle();
     try { uit.push({ station: st.naam_msr, ...(await syncStation(ctx, sb, st, vorig?.sharepoint_item_id ?? null, true)) }); }
     catch (e) { uit.push({ station: st.naam_msr, fout: (e as Error).message }); }
