@@ -320,6 +320,39 @@ export type Database = {
         }
         Relationships: []
       }
+      rapport_pdf: {
+        Row: {
+          bytes: number | null
+          fotos: number | null
+          fout: string | null
+          gestart_op: string
+          klaar_op: string | null
+          paginas: number | null
+          station_id: string
+          status: string
+        }
+        Insert: {
+          bytes?: number | null
+          fotos?: number | null
+          fout?: string | null
+          gestart_op?: string
+          klaar_op?: string | null
+          paginas?: number | null
+          station_id: string
+          status?: string
+        }
+        Update: {
+          bytes?: number | null
+          fotos?: number | null
+          fout?: string | null
+          gestart_op?: string
+          klaar_op?: string | null
+          paginas?: number | null
+          station_id?: string
+          status?: string
+        }
+        Relationships: []
+      }
       sharepoint_sync: {
         Row: {
           aantal_bestanden: number

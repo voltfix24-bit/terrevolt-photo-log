@@ -196,6 +196,7 @@ export default function BeoordeelDossier() {
     const { data, error } = await supabase.functions.invoke("oplever-rapport", { body: { station_id: id, actie: "rapport-url" } });
     const url = (data as { rapport_url?: string })?.rapport_url;
     if (error || !url) { toast.error("Rapport nog niet beschikbaar"); return; }
+    if ((data as { pdf_status?: string })?.pdf_status === "bezig") toast("PDF-rapport wordt gemaakt, je ziet nu de eenvoudige versie");
     window.open(url, "_blank");
   };
 
@@ -340,7 +341,7 @@ export default function BeoordeelDossier() {
             TerreVolt BV · opgeleverd {station?.submitted_at ? new Date(station.submitted_at).toLocaleDateString("nl-NL") : "-"}
           </div>
         </div>
-        <button onClick={() => void openRapport()} style={{ padding: "7px 13px", borderRadius: 8, background: "rgba(255,255,255,0.8)", border: "none", fontSize: 13, color: D.green }}>Rapport</button>
+        <button onClick={() => void openRapport()} style={{ padding: "7px 13px", borderRadius: 8, background: "rgba(255,255,255,0.8)", border: "none", fontSize: 13, color: D.green }}>Rapport (PDF)</button>
         <button
           onClick={() => void afronden()}
           disabled={tellingen.pending > 0 || station?.status === "goedgekeurd"}

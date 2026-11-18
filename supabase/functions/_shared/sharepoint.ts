@@ -377,7 +377,9 @@ export async function syncStation(ctx: Ctx, db: any, station: any, vorigItemId: 
     const velden = { ...sv, Sectie: c ? SECTIONS.find((s) => s.id === c.section)?.label : null, Categorie: cat, CategorieNr: c?.id ?? null };
     paden.forEach((p, i) => taken.push({ map, naam: `${veilig(`${nr}_${cat}_${i + 1}`)}.jpg`, storage: p, velden }));
   }
-  const { data: rapport } = await db.storage.from("rapporten").download(`${station.id}/rapport.html`);
+  const { data: rapport } = await db.storage.from("rapporten").download(`${station.id}/rapport.pdf`);
+  // rapport.html staat niet meer in SharePoint (wordt door de opruimstap verwijderd); de PDF vervangt hem
+  const rapportNaam = `${veilig(`Opleverrapport ${String(station.casenummer ?? "").trim()} - ${String(station.casenaam ?? "").trim()}`, 120)}.pdf`;
 
   const regels: string[] = [`${station.naam_msr}`, `Opmerkingen per categorie`, ""];
   for (const o of opm ?? []) if (o.opmerking?.trim()) regels.push(`- ${o.categorie}: ${o.opmerking.trim()}`);
@@ -392,7 +394,7 @@ export async function syncStation(ctx: Ctx, db: any, station: any, vorigItemId: 
   for (const m of BEHEERDE_MAPPEN) nuInMap.set(m, await kinderen(ctx, `${ctx.root}:/${enc([...basis, m].join("/"))}:`));
   const gewenst = new Map<string, Set<string>>(BEHEERDE_MAPPEN.map((m) => [m, new Set<string>()]));
   for (const t of taken) gewenst.get(t.map)!.add(t.naam.toLowerCase());
-  if (rapport) gewenst.get("00 Rapport")!.add("rapport.html");
+  if (rapport) gewenst.get("00 Rapport")!.add(rapportNaam.toLowerCase());
 
   if (!dryRun) {
     const cache = new Set<string>();
@@ -425,10 +427,10 @@ export async function syncStation(ctx: Ctx, db: any, station: any, vorigItemId: 
   if (rapport) {
     const b = new Uint8Array(await rapport.arrayBuffer());
     res.aantal_bestanden++;
-    if (grootte("00 Rapport", "rapport.html") !== b.byteLength) {
-      res.toegevoegd.push("00 Rapport/rapport.html");
-      if (!dryRun) await zetVelden(ctx, (await upload(ctx.tok, ctx.root, [...basis, "00 Rapport", "rapport.html"].join("/"), b, "text/html"))?.id, sv);
-    } else if (!dryRun) await zetVelden(ctx, bestaand("00 Rapport", "rapport.html")?.id, sv);
+    if (grootte("00 Rapport", rapportNaam) !== b.byteLength) {
+      res.toegevoegd.push(`00 Rapport/${rapportNaam}`);
+      if (!dryRun) await zetVelden(ctx, (await upload(ctx.tok, ctx.root, [...basis, "00 Rapport", rapportNaam].join("/"), b, "application/pdf"))?.id, sv);
+    } else if (!dryRun) await zetVelden(ctx, bestaand("00 Rapport", rapportNaam)?.id, sv);
   }
   res.aantal_bestanden++;
   const opmNu = (await kinderen(ctx, `${ctx.root}:/${enc(doel)}:`)).find((x) => x.file && x.name === "opmerkingen.txt");
