@@ -3,7 +3,8 @@ import { useInstellingen } from "@/hooks/use-theme";
 // Dagen tot de SharePoint-sleutel verloopt (null = onbekend)
 export function dagenTotVerlopen(datum: string | null | undefined, nu = new Date()): number | null {
   if (!datum) return null;
-  return Math.ceil((new Date(`${datum}T23:59:59`).getTime() - nu.getTime()) / 86_400_000);
+  const vandaag = new Date(nu.getFullYear(), nu.getMonth(), nu.getDate());
+  return Math.round((new Date(`${datum}T00:00:00`).getTime() - vandaag.getTime()) / 86_400_000);
 }
 
 export function SharePointSleutelBanner() {
