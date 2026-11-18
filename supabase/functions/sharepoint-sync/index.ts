@@ -128,7 +128,9 @@ Deno.serve(async (req) => {
       root = `/drives/${item.parentReference.driveId}/items/${item.id}`;
       prefix = [];
     } else {
-      const site = await (await graph(tok, `/sites/${u.hostname}:${u.pathname.replace(/\/$/, "")}`)).json();
+      // Pak alleen /sites/Naam of /teams/Naam uit het adres; anders de hoofdsite van de tenant
+      const m = decodeURIComponent(u.pathname).match(/^\/(sites|teams)\/[^/]+/i);
+      const site = await (await graph(tok, m ? `/sites/${u.hostname}:${encodeURI(m[0])}` : `/sites/${u.hostname}`)).json();
       const drive = await (await graph(tok, `/sites/${site.id}/drive`)).json();
       root = `/drives/${drive.id}/root`;
       prefix = ["Opleveringen"];
