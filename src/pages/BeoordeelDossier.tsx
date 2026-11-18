@@ -176,6 +176,7 @@ export default function BeoordeelDossier() {
     const tekst = reden === "Anders" ? (toelichting.trim() || "Anders") : `${reden}${toelichting.trim() ? ` — ${toelichting.trim()}` : ""}`;
     await supabase.from("fotos").update({ review_status: "rejected", review_reden: tekst, reviewed_at: new Date().toISOString() }).eq("id", rejectFor);
     await supabase.from("stations").update({ status: "in uitvoering", review_reden: tekst }).eq("id", id);
+    supabase.functions.invoke("sharepoint-sync", { body: { station_id: id, alleen_status: true } }).catch(() => {});
     setRejectFor(null);
     setToelichting("");
     setReden(REDENEN[0]);
@@ -186,6 +187,7 @@ export default function BeoordeelDossier() {
   const afronden = async () => {
     if (!id || tellingen.pending > 0) return;
     await supabase.from("stations").update({ status: "goedgekeurd", review_reden: null }).eq("id", id);
+    supabase.functions.invoke("sharepoint-sync", { body: { station_id: id, alleen_status: true } }).catch(() => {});
     ververs();
     toast.success("Dossier goedgekeurd en afgesloten");
   };

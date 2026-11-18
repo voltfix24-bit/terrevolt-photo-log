@@ -43,6 +43,13 @@
       "when": 1795036536601,
       "tag": "0005_sharepoint_weekly_sync",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795037494786,
+      "tag": "0006_sharepoint_sleutel_metadata",
+      "breakpoints": true
     }
   ]
 }

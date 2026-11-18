@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { SharePointSleutelBanner } from "@/components/SharePointSleutelBanner";
 import AppHeader from "@/components/AppHeader";
 import Index from "./pages/Index";
 import NewStation from "./pages/NewStation";
@@ -51,6 +52,7 @@ function AppContent() {
   return (
     <>
       <AppHeader />
+      <SharePointSleutelBanner />
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/stations/new" element={<NewStation />} />

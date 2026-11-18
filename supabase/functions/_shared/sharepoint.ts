@@ -119,10 +119,125 @@ export async function bepaalRoot() {
 }
 
 
-export type Ctx = { tok: string; root: string; prefix: string[]; driveId: string };
-export async function context(): Promise<Ctx> {
+export type Ctx = { tok: string; root: string; prefix: string[]; driveId: string; metadata: boolean };
+export async function context(db?: any): Promise<Ctx> {
   const { tok, root, prefix } = await bepaalRoot();
-  return { tok, root, prefix, driveId: root.split("/")[2] };
+  const ctx: Ctx = { tok, root, prefix, driveId: root.split("/")[2], metadata: false };
+  ctx.metadata = await zorgKolommen(ctx);
+  if (db) await machtiging(db, "Sites.Manage.All", !ctx.metadata);
+  return ctx;
+}
+
+// ---------- Metadata-kolommen ----------
+export const DOCUMENTEN_MAP = "10 Documenten";
+const KOLOMMEN: Record<string, unknown>[] = [
+  { name: "Behuizingsnummer", text: {} },
+  { name: "Stationsnaam", text: {} },
+  { name: "Casenummer", text: {} },
+  { name: "Casenaam", text: {} },
+  { name: "Sectie", choice: { choices: SECTIONS.map((s) => s.label) } },
+  { name: "Categorie", text: {} },
+  { name: "CategorieNr", number: { decimalPlaces: "none" } },
+  { name: "Opleverdatum", dateTime: { format: "dateOnly" } },
+  { name: "Monteur", text: {} },
+  { name: "Opdrachtgever", text: {} },
+  { name: "OpleverStatus", displayName: "Status", choice: { choices: ["opgeleverd", "goedgekeurd", "afgekeurd"] } },
+];
+
+/** Maakt ontbrekende kolommen aan. false = geen rechten (403), sync gaat dan door zonder metadata. */
+async function zorgKolommen(ctx: Ctx): Promise<boolean> {
+  try {
+    const lijst = await (await graph(ctx.tok, `/drives/${ctx.driveId}/list?$select=id,parentReference`)).json();
+    const basis = `/sites/${lijst.parentReference.siteId}/lists/${lijst.id}/columns`;
+    const r = await graph(ctx.tok, `${basis}?$select=name`, {}, [403]);
+    if (r.status === 403) { await r.body?.cancel(); return false; }
+    const namen = new Set(((await r.json()).value ?? []).map((c: any) => String(c.name).toLowerCase()));
+    for (const k of KOLOMMEN) {
+      if (namen.has(String(k.name).toLowerCase())) continue;
+      const c = await graph(ctx.tok, basis, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ displayName: k.name, ...k }) }, [403, 409]);
+      await c.body?.cancel();
+      if (c.status === 403) return false;
+    }
+    return true;
+  } catch (e) {
+    console.error("kolommen:", (e as Error).message);
+    return false;
+  }
+}
+
+async function zetVelden(ctx: Ctx, itemId: string | undefined, velden: Record<string, unknown>) {
+  if (!ctx.metadata || !itemId) return;
+  const schoon = Object.fromEntries(Object.entries(velden).filter(([, v]) => v !== null && v !== undefined && v !== ""));
+  const r = await graph(ctx.tok, `/drives/${ctx.driveId}/items/${itemId}/listItem/fields`, {
+    method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(schoon),
+  }, [400, 403, 404]);
+  if (!r.ok) console.error(`velden [${r.status}]: ${await r.text()}`); else await r.body?.cancel();
+}
+
+export function spStatus(st: any): string | null {
+  if (st.status === "goedgekeurd" || st.status === "opgeleverd") return st.status;
+  if (st.review_reden) return "afgekeurd";
+  return null;
+}
+const stationVelden = (st: any) => ({
+  Behuizingsnummer: tr(st.behuizingsnummer), Stationsnaam: tr(st.naam_msr), Casenummer: tr(st.casenummer), Casenaam: tr(st.casenaam),
+  Monteur: tr(st.ingevuld_door) || tr(st.submitted_by), Opdrachtgever: tr(st.opdrachtgever) || "van Gelder",
+  Opleverdatum: st.submitted_at ? String(st.submitted_at).slice(0, 10) + "T00:00:00Z" : st.datum ? `${st.datum}T00:00:00Z` : null,
+  OpleverStatus: spStatus(st),
+});
+
+/** Alleen de Status-kolom bijwerken op alle bestanden van een station (bij goed- of afkeuren). */
+export async function zetStatus(ctx: Ctx, itemId: string, st: any) {
+  if (!ctx.metadata) return 0;
+  const status = spStatus(st);
+  let n = 0;
+  const top = await kinderen(ctx, `/drives/${ctx.driveId}/items/${itemId}`);
+  const lijst = [...top.filter((x) => x.file)];
+  for (const m of top.filter((x) => x.folder && BEHEERDE_MAPPEN.includes(x.name))) lijst.push(...(await kinderen(ctx, `/drives/${ctx.driveId}/items/${m.id}`)).filter((x) => x.file));
+  await parallel(lijst, 4, async (f) => { await zetVelden(ctx, f.id, { OpleverStatus: status }); n++; });
+  return n;
+}
+
+// ---------- Instellingen bijwerken ----------
+async function instellingenId(db: any) {
+  const { data } = await db.from("instellingen").select("id, sp_machtigingen_nodig").limit(1).maybeSingle();
+  return data;
+}
+async function machtiging(db: any, naam: string, nodig: boolean) {
+  const r = await instellingenId(db);
+  if (!r) return;
+  const set = new Set<string>(r.sp_machtigingen_nodig ?? []);
+  nodig ? set.add(naam) : set.delete(naam);
+  await db.from("instellingen").update({ sp_machtigingen_nodig: [...set] }).eq("id", r.id);
+}
+
+/** Controleert de sleutel: werkt het token, en wanneer verloopt het clientgeheim (vereist Application.Read.All). */
+export async function controleerSleutel(db: any) {
+  const r = await instellingenId(db);
+  if (!r) return null;
+  const upd: Record<string, unknown> = { sp_gecontroleerd_op: new Date().toISOString() };
+  const set = new Set<string>(r.sp_machtigingen_nodig ?? []);
+  let tok: string | null = null;
+  try { tok = await token(); upd.sp_auth_fout = null; }
+  catch (e) {
+    const m = (e as Error).message;
+    upd.sp_auth_fout = /invalid_client|AADSTS7000215|AADSTS7000222/i.test(m) ? m.slice(0, 300) : null;
+  }
+  if (tok) {
+    const a = await graph(tok, `/applications(appId='${Deno.env.get("MS_CLIENT_ID")}')?$select=passwordCredentials`, {}, [403, 404]);
+    if (a.ok) {
+      const creds = ((await a.json()).passwordCredentials ?? []).map((c: any) => c.endDateTime).filter(Boolean).sort();
+      if (creds.length) { upd.sp_sleutel_verloopt_op = String(creds[creds.length - 1]).slice(0, 10); upd.sp_sleutel_automatisch = true; }
+      set.delete("Application.Read.All");
+    } else {
+      await a.body?.cancel();
+      upd.sp_sleutel_automatisch = false;
+      set.add("Application.Read.All");
+    }
+  }
+  upd.sp_machtigingen_nodig = [...set];
+  await db.from("instellingen").update(upd).eq("id", r.id);
+  return upd;
 }
 
 export type Resultaat = {
@@ -251,14 +366,16 @@ export async function syncStation(ctx: Ctx, db: any, station: any, vorigItemId: 
   ]);
 
   // Gewenste bestanden per beheerde map
-  const taken: { map: string; naam: string; storage: string }[] = [];
+  const taken: { map: string; naam: string; storage: string; velden: Record<string, unknown> }[] = [];
+  const sv = stationVelden(station);
   const perCat = new Map<string, string[]>();
   for (const f of fotos ?? []) perCat.set(f.categorie, [...(perCat.get(f.categorie) ?? []), f.storage_path]);
   for (const [cat, paden] of perCat) {
     const c = CATEGORIES.find((x) => x.name === cat);
     const nr = c ? String(c.id).padStart(2, "0") : "00";
     const map = c ? sectieMap(c.section) : "99 Overig";
-    paden.forEach((p, i) => taken.push({ map, naam: `${veilig(`${nr}_${cat}_${i + 1}`)}.jpg`, storage: p }));
+    const velden = { ...sv, Sectie: c ? SECTIONS.find((s) => s.id === c.section)?.label : null, Categorie: cat, CategorieNr: c?.id ?? null };
+    paden.forEach((p, i) => taken.push({ map, naam: `${veilig(`${nr}_${cat}_${i + 1}`)}.jpg`, storage: p, velden }));
   }
   const { data: rapport } = await db.storage.from("rapporten").download(`${station.id}/rapport.html`);
 
@@ -280,12 +397,15 @@ export async function syncStation(ctx: Ctx, db: any, station: any, vorigItemId: 
   if (!dryRun) {
     const cache = new Set<string>();
     await mapMaken(ctx.tok, ctx.root, [...basis, "00 Rapport"], cache);
+    // Map voor documenten van ons of de opdrachtgever: de app schrijft of verwijdert hier nooit iets
+    await mapMaken(ctx.tok, ctx.root, [...(basis.length > ctx.prefix.length + 3 ? basis.slice(0, -1) : basis), DOCUMENTEN_MAP], cache);
     for (const s of SECTIONS) await mapMaken(ctx.tok, ctx.root, [...basis, sectieMap(s.id)], cache);
     if (taken.some((t) => t.map === "99 Overig")) await mapMaken(ctx.tok, ctx.root, [...basis, "99 Overig"], cache);
   }
 
   // 3. Uploaden wat ontbreekt of een andere grootte heeft
-  const grootte = (map: string, naam: string) => nuInMap.get(map)?.find((x) => x.file && x.name.toLowerCase() === naam.toLowerCase())?.size;
+  const bestaand = (map: string, naam: string) => nuInMap.get(map)?.find((x) => x.file && x.name.toLowerCase() === naam.toLowerCase());
+  const grootte = (map: string, naam: string) => bestaand(map, naam)?.size;
   await parallel(taken, 4, async (t) => {
     let data: Blob | null = null, error: any = null;
     for (let p = 0; p < 4 && !data; p++) {
@@ -295,24 +415,27 @@ export async function syncStation(ctx: Ctx, db: any, station: any, vorigItemId: 
     if (error || !data) throw new Error(`Foto niet opgehaald uit opslag (${error?.message ?? "onbekend"}): ${t.storage}`);
     const bytes = new Uint8Array(await data.arrayBuffer());
     res.aantal_bestanden++;
-    if (grootte(t.map, t.naam) === bytes.byteLength) return;
-    res.toegevoegd.push(`${t.map}/${t.naam}`);
-    if (!dryRun) await upload(ctx.tok, ctx.root, [...basis, t.map, t.naam].join("/"), bytes, "image/jpeg");
+    let id = bestaand(t.map, t.naam)?.id;
+    if (grootte(t.map, t.naam) !== bytes.byteLength) {
+      res.toegevoegd.push(`${t.map}/${t.naam}`);
+      if (!dryRun) id = (await upload(ctx.tok, ctx.root, [...basis, t.map, t.naam].join("/"), bytes, "image/jpeg"))?.id;
+    }
+    if (!dryRun) await zetVelden(ctx, id, t.velden);
   });
   if (rapport) {
     const b = new Uint8Array(await rapport.arrayBuffer());
     res.aantal_bestanden++;
     if (grootte("00 Rapport", "rapport.html") !== b.byteLength) {
       res.toegevoegd.push("00 Rapport/rapport.html");
-      if (!dryRun) await upload(ctx.tok, ctx.root, [...basis, "00 Rapport", "rapport.html"].join("/"), b, "text/html");
-    }
+      if (!dryRun) await zetVelden(ctx, (await upload(ctx.tok, ctx.root, [...basis, "00 Rapport", "rapport.html"].join("/"), b, "text/html"))?.id, sv);
+    } else if (!dryRun) await zetVelden(ctx, bestaand("00 Rapport", "rapport.html")?.id, sv);
   }
   res.aantal_bestanden++;
   const opmNu = (await kinderen(ctx, `${ctx.root}:/${enc(doel)}:`)).find((x) => x.file && x.name === "opmerkingen.txt");
   if (opmNu?.size !== opmTekst.byteLength) {
     res.toegevoegd.push("opmerkingen.txt");
-    if (!dryRun) await upload(ctx.tok, ctx.root, [...basis, "opmerkingen.txt"].join("/"), opmTekst, "text/plain; charset=utf-8");
-  }
+    if (!dryRun) await zetVelden(ctx, (await upload(ctx.tok, ctx.root, [...basis, "opmerkingen.txt"].join("/"), opmTekst, "text/plain; charset=utf-8"))?.id, sv);
+  } else if (!dryRun) await zetVelden(ctx, opmNu?.id, sv);
 
   // 4. Verwijderen: alleen bestanden in beheerde mappen die niet meer bij de app horen
   for (const [map, items] of nuInMap) {
@@ -343,4 +466,30 @@ export async function verplaatsVerwijderd(ctx: Ctx, itemId: string, stationId: s
   res.sharepoint_url = nieuw.webUrl ?? null;
   if (it.parentReference?.id) await verwijderAlsLeeg(ctx, it.parentReference.id, itemPad(it).split("/").slice(0, -1).join("/"), false, res);
   return res;
+}
+
+/** Bestanden in "10 Documenten" van de casemap van een station (alleen lezen). */
+export async function documentenMap(ctx: Ctx, itemId: string) {
+  const it = await opId(ctx, itemId);
+  if (!it) return null;
+  for (const id of [it.id, it.parentReference?.id].filter(Boolean)) {
+    const k = (await kinderen(ctx, `/drives/${ctx.driveId}/items/${id}`)).find((x) => x.folder && x.name === DOCUMENTEN_MAP);
+    if (k) return k.id as string;
+  }
+  return null;
+}
+export async function documentenLijst(ctx: Ctx, mapId: string) {
+  const uit: any[] = [];
+  let next: string | null = `/drives/${ctx.driveId}/items/${mapId}/children?$top=200&$select=id,name,size,file,lastModifiedDateTime`;
+  while (next) {
+    const j = await (await graph(ctx.tok, next)).json();
+    uit.push(...(j.value ?? []).filter((x: any) => x.file).map((x: any) => ({ id: x.id, naam: x.name, grootte: x.size, type: x.file?.mimeType ?? null, gewijzigd: x.lastModifiedDateTime })));
+    next = j["@odata.nextLink"] ?? null;
+  }
+  return uit.sort((a, b) => String(b.gewijzigd).localeCompare(String(a.gewijzigd)));
+}
+export async function downloadUrl(ctx: Ctx, mapId: string, bestandId: string) {
+  const it = await (await graph(ctx.tok, `/drives/${ctx.driveId}/items/${bestandId}?$select=id,name,parentReference,@microsoft.graph.downloadUrl`)).json();
+  if (it.parentReference?.id !== mapId) throw new Error("Bestand hoort niet bij deze case");
+  return it["@microsoft.graph.downloadUrl"] as string;
 }

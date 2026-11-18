@@ -1,10 +1,11 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";
-import { context, enc, graph, nietSyncReden, syncStation } from "../_shared/sharepoint.ts";
+import { context, controleerSleutel, enc, graph, nietSyncReden, syncStation, zetStatus } from "../_shared/sharepoint.ts";
 
 const Body = z.union([
-  z.object({ station_id: z.string().uuid() }),
+  z.object({ station_id: z.string().uuid(), alleen_status: z.boolean().optional() }),
+  z.object({ controle: z.literal(true) }),
   z.object({ opruimen_onbekend: z.literal(true) }),
 ]);
 const json = (data: unknown, status = 200) =>
@@ -27,11 +28,24 @@ Deno.serve(async (req) => {
       return json({ error: (e as Error).message }, 500);
     }
   }
-  const stationId = parsed.data.station_id;
-
   const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+  if ("controle" in parsed.data) {
+    // Sleutel + machtigingen controleren (knop in Instellingen)
+    const sleutel = await controleerSleutel(db);
+    try { await context(db); } catch (e) { console.error((e as Error).message); }
+    const { data } = await db.from("instellingen").select("sp_sleutel_verloopt_op, sp_sleutel_automatisch, sp_auth_fout, sp_machtigingen_nodig").limit(1).maybeSingle();
+    return json({ ok: true, ...data, sleutel });
+  }
+  const stationId = parsed.data.station_id;
   const { data: station } = await db.from("stations").select("*").eq("id", stationId).maybeSingle();
   if (!station) return json({ error: "Station niet gevonden" }, 404);
+  if (parsed.data.alleen_status) {
+    // Goed- of afgekeurd: alleen de Status-kolom op bestaande bestanden bijwerken
+    const { data: r } = await db.from("sharepoint_sync").select("sharepoint_item_id").eq("station_id", stationId).maybeSingle();
+    if (!r?.sharepoint_item_id) return json({ ok: true, overgeslagen: "niet in SharePoint" });
+    try { return json({ ok: true, bijgewerkt: await zetStatus(await context(db), r.sharepoint_item_id, station) }); }
+    catch (e) { return json({ error: (e as Error).message }, 500); }
+  }
   const reden = nietSyncReden(station);
   if (reden) return json({ ok: true, overgeslagen: reden });
   const { data: vorig } = await db.from("sharepoint_sync").select("sharepoint_item_id").eq("station_id", stationId).maybeSingle();
@@ -40,7 +54,7 @@ Deno.serve(async (req) => {
   await status({ status: "bezig", fout: null });
 
   try {
-    const ctx = await context();
+    const ctx = await context(db);
     const res = await syncStation(ctx, db, station, vorig?.sharepoint_item_id ?? null);
     await status({ status: "gelukt", aantal_bestanden: res.aantal_bestanden, sharepoint_url: res.sharepoint_url, sharepoint_item_id: res.item_id, fout: null });
     return json({ ok: true, ...res });

@@ -2,6 +2,14 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useInstellingen } from "@/hooks/use-theme";
+import { dagenTotVerlopen } from "@/components/SharePointSleutelBanner";
+
+// Exacte namen zoals ze in Microsoft Entra (API-machtigingen → Microsoft Graph → Toepassingsmachtigingen) staan
+const MACHTIGING_UITLEG: Record<string, string> = {
+  "Sites.Manage.All": "nodig om de metadata-kolommen (Behuizingsnummer, Casenummer, Status …) in de documentbibliotheek aan te maken",
+  "Application.Read.All": "nodig om de verloopdatum van de sleutel automatisch op te halen",
+};
 
 // Eerstvolgende zondag 01:00 Amsterdamse tijd
 export function volgendeRun(nu = new Date()): Date {
@@ -28,6 +36,25 @@ export function SharePointBeheer() {
     },
     refetchInterval: (q) => (q.state.data && !q.state.data.klaar_op ? 5000 : false),
   });
+  const { data: instRaw } = useInstellingen();
+  const inst = instRaw as any;
+  const [controle, setControle] = useState(false);
+  const nodig: string[] = inst?.sp_machtigingen_nodig ?? [];
+  const dagen = dagenTotVerlopen(inst?.sp_sleutel_verloopt_op);
+
+  const controleer = async () => {
+    setControle(true);
+    const { error } = await supabase.functions.invoke("sharepoint-sync", { body: { controle: true } });
+    setControle(false);
+    qc.invalidateQueries({ queryKey: ["instellingen"] });
+    if (error) toast.error("Controleren is mislukt"); else toast.success("SharePoint gecontroleerd");
+  };
+  const zetDatum = async (v: string) => {
+    if (!inst?.id) return;
+    const { error } = await supabase.from("instellingen").update({ sp_sleutel_verloopt_op: v || null } as any).eq("id", inst.id);
+    if (error) toast.error("Opslaan mislukt"); else qc.invalidateQueries({ queryKey: ["instellingen"] });
+  };
+
   const loopt = !!run && !run.klaar_op;
   const fouten = Array.isArray(run?.fouten) ? run!.fouten.length : 0;
 
@@ -63,9 +90,35 @@ export function SharePointBeheer() {
           <div className="text-muted-foreground text-xs">Volgende geplande run</div>
           <div className="font-semibold text-on-surface">{fmt(volgendeRun())}</div>
         </div>
+        <div>
+          <div className="text-muted-foreground text-xs">Sleutel verloopt op</div>
+          {inst?.sp_sleutel_automatisch ? (
+            <div className="font-semibold text-on-surface">
+              {new Date(`${inst.sp_sleutel_verloopt_op}T12:00:00`).toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" })}
+              <span className="text-muted-foreground font-normal"> · automatisch opgehaald{dagen !== null ? ` · nog ${dagen} dagen` : ""}</span>
+            </div>
+          ) : (
+            <input type="date" value={inst?.sp_sleutel_verloopt_op ?? ""} onChange={(e) => zetDatum(e.target.value)}
+              className="bg-transparent font-semibold text-on-surface outline-none" />
+          )}
+          {inst?.sp_auth_fout && <div className="text-destructive font-semibold">Microsoft weigert de sleutel: maak een nieuw clientgeheim en vervang MS_CLIENT_SECRET.</div>}
+        </div>
+        {nodig.length > 0 && (
+          <div>
+            <div className="text-muted-foreground text-xs">Extra machtiging nodig in Microsoft Entra</div>
+            {nodig.map((m) => (
+              <div key={m} className="text-on-surface"><span className="font-semibold">{m}</span> <span className="text-muted-foreground">(Microsoft Graph, type Toepassing, daarna beheerderstoestemming verlenen) — {MACHTIGING_UITLEG[m] ?? ""}</span></div>
+            ))}
+          </div>
+        )}
+        <div className="flex gap-5">
         <button onClick={nu} disabled={start || loopt} className="text-primary font-semibold disabled:opacity-50">
           {loopt ? "Synchronisatie loopt…" : start ? "Starten…" : "Nu volledig synchroniseren"}
         </button>
+        <button onClick={controleer} disabled={controle} className="text-primary font-semibold disabled:opacity-50">
+          {controle ? "Controleren…" : "Opnieuw controleren"}
+        </button>
+        </div>
       </div>
     </div>
   );

@@ -3,7 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";
 import { authenticateCronRequest } from "../_shared/cron-auth.ts";
-import { context, nietSyncReden, syncStation, verplaatsVerwijderd } from "../_shared/sharepoint.ts";
+import { context, controleerSleutel, nietSyncReden, syncStation, verplaatsVerwijderd, zetStatus } from "../_shared/sharepoint.ts";
 
 const BATCH = 2;
 const Body = z.union([
@@ -39,11 +39,16 @@ async function batch(runId: string, offset: number) {
   const fouten: unknown[] = [];
   let klaar = false;
   try {
-    const ctx = await context();
+    if (offset === 0) await controleerSleutel(sb);
+    const ctx = await context(sb);
     const { data: stations } = await sb.from("stations").select("*").order("created_at").range(offset, offset + BATCH - 1);
     for (const st of stations ?? []) {
-      if (nietSyncReden(st)) continue; // niet opgeleverd of geen case: SharePoint blijft zoals het is
       const { data: vorig } = await sb.from("sharepoint_sync").select("sharepoint_item_id").eq("station_id", st.id).maybeSingle();
+      if (nietSyncReden(st)) {
+        // Niet (meer) opgeleverd: SharePoint blijft staan, alleen Status bijwerken (bv. afgekeurd)
+        if (vorig?.sharepoint_item_id) { try { await zetStatus(ctx, vorig.sharepoint_item_id, st); } catch (e) { console.error((e as Error).message); } }
+        continue;
+      }
       try {
         const res = await syncStation(ctx, sb, st, vorig?.sharepoint_item_id ?? null);
         tel.toegevoegd += res.toegevoegd.length; tel.verwijderd += res.verwijderd.length + res.leegVerwijderd.length; tel.verplaatst += res.verplaatst.length;

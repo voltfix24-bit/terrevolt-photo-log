@@ -210,6 +210,11 @@ export type Database = {
           primary_light_color: string | null
           profielfoto_url: string | null
           regio: string | null
+          sp_auth_fout: string | null
+          sp_gecontroleerd_op: string | null
+          sp_machtigingen_nodig: string[]
+          sp_sleutel_automatisch: boolean
+          sp_sleutel_verloopt_op: string | null
           updated_at: string | null
         }
         Insert: {
@@ -224,6 +229,11 @@ export type Database = {
           primary_light_color?: string | null
           profielfoto_url?: string | null
           regio?: string | null
+          sp_auth_fout?: string | null
+          sp_gecontroleerd_op?: string | null
+          sp_machtigingen_nodig?: string[]
+          sp_sleutel_automatisch?: boolean
+          sp_sleutel_verloopt_op?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -238,6 +248,11 @@ export type Database = {
           primary_light_color?: string | null
           profielfoto_url?: string | null
           regio?: string | null
+          sp_auth_fout?: string | null
+          sp_gecontroleerd_op?: string | null
+          sp_machtigingen_nodig?: string[]
+          sp_sleutel_automatisch?: boolean
+          sp_sleutel_verloopt_op?: string | null
           updated_at?: string | null
         }
         Relationships: []
