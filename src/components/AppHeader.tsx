@@ -21,7 +21,7 @@ export default function AppHeader() {
     return false;
   };
 
-  if (location.pathname === "/" || /^\/stations\/[^/]+/.test(location.pathname) || location.pathname.startsWith("/beoordelen")) return null;
+  if (location.pathname === "/" || /^\/stations\/[^/]+/.test(location.pathname) || location.pathname.startsWith("/beoordelen") || location.pathname.startsWith("/cases")) return null;
 
   return (
     <>
