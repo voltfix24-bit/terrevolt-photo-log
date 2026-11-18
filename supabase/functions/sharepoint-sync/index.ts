@@ -47,12 +47,12 @@ async function graph(tok: string, url: string, init: RequestInit = {}, okStatus:
 
 const enc = (pad: string) => pad.split("/").map(encodeURIComponent).join("/");
 
-async function mapMaken(tok: string, driveId: string, pad: string[], cache: Set<string>) {
+async function mapMaken(tok: string, root: string, pad: string[], cache: Set<string>) {
   for (let i = 0; i < pad.length; i++) {
     const huidig = pad.slice(0, i + 1).join("/");
     if (cache.has(huidig)) continue;
     const ouder = pad.slice(0, i).join("/");
-    const url = ouder ? `/drives/${driveId}/root:/${enc(ouder)}:/children` : `/drives/${driveId}/root/children`;
+    const url = ouder ? `${root}:/${enc(ouder)}:/children` : `${root}/children`;
     const r = await graph(tok, url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -63,8 +63,8 @@ async function mapMaken(tok: string, driveId: string, pad: string[], cache: Set<
   }
 }
 
-async function upload(tok: string, driveId: string, pad: string, data: Uint8Array, type: string) {
-  const basis = `/drives/${driveId}/root:/${enc(pad)}`;
+async function upload(tok: string, root: string, pad: string, data: Uint8Array, type: string) {
+  const basis = `${root}:/${enc(pad)}`;
   if (data.byteLength <= 4 * 1024 * 1024) {
     const r = await graph(tok, `${basis}:/content?@microsoft.graph.conflictBehavior=replace`, { method: "PUT", headers: { "Content-Type": type }, body: data });
     return await r.json();
@@ -119,8 +119,20 @@ Deno.serve(async (req) => {
     if (!siteUrl) throw new Error("SHAREPOINT_SITE_URL ontbreekt");
     const u = new URL(siteUrl);
     const tok = await token();
-    const site = await (await graph(tok, `/sites/${u.hostname}:${u.pathname.replace(/\/$/, "")}`)).json();
-    const drive = await (await graph(tok, `/sites/${site.id}/drive`)).json();
+    // Ondersteunt een site-URL (…/sites/Naam) of een deellink naar een map (…/:f:/…)
+    let root: string;
+    let prefix: string[];
+    if (/^\/:[a-z]:\//i.test(u.pathname)) {
+      const b64 = btoa(siteUrl).replace(/=+$/, "").replace(/\//g, "_").replace(/\+/g, "-");
+      const item = await (await graph(tok, `/shares/u!${b64}/driveItem`)).json();
+      root = `/drives/${item.parentReference.driveId}/items/${item.id}`;
+      prefix = [];
+    } else {
+      const site = await (await graph(tok, `/sites/${u.hostname}:${u.pathname.replace(/\/$/, "")}`)).json();
+      const drive = await (await graph(tok, `/sites/${site.id}/drive`)).json();
+      root = `/drives/${drive.id}/root`;
+      prefix = ["Opleveringen"];
+    }
 
     const [{ data: fotos }, { data: opm }, { data: skips }] = await Promise.all([
       db.from("fotos").select("categorie, storage_path, uploaded_at").eq("station_id", stationId).order("uploaded_at"),
@@ -133,15 +145,15 @@ Deno.serve(async (req) => {
       ? veilig([station.casenummer, station.casenaam].filter(Boolean).join(" - "))
       : "Zonder case";
     const stationMap = veilig([station.behuizingsnummer, station.naam_msr].filter(Boolean).join(" - "));
-    const basis = ["Opleveringen", veilig(station.opdrachtgever ?? "Onbekende opdrachtgever"), jaar, caseMap, stationMap];
+    const basis = [...prefix, veilig(station.opdrachtgever ?? "Onbekende opdrachtgever"), jaar, caseMap, stationMap];
     const sectieMap = (sid: string) => {
       const i = SECTIONS.findIndex((s) => s.id === sid);
       return i < 0 ? "99 Overig" : `${String(i + 1).padStart(2, "0")} ${veilig(SECTIONS[i].label)}`;
     };
 
     const cache = new Set<string>();
-    await mapMaken(tok, drive.id, [...basis, "00 Rapport"], cache);
-    for (const s of SECTIONS) await mapMaken(tok, drive.id, [...basis, sectieMap(s.id)], cache);
+    await mapMaken(tok, root, [...basis, "00 Rapport"], cache);
+    for (const s of SECTIONS) await mapMaken(tok, root, [...basis, sectieMap(s.id)], cache);
 
     // Foto's per categorie, zelfde naamgeving als zip-download
     const perCat = new Map<string, string[]>();
@@ -151,7 +163,7 @@ Deno.serve(async (req) => {
       const c = CATEGORIES.find((x) => x.name === cat);
       const nr = c ? String(c.id).padStart(2, "0") : "00";
       const map = c ? sectieMap(c.section) : "99 Overig";
-      if (!c) await mapMaken(tok, drive.id, [...basis, map], cache);
+      if (!c) await mapMaken(tok, root, [...basis, map], cache);
       paden.forEach((p, i) => taken.push({ pad: [...basis, map, `${veilig(`${nr}_${cat}_${i + 1}`)}.jpg`].join("/"), storage: p }));
     }
 
@@ -159,13 +171,13 @@ Deno.serve(async (req) => {
     await parallel(taken, 4, async (t) => {
       const { data, error } = await db.storage.from("to-fotos").download(t.storage);
       if (error || !data) throw new Error(`Foto niet gevonden in opslag: ${t.storage}`);
-      await upload(tok, drive.id, t.pad, new Uint8Array(await data.arrayBuffer()), "image/jpeg");
+      await upload(tok, root, t.pad, new Uint8Array(await data.arrayBuffer()), "image/jpeg");
       aantal++;
     });
 
     const { data: rapport } = await db.storage.from("rapporten").download(`${stationId}/rapport.html`);
     if (rapport) {
-      await upload(tok, drive.id, [...basis, "00 Rapport", "rapport.html"].join("/"), new Uint8Array(await rapport.arrayBuffer()), "text/html");
+      await upload(tok, root, [...basis, "00 Rapport", "rapport.html"].join("/"), new Uint8Array(await rapport.arrayBuffer()), "text/html");
       aantal++;
     }
 
@@ -175,10 +187,10 @@ Deno.serve(async (req) => {
     regels.push("", "Niet van toepassing", "");
     for (const s of skips ?? []) regels.push(`- ${s.categorie}: ${s.reden ?? ""}`);
     if (!(skips ?? []).length) regels.push("(geen)");
-    await upload(tok, drive.id, [...basis, "opmerkingen.txt"].join("/"), new TextEncoder().encode(regels.join("\r\n")), "text/plain; charset=utf-8");
+    await upload(tok, root, [...basis, "opmerkingen.txt"].join("/"), new TextEncoder().encode(regels.join("\r\n")), "text/plain; charset=utf-8");
     aantal++;
 
-    const map = await (await graph(tok, `/drives/${drive.id}/root:/${enc(basis.join("/"))}`)).json();
+    const map = await (await graph(tok, `${root}:/${enc(basis.join("/"))}`)).json();
     await status({ status: "gelukt", aantal_bestanden: aantal, sharepoint_url: map.webUrl ?? null, fout: null });
     return json({ ok: true, aantal_bestanden: aantal, sharepoint_url: map.webUrl });
   } catch (e) {
