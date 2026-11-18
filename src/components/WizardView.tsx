@@ -10,6 +10,7 @@ import { requirePin } from "@/lib/require-pin";
 import { SECTIONS, type Category } from "@/lib/categories";
 import type { MergedCategory } from "@/hooks/use-categories";
 import { Pressable, R, T } from "@/components/apple/Primitives";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 type FotoRow = { id: string; url: string; storage_path: string; categorie: string; uploaded_at?: string };
 
@@ -328,11 +329,33 @@ export function WizardView({
               totaal === 0 ? `${required} ${required > 1 ? "FOTO'S" : "FOTO"}` : `${Math.min(totaal, required)} VAN ${required} ${required > 1 ? "FOTO'S" : "FOTO"}${taakKlaar ? " ✓" : ""}`,
             ].filter(Boolean).join(" · ")}
           </div>
-          <h1 className="font-display" style={{ margin: 0, fontSize: 30, fontWeight: 700, lineHeight: 1.15 }}>{cat.effectiveName}</h1>
-          <p style={{ margin: 0, fontSize: 16, lineHeight: 1.5, color: W.body }}>{[cat.effectiveInstruction, cat.effectiveTip].filter(Boolean).join(" ")}</p>
-          {cat.id === 14 && <p style={{ margin: 0, fontSize: 15, color: W.body }}>Alleen fotograferen als het vermogensveld aanwezig is.</p>}
-          {cat.id === 15 && <p style={{ margin: 0, fontSize: 15, color: W.body }}>Alleen fotograferen als de DA-kast aanwezig is.</p>}
-          {cat.id === 1 && station.type_ruimte === "Betreedbaar station" && <p style={{ margin: 0, fontSize: 15, color: W.body }}>Bij een betreedbaar station kan deze taak worden overgeslagen.</p>}
+          {(() => {
+            const extra = [
+              cat.id === 14 ? "Alleen fotograferen als het vermogensveld aanwezig is." : "",
+              cat.id === 15 ? "Alleen fotograferen als de DA-kast aanwezig is." : "",
+              cat.id === 1 && station.type_ruimte === "Betreedbaar station" ? "Bij een betreedbaar station kan deze taak worden overgeslagen." : "",
+            ].filter(Boolean);
+            const hasInfo = !!(cat.effectiveInstruction || cat.effectiveTip || extra.length);
+            return (
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                <h1 className="font-display" style={{ margin: 0, fontSize: 30, fontWeight: 700, lineHeight: 1.15, flex: 1, minWidth: 0 }}>{cat.effectiveName}</h1>
+                {hasInfo && (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button type="button" aria-label="Informatie" style={{ flexShrink: 0, width: 40, height: 40, borderRadius: 999, border: "none", background: "rgba(255,255,255,0.14)", color: W.text, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 2 }}>
+                        <span className="material-symbols-rounded" style={{ fontSize: 24 }}>info</span>
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" sideOffset={8} collisionPadding={12} style={{ width: "min(340px, calc(100vw - 24px))", maxHeight: "60vh", overflowY: "auto", borderRadius: 16, padding: 16, fontSize: 15, lineHeight: 1.5 }}>
+                      {cat.effectiveInstruction && <p style={{ margin: 0 }}>{cat.effectiveInstruction}</p>}
+                      {cat.effectiveTip && <p style={{ margin: "8px 0 0" }}>{cat.effectiveTip}</p>}
+                      {extra.map((t) => <p key={t} style={{ margin: "8px 0 0" }}>{t}</p>)}
+                    </PopoverContent>
+                  </Popover>
+                )}
+              </div>
+            );
+          })()}
         </div>
 
         <VoorbeeldKaart url={catVoorbeelden[0]?.url} onOpen={() => setVoorbeeldLightbox(0)} />
