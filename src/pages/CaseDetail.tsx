@@ -24,7 +24,7 @@ export default function CaseDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { data: cases } = useCases();
+  const { data: cases } = useCases({ inclVerborgen: true });
   const [draft, setDraft] = useState({ txt: "", bij: "TerreVolt" as Partij, derde: "", notitie: "" });
   const c = cases?.find((x) => x.station.id === id);
   if (!c) return <div style={{ minHeight: "100vh", background: T.bg }} />;
