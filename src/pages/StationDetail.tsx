@@ -1,4 +1,5 @@
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { WizardView } from "@/components/WizardView";
 import { SharePointStatus } from "@/components/SharePointStatus";
 import { SharePointDocumenten } from "@/components/SharePointDocumenten";
@@ -14,7 +15,6 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useRef, useState, useCallback, useMemo, useEffect } from "react";
 import imageCompression from "browser-image-compression";
@@ -494,19 +494,7 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
     }
   }, [fotos]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background pt-24 px-6 max-w-7xl mx-auto">
-        <Skeleton className="h-20 w-full rounded-3xl mb-4" />
-        <Skeleton className="h-12 w-full rounded-2xl mb-4" />
-        <div className="space-y-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-16 rounded-2xl" />
-          ))}
-        </div>
-      </div>
-    );
-  }
+  if (isLoading) return <PaginaLader label="Station laden…" />;
 
   if (!station) {
     return <div className="flex min-h-screen items-center justify-center bg-background text-text-primary">Station niet gevonden</div>;
@@ -827,7 +815,7 @@ function EditStationDialog({ station, open, onOpenChange, onSaved }: EditStation
           <div><Label>Ingevuld door</Label><input value={form.ingevuld_door} onChange={(e) => setForm({ ...form, ingevuld_door: e.target.value })} className="w-full px-4 py-3 bg-surface-low border border-outline-variant/30 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/25 transition" /></div>
           <div><Label>Datum</Label><input type="date" value={form.datum} onChange={(e) => setForm({ ...form, datum: e.target.value })} className="w-full px-4 py-3 bg-surface-low border border-outline-variant/30 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/25 transition" /></div>
           <button onClick={handleSave} disabled={saving} className="w-full bg-primary hover:bg-primary-hover text-primary-foreground font-bold py-3 rounded-xl shadow-lg shadow-primary/25 active:scale-[0.98] transition-all disabled:opacity-50">
-            {saving ? "Opslaan..." : "Opslaan"}
+            {saving ? <span className="inline-flex items-center justify-center gap-2"><KnopLader />Opslaan</span> : "Opslaan"}
           </button>
         </div>
       </DialogContent>

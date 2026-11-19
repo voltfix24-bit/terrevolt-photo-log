@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from "react";
+import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -97,7 +98,7 @@ function CategoryEditForm({
           disabled={save.isPending}
           className="px-4 py-2 rounded-xl text-xs font-bold text-primary-foreground bg-primary hover:bg-primary-hover transition-colors disabled:opacity-50"
         >
-          {save.isPending ? "Opslaan..." : "Opslaan"}
+          {save.isPending ? <span className="inline-flex items-center gap-1.5"><KnopLader />Opslaan</span> : "Opslaan"}
         </button>
       </div>
     </div>
@@ -375,7 +376,7 @@ export default function CategorieenBeheren() {
                                 <div className="flex gap-1.5 mt-1">
                                   {examples.map(v => (
                                     <div key={v.id} className="relative w-14 h-14 rounded-xl overflow-hidden border border-outline-variant/20">
-                                      <img src={v.url} alt="" className="w-full h-full object-cover" />
+                                      <LaadAfbeelding src={v.url} alt="" className="w-full h-full object-cover" />
                                       <AlertDialog>
                                         <AlertDialogTrigger asChild>
                                           <button className="absolute top-0.5 right-0.5 w-4 h-4 bg-red-500/90 rounded-full text-white text-[9px] flex items-center justify-center border border-white">×</button>

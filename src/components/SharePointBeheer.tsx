@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -113,10 +114,10 @@ export function SharePointBeheer() {
         )}
         <div className="flex gap-5">
         <button onClick={nu} disabled={start || loopt} className="text-primary font-semibold disabled:opacity-50">
-          {loopt ? "Synchronisatie loopt…" : start ? "Starten…" : "Nu volledig synchroniseren"}
+          {loopt || start ? <span className="inline-flex items-center gap-2"><KnopLader />{loopt ? "Synchronisatie loopt" : "Starten"}</span> : "Nu volledig synchroniseren"}
         </button>
         <button onClick={controleer} disabled={controle} className="text-primary font-semibold disabled:opacity-50">
-          {controle ? "Controleren…" : "Opnieuw controleren"}
+          {controle ? <span className="inline-flex items-center gap-2"><KnopLader />Controleren</span> : "Opnieuw controleren"}
         </button>
         </div>
       </div>

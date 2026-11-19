@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from "react";
+import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { CATEGORIES } from "@/lib/categories";
@@ -132,8 +133,8 @@ export function CategorieSettingsDialog({ open, onOpenChange }: { open: boolean;
                     disabled={isUploading}
                     className="flex-shrink-0 flex items-center gap-1 text-xs font-semibold text-primary bg-primary-container/30 px-3 py-1.5 rounded-xl hover:bg-primary-container/50 active:scale-95 transition-all disabled:opacity-50"
                   >
-                    <span className="material-symbols-rounded text-sm">add_photo_alternate</span>
-                    {isUploading ? "Uploaden..." : "Voorbeeld"}
+                    {isUploading ? <KnopLader /> : <span className="material-symbols-rounded text-sm">add_photo_alternate</span>}
+                    {isUploading ? "Uploaden" : "Voorbeeld"}
                   </button>
                 </div>
 
@@ -141,7 +142,7 @@ export function CategorieSettingsDialog({ open, onOpenChange }: { open: boolean;
                   <div className="flex gap-1.5 mt-2 overflow-x-auto pb-1">
                     {examples.map((v) => (
                       <div key={v.id} className="relative flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden bg-surface-container border border-outline-variant/20">
-                        <img src={v.url} alt="" className="w-full h-full object-cover" />
+                        <LaadAfbeelding src={v.url} alt="" className="w-full h-full object-cover" />
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <button className="absolute top-0.5 right-0.5 w-4 h-4 bg-red-500/90 rounded-full text-white text-[9px] flex items-center justify-center border border-white active:scale-90">×</button>

@@ -1,8 +1,8 @@
 // Kantoor: "Wie moet wat doen" (9b) + "TO-score" (9c)
 import { useState } from "react";
+import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { casesUrl, type UrlStation } from "@/lib/urls";
 import { useNavigate } from "react-router-dom";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Pressable, R, T } from "@/components/apple/Primitives";
 import { CaseItem, PARTIJ_STIJL, Partij, TO_STATUS, caseNaam, caseNr, caseSub, dagenTekst, scoreVan, useCases } from "@/lib/to-rondes";
 
@@ -146,9 +146,7 @@ export default function Cases() {
       </div>
       <main style={{ padding: "20px 24px 60px", maxWidth: 1400, margin: "0 auto" }}>
         {isLoading ? (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14 }}>
-            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-40 rounded-2xl" />)}
-          </div>
+          <PaginaLader label="Cases laden…" />
         ) : !cases?.length ? (
           <div style={{ padding: "52px 20px", textAlign: "center", color: SUB, fontSize: 15 }}>Geen cases</div>
         ) : tab === "bal" ? <Bal cases={cases} open={open} /> : <Score cases={cases} open={open} />}

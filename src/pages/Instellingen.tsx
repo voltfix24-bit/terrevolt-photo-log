@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -206,7 +207,7 @@ export default function Instellingen() {
         <div className="flex items-center gap-4 mb-6">
           <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-primary-light flex items-center justify-center text-primary-foreground text-lg font-black shadow-lg shadow-primary/30 overflow-hidden">
             {current?.profielfoto_url ? (
-              <img src={current.profielfoto_url} className="w-full h-full object-cover" alt="" />
+              <LaadAfbeelding src={current.profielfoto_url} className="w-full h-full object-cover" alt="" />
             ) : 'TV'}
           </div>
           <div>
@@ -237,14 +238,12 @@ export default function Instellingen() {
                   className="w-full h-24 rounded-2xl border-2 border-dashed border-outline-variant/40 bg-surface-low flex flex-col items-center justify-center gap-1.5 hover:border-primary/40 hover:bg-primary/[0.05] transition-all active:scale-[0.98] overflow-hidden relative"
                 >
                   {current?.logo_url ? (
-                    <img src={current.logo_url} className="w-full h-full object-contain p-2" alt="Logo" />
+                    <LaadAfbeelding src={current.logo_url} className="w-full h-full object-contain p-2" alt="Logo" />
                   ) : (
                     <>
-                      <span className="material-symbols-rounded text-muted-foreground text-xl">
-                        {uploadingLogo ? 'hourglass_empty' : 'add_photo_alternate'}
-                      </span>
+                      {uploadingLogo ? <KnopLader /> : <span className="material-symbols-rounded text-muted-foreground text-xl">add_photo_alternate</span>}
                       <span className="text-[10px] font-semibold text-muted-foreground">
-                        {uploadingLogo ? 'Uploaden...' : 'Logo uploaden'}
+                        {uploadingLogo ? 'Uploaden' : 'Logo uploaden'}
                       </span>
                     </>
                   )}
@@ -262,12 +261,10 @@ export default function Instellingen() {
                   className="w-full h-24 rounded-2xl border-2 border-dashed border-outline-variant/40 bg-surface-low flex flex-col items-center justify-center gap-1.5 hover:border-primary/40 hover:bg-primary/[0.05] transition-all active:scale-[0.98] overflow-hidden relative"
                 >
                   {current?.profielfoto_url ? (
-                    <img src={current.profielfoto_url} className="w-full h-full object-cover" alt="Profiel" />
+                    <LaadAfbeelding src={current.profielfoto_url} className="w-full h-full object-cover" alt="Profiel" />
                   ) : (
                     <>
-                      <span className="material-symbols-rounded text-muted-foreground text-xl">
-                        {uploadingProfiel ? 'hourglass_empty' : 'person_add'}
-                      </span>
+                      {uploadingProfiel ? <KnopLader /> : <span className="material-symbols-rounded text-muted-foreground text-xl">person_add</span>}
                       <span className="text-[10px] font-semibold text-muted-foreground">
                         {uploadingProfiel ? 'Uploaden...' : 'Foto uploaden'}
                       </span>
@@ -437,7 +434,7 @@ export default function Instellingen() {
                 disabled={saving}
                 className="flex-1 min-h-[48px] bg-primary hover:bg-primary-hover text-primary-foreground rounded-xl font-display font-bold text-sm shadow-lg shadow-primary/25 active:scale-[0.97] transition-all disabled:opacity-50"
               >
-                {saving ? 'Opslaan...' : 'Wijzigingen opslaan'}
+                {saving ? <span className="inline-flex items-center gap-2"><KnopLader />Opslaan</span> : 'Wijzigingen opslaan'}
               </button>
             </div>
           </div>

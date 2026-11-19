@@ -2,6 +2,7 @@
 // Nieuw bestand: src/components/WizardView.tsx
 // Vervangt de lokale `WizardView` + `WizardViewProps` in src/pages/StationDetail.tsx (zelfde props).
 import { useCallback, useEffect, useRef, useState } from "react";
+import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
@@ -89,7 +90,8 @@ function VoorbeeldKaart({ url, onOpen }: { url?: string; onOpen: () => void }) {
   return (
     <button type="button" onClick={onOpen} aria-label="Voorbeeldfoto vergroten"
       style={{ marginTop: 16, width: "100%", display: "flex", alignItems: "center", gap: 10, padding: 10, borderRadius: 16, background: W.goldBg, border: `1.5px solid ${W.goldBorder}`, textAlign: "left" }}>
-      <span style={{ width: 96, height: 72, flexShrink: 0, borderRadius: 10, position: "relative", background: `${W.thumb} center/cover url(${url})` }}>
+      <span style={{ width: 96, height: 72, flexShrink: 0, borderRadius: 10, position: "relative", overflow: "hidden" }}>
+        <LaadAfbeelding src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} wrapperStyle={{ position: "absolute", inset: 0 }} />
         <span style={{ position: "absolute", left: 4, top: 4, background: W.gold, color: W.goldInk, fontSize: 10, fontWeight: 800, letterSpacing: "0.04em", padding: "2px 5px", borderRadius: 4 }}>VOORBEELD</span>
       </span>
       <span style={{ flex: 1, display: "flex", flexDirection: "column", gap: 3 }}>
@@ -379,7 +381,8 @@ export function WizardView({
             <div className="grid grid-cols-3 gap-2" style={{ marginTop: 12 }}>
               {tegels.map((t) => (
                 <button key={t.key} type="button" onClick={t.onClick} disabled={!t.onClick} aria-label="Foto bekijken"
-                  style={{ aspectRatio: "3 / 4", borderRadius: 14, border: "none", padding: 0, position: "relative", overflow: "hidden", background: `${W.thumb} center/cover url(${t.url})`, boxShadow: autoNext ? `0 0 0 2.5px ${W.label}` : "none" }}>
+                  style={{ aspectRatio: "3 / 4", borderRadius: 14, border: "none", padding: 0, position: "relative", overflow: "hidden", background: "transparent", boxShadow: autoNext ? `0 0 0 2.5px ${W.label}` : "none" }}>
+                  <LaadAfbeelding src={t.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} wrapperStyle={{ position: "absolute", inset: 0 }} />
                   <StatusBadge status={t.status} />
                 </button>
               ))}
@@ -429,7 +432,7 @@ export function WizardView({
             <div style={{ display: "flex", gap: 10 }}>
               <Pressable onClick={() => cameraRef.current?.click()} disabled={uploading} aria-label="Camera openen"
                 style={{ width: 88, minHeight: 88, borderRadius: 22, background: W.chip, border: `1px solid ${W.chipBorder}`, color: W.text, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <span className={`material-symbols-rounded${uploading ? " animate-spin" : ""}`} style={{ fontSize: 32 }}>{uploading ? "progress_activity" : "photo_camera"}</span>
+                {uploading ? <KnopLader label="Uploaden…" /> : <span className="material-symbols-rounded" style={{ fontSize: 32 }}>photo_camera</span>}
               </Pressable>
               <Pressable onClick={goNext} className="font-display"
                 style={{ flex: 1, minHeight: 88, borderRadius: 22, background: W.text, color: T.green, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, fontSize: 21, fontWeight: 700 }}>
@@ -468,7 +471,7 @@ export function WizardView({
               <span className="material-symbols-rounded">delete</span>Verwijderen
             </button>
           </div>
-          <img src={photoPreview.foto.url} alt="Foto groot weergegeven" className="min-h-0 flex-1 object-contain" />
+          <LaadAfbeelding wrapperClassName="min-h-0 flex-1" wrapperStyle={{ height: "auto", background: "transparent" }} src={photoPreview.foto.url} alt="Foto groot weergegeven" className="h-full w-full object-contain" />
         </div>
       )}
 

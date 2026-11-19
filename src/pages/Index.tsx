@@ -1,6 +1,7 @@
 // Variant 1b — "Gegroepeerd op wat moet ik doen"
 // Drop-in vervanging voor src/pages/Index.tsx. Data, routes, queries en acties blijven gelijk.
 import { useEffect, useMemo, useRef, useState } from "react";
+import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { caseUrl } from "@/lib/urls";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -12,7 +13,6 @@ import { useInstellingen } from "@/hooks/use-theme";
 import { generatePdfHtml } from "@/lib/pdf-generator";
 import { downloadStationZip } from "@/lib/zip-download";
 import { requirePin } from "@/lib/require-pin";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { M, Pressable, R, T, glass } from "@/components/apple/Primitives";
 import { toast } from "sonner";
@@ -264,14 +264,7 @@ export default function Dashboard() {
         </div>
 
         {isLoading ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} style={{ background: T.surface, borderRadius: R.group, padding: 16, display: "flex", gap: 14, alignItems: "center" }}>
-                <Skeleton className="h-12 w-12 rounded-full" />
-                <div style={{ flex: 1 }}><Skeleton className="mb-2 h-4 w-1/2" /><Skeleton className="h-3 w-1/3" /></div>
-              </div>
-            ))}
-          </div>
+          <PaginaLader label="Stations laden…" />
         ) : filtered.length === 0 ? (
           <div style={{ padding: "52px 20px", textAlign: "center", color: SUB, fontSize: 15 }}>Geen stations gevonden</div>
         ) : (

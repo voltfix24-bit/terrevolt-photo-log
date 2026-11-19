@@ -1,5 +1,6 @@
 // Kantoor: casepagina met TO-rondes (9a)
 import { useEffect, useState } from "react";
+import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -28,7 +29,7 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
   const { data: cases } = useCases({ inclVerborgen: true });
   const [draft, setDraft] = useState({ txt: "", bij: "TerreVolt" as Partij, derde: "", notitie: "" });
   const c = cases?.find((x) => x.station.id === id);
-  if (!c) return <div style={{ minHeight: "100vh", background: T.bg }} />;
+  if (!c) return <PaginaLader label="Case laden…" />;
 
   const { station, rondes, bal } = c;
   const cur: ToRonde | null = c.last;

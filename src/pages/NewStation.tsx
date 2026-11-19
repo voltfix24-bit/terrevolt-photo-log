@@ -1,5 +1,6 @@
 // Variant 3a — Nieuw station, één formulier gegroepeerd
 import { useState } from "react";
+import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { caseUrl } from "@/lib/urls";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -190,8 +191,7 @@ export default function NewStation() {
 
       <GlassBar>
         <PrimaryButton onClick={handleSubmit} disabled={loading}>
-          {loading ? "Opslaan…" : "Opslaan en foto's maken"}
-          <span className="material-symbols-rounded" style={{ fontSize: 20 }}>arrow_forward</span>
+          {loading ? <><KnopLader />Opslaan</> : <>Opslaan en foto's maken<span className="material-symbols-rounded" style={{ fontSize: 20 }}>arrow_forward</span></>}
         </PrimaryButton>
       </GlassBar>
 

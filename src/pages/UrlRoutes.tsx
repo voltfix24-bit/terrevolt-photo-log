@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from "react";
+import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,7 +15,7 @@ import BeoordeelDossier from "./BeoordeelDossier";
 import NotFound from "./NotFound";
 import { Group, Hairline, Pressable, T, ROW_MIN, ROW_PAD_X } from "@/components/apple/Primitives";
 
-const Leeg = () => <div style={{ minHeight: "100vh", background: T.bg }} />;
+const Leeg = () => <PaginaLader />;
 const pad = (p: string) => decodeURIComponent(p).replace(/\/+$/, "").toLowerCase();
 
 /** Zorgt voor een replace-redirect zodra de huidige url niet canoniek is. */
@@ -45,7 +46,7 @@ function RapportOpener({ station }: { station: UrlStation }) {
     })();
     return () => { weg = true; };
   }, [station, navigate]);
-  return <div style={{ minHeight: "100vh", background: T.bg, display: "flex", alignItems: "center", justifyContent: "center", color: T.subOnBg, fontSize: 15 }}>Rapport openen…</div>;
+  return <PaginaLader label="Rapport openen…" />;
 }
 
 /* /c/:casenummer */

@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { R, T } from "@/components/apple/Primitives";
 
 export const NOTITIE_CHIPS = ["Niet bereikbaar", "Niet aanwezig", "Defect", "Volgt later", "Zie foto"];
@@ -102,7 +103,7 @@ export function NotitieSheet({ soort, titel, begin, onClose, onSave }: Props) {
             style={{ width: "100%", resize: "none", border: "none", outline: "none", borderRadius: R.small, background: "#F2F5F1", padding: "12px 14px", fontSize: 17, lineHeight: 1.4, color: T.rowText, overflowY: "auto" }}
           />
           <div style={{ minHeight: 20, fontSize: 13, color: T.subOnBg, padding: "4px 2px 0" }} aria-live="polite">
-            {status === "bezig" ? "Opslaan…" : status === "online" ? "Opgeslagen ✓" : status === "wachtrij" ? "Offline opgeslagen ✓ — wordt verstuurd zodra je online bent" : ""}
+            {status === "bezig" ? <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><KnopLader />Opslaan</span> : status === "online" ? "Opgeslagen ✓" : status === "wachtrij" ? "Offline opgeslagen ✓ — wordt verstuurd zodra je online bent" : ""}
           </div>
         </div>
       </div>

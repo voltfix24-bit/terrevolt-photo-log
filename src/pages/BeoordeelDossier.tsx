@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Lightbox from "yet-another-react-lightbox";
@@ -239,9 +240,11 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <button
         onClick={() => setGroot(true)}
-        style={{ aspectRatio: "4/3", borderRadius: 10, border: "none", padding: 0, background: `${D.thumb} center/cover url(${selected.url})`, marginBottom: 13, width: "100%" }}
+        style={{ aspectRatio: "4/3", borderRadius: 10, border: "none", padding: 0, background: "transparent", overflow: "hidden", position: "relative", marginBottom: 13, width: "100%" }}
         aria-label="Groot bekijken"
-      />
+      >
+        <LaadAfbeelding key={selected.id} src={selected.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} wrapperStyle={{ position: "absolute", inset: 0 }} />
+      </button>
       <div style={{ fontSize: 15, fontWeight: 500, color: D.title }}>{selected.categorie}</div>
       <div style={{ fontSize: 12, color: D.sub, marginTop: 2, marginBottom: 13 }}>
         {selected.categorie} · foto {photos.filter((foto) => foto.categorie === selected.categorie).findIndex((foto) => foto.id === selected.id) + 1} van {photos.filter((foto) => foto.categorie === selected.categorie).length}
@@ -320,10 +323,11 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
               >
                 <div style={{
                   aspectRatio: "4/3", borderRadius: 8, position: "relative",
-                  background: `${D.thumb} center/cover url(${foto.url})`,
+                  overflow: "hidden",
                   outline: foto.id === selectedId ? `2.5px solid ${D.green}` : "none",
                   outlineOffset: -1,
                 }}>
+                  <LaadAfbeelding src={foto.url} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} wrapperStyle={{ position: "absolute", inset: 0 }} />
                   {foto.review_status === "rejected" && (
                     <div style={{ position: "absolute", top: 5, right: 5, width: 17, height: 17, borderRadius: 9, background: D.danger, display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <Icon name="close" size={11} color="#fff" />

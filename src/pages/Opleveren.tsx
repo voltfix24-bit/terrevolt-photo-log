@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -94,7 +95,7 @@ export default function Opleveren({ stationId }: { stationId?: string } = {}) {
   };
 
   if (!station) {
-    return <div style={{ minHeight: "100vh", background: T.bg }} />;
+    return <PaginaLader label="Laden…" />;
   }
 
   return (
@@ -163,8 +164,7 @@ export default function Opleveren({ stationId }: { stationId?: string } = {}) {
           disabled={!gereed || versturen}
           caption={gereed ? `Je krijgt bericht zodra ${client} heeft beoordeeld` : "Wacht tot alle foto's geüpload zijn"}
         >
-          {versturen ? "Versturen…" : "Oplevering versturen"}
-          <span className="material-symbols-rounded" style={{ fontSize: 20 }}>arrow_forward</span>
+          {versturen ? <><KnopLader />Versturen</> : <>Oplevering versturen<span className="material-symbols-rounded" style={{ fontSize: 20 }}>arrow_forward</span></>}
         </PrimaryButton>
       </GlassBar>
 
