@@ -309,7 +309,18 @@ async function bouwPdf(sb: any, sid: string, fotos: any[]) {
       const status = skipPer.has(c.name) ? "Niet van toepassing" : fs.length ? `${fs.length} foto${fs.length === 1 ? "" : "'s"}` : "Geen foto";
       p.drawText(status, { x: W - M - R.widthOfTextAtSize(status, 9.5), y, size: 9.5, font: R, color: sub });
       y -= 16;
-      if (skipPer.has(c.name) && skipPer.get(c.name)) { for (const r of wrap(`Reden: ${skipPer.get(c.name)}`, R, 10, CW - 24)) { if (y < BOT) nieuw(); p.drawText(r, { x: M + 24, y, size: 10, font: R, color: sub }); y -= 13; } }
+      if (skipPer.has(c.name) && !fs.length) {
+        // N.v.t.-blok in de sectie zelf, met reden
+        const rg = wrap(`Reden: ${skipPer.get(c.name) || "Geen reden opgegeven"}`, R, 10, CW - 24);
+        const hb = rg.length * 13 + 28;
+        if (y - hb < BOT) nieuw();
+        p.drawRectangle({ x: M, y: y - hb + 8, width: CW, height: hb, color: rgb(0.93, 0.94, 0.93) });
+        p.drawRectangle({ x: M, y: y - hb + 8, width: 3, height: hb, color: sub });
+        p.drawText("NIET GEMAAKT / N.V.T.", { x: M + 12, y: y - 6, size: 9, font: B, color: sub });
+        let ny = y - 20;
+        for (const r of rg) { p.drawText(r, { x: M + 12, y: ny, size: 10, font: R, color: inkt }); ny -= 13; }
+        y -= hb + 4;
+      }
       for (let i = 0; i < fs.length; i += 3) {
         if (y - th < BOT) nieuw();
         fs.slice(i, i + 3).forEach((f, j) => {
@@ -324,10 +335,12 @@ async function bouwPdf(sb: any, sid: string, fotos: any[]) {
       }
       if (opmTxt) {
         const rg = wrap(opmTxt, R, 10, CW - 24);
-        const hb = rg.length * 13 + 12;
+        const hb = rg.length * 13 + 26;
         if (y - hb < BOT) nieuw();
         p.drawRectangle({ x: M, y: y - hb + 8, width: CW, height: hb, color: mix(goud, 0.9) });
-        let oy = y - 6;
+        p.drawRectangle({ x: M, y: y - hb + 8, width: 3, height: hb, color: goud });
+        p.drawText("NOTITIE", { x: M + 12, y: y - 6, size: 9, font: B, color: goud });
+        let oy = y - 20;
         for (const r of rg) { p.drawText(r, { x: M + 12, y: oy, size: 10, font: R, color: inkt }); oy -= 13; }
         y -= hb + 4;
       }

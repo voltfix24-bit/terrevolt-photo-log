@@ -141,6 +141,7 @@ const KOLOMMEN: Record<string, unknown>[] = [
   { name: "Opleverdatum", dateTime: { format: "dateOnly" } },
   { name: "Monteur", text: {} },
   { name: "Opdrachtgever", text: {} },
+  { name: "Opmerking", text: { allowMultipleLines: true, linesForEditing: 6 } },
   { name: "OpleverStatus", displayName: "Status", choice: { choices: ["opgeleverd", "goedgekeurd", "afgekeurd"] } },
 ];
 
@@ -167,7 +168,7 @@ async function zorgKolommen(ctx: Ctx): Promise<boolean> {
 
 async function zetVelden(ctx: Ctx, itemId: string | undefined, velden: Record<string, unknown>) {
   if (!ctx.metadata || !itemId) return;
-  const schoon = Object.fromEntries(Object.entries(velden).filter(([, v]) => v !== null && v !== undefined && v !== ""));
+  const schoon = Object.fromEntries(Object.entries(velden).filter(([k, v]) => k === "Opmerking" || (v !== null && v !== undefined && v !== "")).map(([k, v]) => [k, v === "" ? null : v]));
   const r = await graph(ctx.tok, `/drives/${ctx.driveId}/items/${itemId}/listItem/fields`, {
     method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(schoon),
   }, [400, 403, 404]);
@@ -362,11 +363,13 @@ export async function syncStation(ctx: Ctx, db: any, station: any, vorigItemId: 
   const [{ data: fotos }, { data: opm }, { data: skips }] = await Promise.all([
     db.from("fotos").select("categorie, storage_path, uploaded_at").eq("station_id", station.id).order("uploaded_at"),
     db.from("categorie_opmerkingen").select("categorie, opmerking").eq("station_id", station.id),
-    db.from("categorie_skips").select("categorie, reden").eq("station_id", station.id),
+    db.from("categorie_skips").select("categorie, reden, updated_at, created_at").eq("station_id", station.id),
   ]);
+  const opmPer = new Map<string, string>((opm ?? []).filter((o: any) => o.opmerking?.trim()).map((o: any) => [o.categorie, o.opmerking.trim()]));
 
   // Gewenste bestanden per beheerde map
-  const taken: { map: string; naam: string; storage: string; velden: Record<string, unknown> }[] = [];
+  // storage = foto uit opslag; tekst = door de sync gemaakt tekstbestand (bv. _NIET GEMAAKT.txt)
+  const taken: { map: string; naam: string; storage?: string; tekst?: Uint8Array; velden: Record<string, unknown> }[] = [];
   const sv = stationVelden(station);
   const perCat = new Map<string, string[]>();
   for (const f of fotos ?? []) perCat.set(f.categorie, [...(perCat.get(f.categorie) ?? []), f.storage_path]);
@@ -374,8 +377,24 @@ export async function syncStation(ctx: Ctx, db: any, station: any, vorigItemId: 
     const c = CATEGORIES.find((x) => x.name === cat);
     const nr = c ? String(c.id).padStart(2, "0") : "00";
     const map = c ? sectieMap(c.section) : "99 Overig";
-    const velden = { ...sv, Sectie: c ? SECTIONS.find((s) => s.id === c.section)?.label : null, Categorie: cat, CategorieNr: c?.id ?? null };
+    const velden = { ...sv, Sectie: c ? SECTIONS.find((s) => s.id === c.section)?.label : null, Categorie: cat, CategorieNr: c?.id ?? null, Opmerking: opmPer.get(cat) ?? "" };
     paden.forEach((p, i) => taken.push({ map, naam: `${veilig(`${nr}_${cat}_${i + 1}`)}.jpg`, storage: p, velden }));
+  }
+  // Overgeslagen categorieën zonder foto's: klein tekstbestand in de sectiemap (beheerd door de sync)
+  for (const sk of skips ?? []) {
+    if (perCat.has(sk.categorie)) continue;
+    const c = CATEGORIES.find((x) => x.name === sk.categorie);
+    const nr = c ? String(c.id).padStart(2, "0") : "00";
+    const map = c ? sectieMap(c.section) : "99 Overig";
+    const sectie = c ? SECTIONS.find((x) => x.id === c.section)?.label : null;
+    const wie = tr(station.ingevuld_door) || tr(station.submitted_by) || "onbekend";
+    const datum = String(sk.updated_at ?? sk.created_at ?? "").slice(0, 10);
+    const reden = tr(sk.reden) || "Geen reden opgegeven";
+    const notitie = opmPer.get(sk.categorie);
+    const txt = [`Categorie: ${c ? `${c.id} ` : ""}${sk.categorie}`, `Sectie: ${sectie ?? "Overig"}`, `Status: Niet gemaakt / niet van toepassing`, `Reden: ${reden}`,
+      ...(notitie ? [`Notitie: ${notitie}`] : []), `Wie: ${wie}`, `Datum: ${datum}`, `Station: ${tr(station.naam_msr)} (${tr(station.behuizingsnummer)})`, `Case: ${tr(station.casenummer)} - ${tr(station.casenaam)}`].join("\r\n");
+    taken.push({ map, naam: `${veilig(`${nr}_${sk.categorie}_NIET GEMAAKT`)}.txt`, tekst: new TextEncoder().encode(txt),
+      velden: { ...sv, Sectie: sectie, Categorie: sk.categorie, CategorieNr: c?.id ?? null, Opmerking: `N.v.t.: ${reden}${notitie ? `\n${notitie}` : ""}` } });
   }
   const { data: rapport } = await db.storage.from("rapporten").download(`${station.id}/rapport.pdf`);
   // rapport.html staat niet meer in SharePoint (wordt door de opruimstap verwijderd); de PDF vervangt hem
@@ -410,8 +429,9 @@ export async function syncStation(ctx: Ctx, db: any, station: any, vorigItemId: 
   const grootte = (map: string, naam: string) => bestaand(map, naam)?.size;
   await parallel(taken, 4, async (t) => {
     let data: Blob | null = null, error: any = null;
+    if (t.tekst) data = new Blob([t.tekst]);
     for (let p = 0; p < 4 && !data; p++) {
-      ({ data, error } = await db.storage.from("to-fotos").download(t.storage));
+      ({ data, error } = await db.storage.from("to-fotos").download(t.storage!));
       if (!data) await sleep(1000 * (p + 1));
     }
     if (error || !data) throw new Error(`Foto niet opgehaald uit opslag (${error?.message ?? "onbekend"}): ${t.storage}`);
@@ -420,7 +440,7 @@ export async function syncStation(ctx: Ctx, db: any, station: any, vorigItemId: 
     let id = bestaand(t.map, t.naam)?.id;
     if (grootte(t.map, t.naam) !== bytes.byteLength) {
       res.toegevoegd.push(`${t.map}/${t.naam}`);
-      if (!dryRun) id = (await upload(ctx.tok, ctx.root, [...basis, t.map, t.naam].join("/"), bytes, "image/jpeg"))?.id;
+      if (!dryRun) id = (await upload(ctx.tok, ctx.root, [...basis, t.map, t.naam].join("/"), bytes, t.tekst ? "text/plain; charset=utf-8" : "image/jpeg"))?.id;
     }
     if (!dryRun) await zetVelden(ctx, id, t.velden);
   });

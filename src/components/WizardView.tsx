@@ -1,7 +1,7 @@
 // Variant 2b — Foto-wizard "camera eerst"
 // Nieuw bestand: src/components/WizardView.tsx
 // Vervangt de lokale `WizardView` + `WizardViewProps` in src/pages/StationDetail.tsx (zelfde props).
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
@@ -10,6 +10,8 @@ import { requirePin } from "@/lib/require-pin";
 import { SECTIONS, type Category } from "@/lib/categories";
 import type { MergedCategory } from "@/hooks/use-categories";
 import { Pressable, R, T } from "@/components/apple/Primitives";
+import { NotitieKaart, NotitieSheet } from "@/components/NotitieSheet";
+import { bewaarNotitie, lokaleNotitie } from "@/lib/notities";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 type FotoRow = { id: string; url: string; storage_path: string; categorie: string; uploaded_at?: string };
@@ -113,13 +115,8 @@ export function WizardView({
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const [opmerkingText, setOpmerkingText] = useState("");
-  const [savingOpmerking, setSavingOpmerking] = useState(false);
-  const [opmerkingOpen, setOpmerkingOpen] = useState(false);
-  const [opmerkingSaved, setOpmerkingSaved] = useState(false);
+  const [sheet, setSheet] = useState<null | "notitie" | "skip">(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; path: string } | null>(null);
-  const [skipReasonOpen, setSkipReasonOpen] = useState(false);
-  const [skipReasonChoice, setSkipReasonChoice] = useState("");
-  const [skipReasonOther, setSkipReasonOther] = useState("");
   const [photoPreview, setPhotoPreview] = useState<{ foto: FotoRow; index: number } | null>(null);
   const [armed, setArmed] = useState(false);       // wacht op upload → automatisch door
   const [autoNext, setAutoNext] = useState(false); // aftellen loopt
@@ -154,24 +151,19 @@ export function WizardView({
   });
 
   useEffect(() => {
-    setOpmerkingText(opmerkingData?.opmerking || "");
-    setOpmerkingOpen(false);
-    setOpmerkingSaved(false);
-  }, [opmerkingData, currentIndex]);
+    if (sheet === "notitie") return; // tijdens typen niet overschrijven
+    setOpmerkingText((cat && lokaleNotitie(stationId, cat.name)) ?? opmerkingData?.opmerking ?? "");
+  }, [opmerkingData, currentIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setSheet(null); }, [currentIndex]);
 
-  const saveOpmerking = async () => {
+  const saveOpmerking = useCallback(async (tekst: string) => {
     if (!cat) return;
-    if (!opmerkingText.trim()) {
-      await supabase.from("categorie_opmerkingen").delete().eq("station_id", stationId).eq("categorie", cat.name);
-    } else {
-      setSavingOpmerking(true);
-      await supabase.from("categorie_opmerkingen").upsert({ station_id: stationId, categorie: cat.name, opmerking: opmerkingText.trim(), updated_at: new Date().toISOString() }, { onConflict: "station_id,categorie" });
-      setSavingOpmerking(false);
-    }
-    setOpmerkingSaved(true);
+    setOpmerkingText(tekst.trim());
+    const r = await bewaarNotitie({ stationId, categorie: cat.name, tekst });
     queryClient.invalidateQueries({ queryKey: ["opmerking", stationId, cat.name] });
     queryClient.invalidateQueries({ queryKey: ["opmerkingen", stationId] });
-  };
+    return r;
+  }, [cat, stationId, queryClient]);
 
   const incompleteCategories = applicableCategories.filter((c) => fotosByCategorie(c.name).length === 0 && !skipped.includes(c.name));
 
@@ -220,12 +212,10 @@ export function WizardView({
     });
   };
 
-  const confirmSkip = () => {
-    if (!cat) return;
-    const reason = skipReasonChoice === "Anders" ? skipReasonOther.trim() : skipReasonChoice;
-    if (!reason) return;
-    onSkip(cat.name, reason);
-    setSkipReasonOpen(false);
+  const confirmSkip = (reason: string) => {
+    if (!cat || !reason.trim()) return;
+    onSkip(cat.name, reason.trim());
+    setSheet(null);
     goNext();
   };
 
@@ -306,7 +296,7 @@ export function WizardView({
           </Pressable>
           <span style={{ fontSize: 15, fontFamily: "ui-monospace, monospace", color: W.body }}>{currentIndex + 1} / {applicableCategories.length}</span>
           <Pressable
-            onClick={() => { setSkipReasonChoice(""); setSkipReasonOther(""); setSkipReasonOpen(true); }}
+            onClick={() => setSheet("skip")}
             disabled={nvtUit}
             style={{ minHeight: 44, minWidth: 44, textAlign: "right", fontSize: 17, fontWeight: 500, color: nvtUit ? "rgba(255,255,255,0.35)" : W.text }}
           >
@@ -339,6 +329,11 @@ export function WizardView({
             return (
               <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                 <h1 className="font-display" style={{ margin: 0, fontSize: 30, fontWeight: 700, lineHeight: 1.15, flex: 1, minWidth: 0 }}>{cat.effectiveName}</h1>
+                {!opmerkingText && (
+                  <button type="button" onClick={() => setSheet("notitie")} style={{ flexShrink: 0, minHeight: 40, padding: "0 13px", borderRadius: 999, border: "none", background: "rgba(252,201,52,0.16)", color: W.gold, fontSize: 15, fontWeight: 600, marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
+                    <span className="material-symbols-rounded" style={{ fontSize: 19 }}>add</span>Notitie
+                  </button>
+                )}
                 {hasInfo && (
                   <Popover>
                     <PopoverTrigger asChild>
@@ -356,6 +351,19 @@ export function WizardView({
               </div>
             );
           })()}
+          {opmerkingText && <NotitieKaart tekst={opmerkingText} onClick={() => setSheet("notitie")} donker />}
+          {isCatSkipped && totaal === 0 ? (
+            <div style={{ borderRadius: 14, padding: "12px 14px", background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", gap: 12 }}>
+              <span className="material-symbols-rounded" style={{ fontSize: 22, color: W.body }}>block</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.04em", color: W.body }}>N.V.T.</div>
+                <div style={{ fontSize: 15, color: W.text }}>{skippedReasons[cat.name] || "Geen reden opgegeven"}</div>
+              </div>
+              <Pressable onClick={() => onUnskip(cat.name)} style={{ minHeight: 40, padding: "0 12px", borderRadius: 10, background: "rgba(255,255,255,0.16)", color: W.text, fontSize: 14, fontWeight: 600 }}>Toch foto maken</Pressable>
+            </div>
+          ) : totaal === 0 && (
+            <button type="button" onClick={() => setSheet("skip")} style={{ alignSelf: "flex-start", minHeight: 36, border: "none", background: "none", padding: 0, color: W.body, fontSize: 15, textDecoration: "underline", textUnderlineOffset: 3 }}>Niet gemaakt / N.v.t.</button>
+          )}
         </div>
 
         <VoorbeeldKaart url={catVoorbeelden[0]?.url} onOpen={() => setVoorbeeldLightbox(0)} />
@@ -398,16 +406,6 @@ export function WizardView({
           </div>
         )}
 
-        <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-          <Chip icon="edit_note" label={opmerkingText ? "Opmerking ✓" : "Opmerking"} onClick={() => setOpmerkingOpen(!opmerkingOpen)} />
-        </div>
-        {opmerkingOpen && (
-          <div style={{ marginTop: 10, background: W.chip, borderRadius: 13, padding: "12px 14px" }}>
-            <textarea value={opmerkingText} onChange={(e) => setOpmerkingText(e.target.value)} onBlur={saveOpmerking} placeholder="Voeg een opmerking toe" rows={3} autoFocus className="w-full resize-none bg-transparent outline-none" style={{ color: W.text, fontSize: 16 }} />
-            {savingOpmerking && <div style={{ fontSize: 13, color: W.body }}>Opslaan…</div>}
-            {opmerkingSaved && !savingOpmerking && <div style={{ fontSize: 13, color: W.label }}>Bewaard</div>}
-          </div>
-        )}
         <div style={{ height: 180 }} />
       </div>
 
@@ -450,26 +448,15 @@ export function WizardView({
 
       <Lightbox open={voorbeeldLightbox !== null} close={() => setVoorbeeldLightbox(null)} slides={catVoorbeelden.map((v) => ({ src: v.url }))} index={voorbeeldLightbox ?? 0} />
 
-      {/* Nvt-reden */}
-      {skipReasonOpen && (
-        <div className="fixed inset-0 z-[110] flex items-end bg-on-surface/40" style={{ color: T.rowText }}>
-          <div className="w-full rounded-t-2xl bg-card p-5 pb-[max(20px,env(safe-area-inset-bottom))]">
-            <h3 className="font-display" style={{ fontSize: 20, fontWeight: 700, color: T.titleOnBg }}>Waarom is deze taak nvt?</h3>
-            <p style={{ marginTop: 4, fontSize: 15, color: T.bodyOnBg }}>Kies een reden om verder te gaan.</p>
-            <div className="mt-4 space-y-2">
-              {["Niet aanwezig", "Niet toegankelijk", "Anders"].map((reason) => (
-                <button key={reason} onClick={() => setSkipReasonChoice(reason)} className="flex w-full items-center gap-3 px-3 text-left" style={{ minHeight: 52, fontSize: 17, borderRadius: 12, background: skipReasonChoice === reason ? T.soft : "transparent", color: skipReasonChoice === reason ? T.green : T.rowText }}>
-                  <span className="material-symbols-rounded" style={{ fontSize: 22 }}>{skipReasonChoice === reason ? "check_circle" : "radio_button_unchecked"}</span>{reason}{reason === "Anders" ? "…" : ""}
-                </button>
-              ))}
-              {skipReasonChoice === "Anders" && <textarea autoFocus value={skipReasonOther} onChange={(e) => setSkipReasonOther(e.target.value)} rows={2} placeholder="Vul de reden in" className="w-full rounded-xl bg-surface-low p-3 outline-none" style={{ fontSize: 16 }} />}
-            </div>
-            <div className="mt-4 flex gap-2">
-              <button onClick={() => setSkipReasonOpen(false)} className="flex-1" style={{ minHeight: 56, fontSize: 17, color: T.bodyOnBg }}>Annuleren</button>
-              <button onClick={confirmSkip} disabled={!skipReasonChoice || (skipReasonChoice === "Anders" && !skipReasonOther.trim())} className="flex-1 disabled:opacity-40" style={{ minHeight: 56, borderRadius: R.control, background: T.green, color: T.surface, fontSize: 17, fontWeight: 600 }}>Opslaan</button>
-            </div>
-          </div>
-        </div>
+      {sheet && (
+        <NotitieSheet
+          key={`${cat.id}-${sheet}`}
+          soort={sheet}
+          titel={sheet === "skip" ? `Niet gemaakt: ${cat.effectiveName}` : `Notitie: ${cat.effectiveName}`}
+          begin={sheet === "skip" ? skippedReasons[cat.name] ?? "" : opmerkingText}
+          onClose={() => setSheet(null)}
+          onSave={sheet === "skip" ? confirmSkip : saveOpmerking}
+        />
       )}
 
       {/* Foto groot */}

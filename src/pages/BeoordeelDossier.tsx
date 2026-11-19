@@ -109,6 +109,15 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
     enabled: !!id,
   });
 
+  const { data: notities } = useQuery({
+    queryKey: ["opmerkingen", id],
+    queryFn: async () => {
+      const { data } = await supabase.from("categorie_opmerkingen").select("categorie, opmerking").eq("station_id", id!);
+      return data ?? [];
+    },
+    enabled: !!id,
+  });
+  const notitieVan = (naam: string) => notities?.find((n) => n.categorie === naam)?.opmerking?.trim();
   const { data: skips } = useQuery({
     queryKey: ["categorie-skips", id],
     queryFn: async () => {
@@ -281,7 +290,15 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
       {filter === "nvt" && (skips ?? []).map((skip) => (
         <div key={skip.categorie} style={{ background: D.surface, borderRadius: 8, padding: "11px 13px", marginBottom: 8 }}>
           <div style={{ fontSize: 13, color: D.title }}>{skip.categorie}</div>
-          <div style={{ fontSize: 12, color: D.sub, marginTop: 2 }}>{skip.reden}</div>
+          <div style={{ fontSize: 12, color: D.sub, marginTop: 2 }}>N.v.t. · {skip.reden}</div>
+          {notitieVan(skip.categorie) && <div style={{ fontSize: 12, color: "#6B5200", marginTop: 6, whiteSpace: "pre-wrap" }}>Notitie: {notitieVan(skip.categorie)}</div>}
+        </div>
+      ))}
+      {filter !== "nvt" && !filter.startsWith("cat:") && (skips ?? []).filter((sk) => !photos.some((f) => f.categorie === sk.categorie)).map((sk) => (
+        <div key={`nvt-${sk.categorie}`} style={{ background: D.surface, borderRadius: 8, padding: "10px 13px", marginBottom: 10, borderLeft: `3px solid ${D.sub}` }}>
+          <div style={{ fontSize: 11, color: D.sub, letterSpacing: "0.05em" }}>{sk.categorie.toUpperCase()} · N.V.T.</div>
+          <div style={{ fontSize: 13, color: D.title, marginTop: 3 }}>{sk.reden || "Geen reden opgegeven"}</div>
+          {notitieVan(sk.categorie) && <div style={{ fontSize: 12, color: "#6B5200", marginTop: 5, whiteSpace: "pre-wrap" }}>Notitie: {notitieVan(sk.categorie)}</div>}
         </div>
       ))}
       {perCategorie.map((groep) => (
@@ -289,6 +306,11 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
           <div style={{ fontSize: 11, color: D.sub, letterSpacing: "0.05em", marginBottom: 8 }}>
             {groep.naam.toUpperCase()} · {groep.items.length}
           </div>
+          {notitieVan(groep.naam) && (
+            <div style={{ display: "flex", gap: 8, background: "#FFF6DB", boxShadow: "inset 3px 0 0 #C99A00", borderRadius: 8, padding: "9px 12px", marginBottom: 9, fontSize: 13, color: "#3D2E00", whiteSpace: "pre-wrap" }}>
+              <span className="material-symbols-rounded" style={{ fontSize: 17, color: "#8A6A00" }}>sticky_note_2</span>{notitieVan(groep.naam)}
+            </div>
+          )}
           <div style={{ display: "grid", gridTemplateColumns: `repeat(${isMobile ? 2 : 4}, minmax(0,1fr))`, gap: 11 }}>
             {groep.items.map((foto) => (
               <button

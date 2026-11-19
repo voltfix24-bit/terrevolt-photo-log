@@ -16,6 +16,7 @@ import { useInstellingen } from "@/hooks/use-theme";
 import { useOnline } from "@/hooks/use-online";
 import { syncPendingPhotos } from "@/lib/sync-service";
 import { getQueueCount } from "@/lib/offline-queue";
+import { verstuurNotities } from "@/lib/notities";
 import { toast } from "sonner";
 import { useEffect } from "react";
 
@@ -27,6 +28,7 @@ function AppContent() {
 
   useEffect(() => {
     if (isOnline) {
+      verstuurNotities().then(n => { if (n > 0) queryClient.invalidateQueries({ queryKey: ["opmerkingen"] }); });
       getQueueCount().then(count => {
         if (count > 0) {
           toast.loading(`Verbinding hersteld — ${count} foto's uploaden...`, { id: 'sync-toast' });

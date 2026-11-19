@@ -179,8 +179,8 @@ function useSkippedCategories(stationId: string | undefined) {
 }
 
 /* ==================== CATEGORY ROW ==================== */
-function CategoryRow({ cat, fotos, isSkipped, skipReason, hasOpmerking, onOpen }: {
-  cat: MergedCategory; fotos: FotoRow[]; isSkipped?: boolean; skipReason?: string; hasOpmerking?: boolean; onOpen: () => void;
+function CategoryRow({ cat, fotos, isSkipped, skipReason, opmerking, onOpen }: {
+  cat: MergedCategory; fotos: FotoRow[]; isSkipped?: boolean; skipReason?: string; opmerking?: string; onOpen: () => void;
 }) {
   const hasPhotos = fotos.length > 0;
 
@@ -197,10 +197,15 @@ function CategoryRow({ cat, fotos, isSkipped, skipReason, hasOpmerking, onOpen }
       <span className="material-symbols-rounded shrink-0" style={{ fontSize: ICON, color: iconColor, fontVariationSettings: hasPhotos ? "'FILL' 1" : undefined }}>{icon}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 17, color: nvt || hasPhotos ? T.rowSub : T.rowText, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{cat.effectiveName}</div>
-        {nvt && skipReason && <div style={{ fontSize: 14, color: T.muted, marginTop: 1 }}>{skipReason}</div>}
+        {nvt && <div style={{ fontSize: 14, color: T.subOnBg, marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}><span style={{ fontWeight: 600 }}>N.v.t.</span> · {skipReason || "Geen reden opgegeven"}</div>}
+        {opmerking && (
+          <div style={{ fontSize: 14, color: "#8A6A00", marginTop: 2, display: "flex", alignItems: "center", gap: 4, minWidth: 0 }}>
+            <span className="material-symbols-rounded" style={{ fontSize: 16, flexShrink: 0 }}>sticky_note_2</span>
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{opmerking.split("\n")[0]}</span>
+          </div>
+        )}
       </div>
       {hasPhotos && <span style={{ fontSize: 15, color: T.muted, fontFamily: "ui-monospace, monospace" }}>{fotos.length}</span>}
-      {hasOpmerking && <span className="sr-only">Met opmerking</span>}
       <span className="material-symbols-rounded shrink-0" style={{ fontSize: 19, color: T.chevron }}>chevron_right</span>
     </Pressable>
   );
@@ -323,6 +328,7 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
         await queuePhoto(id!, categorie, file);
         queued++;
       }
+      if (queued > 0 && isSkipped(categorie)) { removeSkip(categorie); toast.info("N.v.t. opgeheven: er is toch een foto"); }
       if (queued > 0) {
         toast.success(`${queued} foto${queued > 1 ? "'s" : ""} opgeslagen — wordt geüpload zodra je online bent`, {
           duration: 4000,
@@ -357,6 +363,7 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
     setUploadingCat(null);
     setUploadProgress((p) => { const next = { ...p }; delete next[categorie]; return next; });
     if (done > 0) toast.success("Foto's geüpload ✓");
+    if (done > 0 && isSkipped(categorie)) { removeSkip(categorie); toast.info("N.v.t. opgeheven: er is toch een foto"); }
     return mislukt;
   };
 
@@ -580,7 +587,7 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
             <div className="font-display leading-tight" style={{ fontSize: 34, fontWeight: 500, color: T.titleOnBg }}>
               {allDone ? 'Alle taken afgerond' : `${applicableCategories.filter(c => !catDone(c) && !isSkipped(c.name)).length} taken open`}
             </div>
-            <div className="mt-1" style={{ fontSize: 15, color: T.subOnBg }}>{filledCount} ingevuld · {fotos?.length ?? 0} foto&apos;s</div>
+            <div className="mt-1" style={{ fontSize: 15, color: T.subOnBg }}>{applicableCategories.filter(c => fotosByCategorie(c.name).length > 0).length} gefotografeerd · {applicableCategories.filter(c => fotosByCategorie(c.name).length === 0 && isSkipped(c.name)).length} N.v.t. · {fotos?.length ?? 0} foto&apos;s</div>
           </div>
         </div>
 
@@ -622,7 +629,7 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
                     <Hairline inset={INSET_HEAD} />
                     {sortedCats.map((cat, index) => <div key={cat.id}>
                       {index > 0 && <Hairline />}
-                      <CategoryRow cat={cat} fotos={fotosByCategorie(cat.name)} isSkipped={isSkipped(cat.name)} skipReason={skippedReasons[cat.name]} hasOpmerking={!!opmerkingen?.some(o => o.categorie === cat.name)} onOpen={() => openCategorie(cat)} />
+                      <CategoryRow cat={cat} fotos={fotosByCategorie(cat.name)} isSkipped={isSkipped(cat.name)} skipReason={skippedReasons[cat.name]} opmerking={opmerkingen?.find(o => o.categorie === cat.name)?.opmerking?.trim() || undefined} onOpen={() => openCategorie(cat)} />
                     </div>)}
                   </div>
                 )}
