@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { beoordeelUrl } from "@/lib/urls";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,7 +28,7 @@ export default function Beoordelen() {
     queryFn: async () => {
       const { data } = await supabase
         .from("stations")
-        .select("id, naam_msr, submitted_at, submitted_by, status, opdrachtgever")
+        .select("id, naam_msr, casenummer, casenaam, behuizingsnummer, submitted_at, submitted_by, status, opdrachtgever")
         .eq("opdrachtgever", wie!)
         .in("status", ["opgeleverd", "goedgekeurd"])
         .order("submitted_at", { ascending: false });
@@ -72,7 +73,7 @@ export default function Beoordelen() {
                       iconColor={dossier.status === "goedgekeurd" ? T.done : T.current}
                       title={dossier.naam_msr}
                       subtitle={`${dossier.submitted_by ?? "Onbekend"} · ${dossier.submitted_at ? new Date(dossier.submitted_at).toLocaleDateString("nl-NL") : ""}`}
-                      onClick={() => navigate(`/beoordelen/${dossier.id}`)}
+                      onClick={() => navigate(beoordeelUrl(dossier))}
                     />
                   </div>
                 ))

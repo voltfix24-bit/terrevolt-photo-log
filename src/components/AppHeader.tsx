@@ -21,7 +21,8 @@ export default function AppHeader() {
     return false;
   };
 
-  if (location.pathname === "/" || /^\/stations\/[^/]+/.test(location.pathname) || location.pathname.startsWith("/beoordelen") || location.pathname.startsWith("/cases")) return null;
+  // Alleen op formulier-/instellingenschermen; stations, cases en leesbare case-urls hebben een eigen kop
+  if (!location.pathname.startsWith("/instellingen")) return null;
 
   return (
     <>

@@ -1,5 +1,6 @@
 // Kantoor: "Wie moet wat doen" (9b) + "TO-score" (9c)
 import { useState } from "react";
+import { casesUrl, type UrlStation } from "@/lib/urls";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Pressable, R, T } from "@/components/apple/Primitives";
@@ -24,7 +25,7 @@ function StatusPil({ status, prefix }: { status: keyof typeof TO_STATUS; prefix?
   );
 }
 
-function Bal({ cases, open }: { cases: CaseItem[]; open: (id: string) => void }) {
+function Bal({ cases, open }: { cases: CaseItem[]; open: (s: UrlStation) => void }) {
   const items = cases.flatMap((c) => c.bal.map((b) => ({ ...b, c })));
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14 }}>
@@ -42,7 +43,7 @@ function Bal({ cases, open }: { cases: CaseItem[]; open: (id: string) => void })
             </div>
             {list.length === 0 && <div style={{ ...card, padding: 14, fontSize: 14, color: SUB, background: "rgba(255,255,255,0.6)" }}>Niets open</div>}
             {list.map((i, k) => (
-              <Pressable key={i.c.station.id + k} onClick={() => open(i.c.station.id)} scale={0.98} style={{ ...card, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 8, textAlign: "left" }}>
+              <Pressable key={i.c.station.id + k} onClick={() => open(i.c.station)} scale={0.98} style={{ ...card, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 8, textAlign: "left" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, width: "100%" }}>
                   <span className="font-mono" style={{ fontSize: 14, fontWeight: 600, color: T.bodyOnBg }}>{caseNr(i.c.station)}</span>
                   <StatusPil status={i.c.last?.status ?? "open"} prefix={`R${Math.max(1, i.c.rondes.length)} · `} />
@@ -65,7 +66,7 @@ function Bal({ cases, open }: { cases: CaseItem[]; open: (id: string) => void })
   );
 }
 
-function Score({ cases, open }: { cases: CaseItem[]; open: (id: string) => void }) {
+function Score({ cases, open }: { cases: CaseItem[]; open: (s: UrlStation) => void }) {
   const s = scoreVan(cases);
   const max = Math.max(1, ...s.redenen.map((r) => r.n));
   const kpis = [
@@ -102,7 +103,7 @@ function Score({ cases, open }: { cases: CaseItem[]; open: (id: string) => void 
             <span>Case</span><span>Casenaam</span><span>Rondes</span><span>Nu</span><span>Bal bij</span>
           </div>
           {cases.map((c) => (
-            <Pressable key={c.station.id} onClick={() => open(c.station.id)} scale={0.99} style={{ display: "grid", gridTemplateColumns: cols, gap: 12, padding: "11px 18px", alignItems: "center", fontSize: 14, borderBottom: "1px solid #F0F3EF", width: "100%", textAlign: "left", minWidth: 620 }}>
+            <Pressable key={c.station.id} onClick={() => open(c.station)} scale={0.99} style={{ display: "grid", gridTemplateColumns: cols, gap: 12, padding: "11px 18px", alignItems: "center", fontSize: 14, borderBottom: "1px solid #F0F3EF", width: "100%", textAlign: "left", minWidth: 620 }}>
               <span className="font-mono" style={{ fontWeight: 600 }}>{caseNr(c.station)}</span>
               <span style={{ minWidth: 0 }}>
                 <span style={{ display: "block", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{caseNaam(c.station)}</span>
@@ -126,7 +127,7 @@ export default function Cases() {
   const [toonVerborgen, setToonVerborgen] = useState(false);
   const { data: cases, isLoading } = useCases({ inclVerborgen: toonVerborgen });
   const [tab, setTab] = useState<"bal" | "score">("bal");
-  const open = (id: string) => navigate(`/cases/${id}`);
+  const open = (s: UrlStation) => navigate(casesUrl(s));
   return (
     <div style={{ minHeight: "100vh", background: T.bg }}>
       <div style={{ position: "sticky", top: 0, zIndex: 10, background: T.surface, borderBottom: `1px solid ${T.hairline}`, padding: "calc(12px + env(safe-area-inset-top)) 24px 12px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>

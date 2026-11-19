@@ -20,8 +20,9 @@ function Notitie({ value, placeholder, onSave, rows = 2 }: { value: string | nul
   return <textarea rows={rows} value={v} placeholder={placeholder} onChange={(e) => setV(e.target.value)} onBlur={() => v !== (value ?? "") && onSave(v)} style={{ ...veld, resize: "vertical" }} />;
 }
 
-export default function CaseDetail() {
-  const { id } = useParams<{ id: string }>();
+export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
+  const params = useParams<{ id: string }>();
+  const id = stationId ?? params.id;
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { data: cases } = useCases({ inclVerborgen: true });

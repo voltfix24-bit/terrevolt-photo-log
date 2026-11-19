@@ -7,8 +7,9 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { GlassBar, Group, Hairline, NavText, PrimaryButton, Row, T, INSET_ROW, ROW_PAD_X } from "@/components/apple/Primitives";
 import { toast } from "sonner";
 
-export default function Opleveren() {
-  const { id } = useParams<{ id: string }>();
+export default function Opleveren({ stationId }: { stationId?: string } = {}) {
+  const params = useParams<{ id: string }>();
+  const id = stationId ?? params.id;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [queued, setQueued] = useState(0);

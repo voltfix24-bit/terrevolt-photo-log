@@ -3,7 +3,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";
-import { PDFDocument, PDFFont, PDFImage, PDFPage, StandardFonts, rgb, RGB } from "npm:pdf-lib@1.17.1";
+import { PDFDocument, PDFFont, PDFImage, PDFPage, PDFString, StandardFonts, rgb, RGB } from "npm:pdf-lib@1.17.1";
 import jpeg from "npm:jpeg-js@0.4.4";
 import { CATEGORIES, SECTIONS } from "../_shared/sharepoint-categories.ts";
 
@@ -235,6 +235,16 @@ async function bouwPdf(sb: any, sid: string, fotos: any[]) {
     voor.drawText(k, { x: M, y: vy, size: 11, font: R, color: sub });
     voor.drawText(tx(v || "—").slice(0, 70), { x: M + 150, y: vy, size: 11, font: k === "Status" ? B : R, color: k === "Status" ? groen : inkt });
     vy -= 26;
+  }
+  // Korte app-link naar de case (zelfde opbouw als src/lib/urls.ts korteUrl)
+  if (casenr) {
+    const kort = `https://to-foto.lovable.app/c/${encodeURIComponent(casenr.replace(/\s+/g, ""))}`;
+    vy -= 10;
+    voor.drawText("Bekijk online:", { x: M, y: vy, size: 11, font: R, color: sub });
+    voor.drawText(kort, { x: M + 150, y: vy, size: 11, font: R, color: groen });
+    const bw = R.widthOfTextAtSize(kort, 11);
+    const ua = doc.context.register(doc.context.obj({ Type: "Annot", Subtype: "Link", Rect: [M + 150, vy - 3, M + 150 + bw, vy + 11], Border: [0, 0, 0], A: { Type: "Action", S: "URI", URI: PDFString.of(kort) } }));
+    voor.node.addAnnot(ua);
   }
 
   // ---- Samenvatting ----

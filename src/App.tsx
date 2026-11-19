@@ -6,15 +6,12 @@ import { SharePointSleutelBanner } from "@/components/SharePointSleutelBanner";
 import AppHeader from "@/components/AppHeader";
 import Index from "./pages/Index";
 import NewStation from "./pages/NewStation";
-import StationDetail from "./pages/StationDetail";
 import Instellingen from "./pages/Instellingen";
 import CategorieenBeheren from "./pages/CategorieenBeheren";
-import Opleveren from "./pages/Opleveren";
 import Beoordelen from "./pages/Beoordelen";
-import BeoordeelDossier from "./pages/BeoordeelDossier";
 import Cases from "./pages/Cases";
-import CaseDetail from "./pages/CaseDetail";
 import NotFound from "./pages/NotFound";
+import { BeoordelenSleutelRoute, CasesSleutelRoute, KorteLink, OpdrachtgeverRoute, StationsRoute } from "./pages/UrlRoutes";
 import { useInstellingen } from "@/hooks/use-theme";
 import { useOnline } from "@/hooks/use-online";
 import { syncPendingPhotos } from "@/lib/sync-service";
@@ -56,14 +53,18 @@ function AppContent() {
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/stations/new" element={<NewStation />} />
-        <Route path="/stations/:id" element={<StationDetail />} />
-        <Route path="/stations/:id/opleveren" element={<Opleveren />} />
+        <Route path="/stations/:key/*" element={<StationsRoute />} />
         <Route path="/beoordelen" element={<Beoordelen />} />
-        <Route path="/beoordelen/:id" element={<BeoordeelDossier />} />
+        <Route path="/beoordelen/:key" element={<BeoordelenSleutelRoute />} />
         <Route path="/instellingen" element={<Instellingen />} />
         <Route path="/instellingen/categorieen" element={<CategorieenBeheren />} />
         <Route path="/cases" element={<Cases />} />
-        <Route path="/cases/:id" element={<CaseDetail />} />
+        <Route path="/cases/:key" element={<CasesSleutelRoute />} />
+        <Route path="/c/:nr" element={<KorteLink />} />
+        {/* Leesbare urls zoals de SharePoint-mappen; vaste routes hierboven gaan voor */}
+        <Route path="/:og" element={<OpdrachtgeverRoute />} />
+        <Route path="/:og/:jaar" element={<OpdrachtgeverRoute />} />
+        <Route path="/:og/:jaar/:case/*" element={<OpdrachtgeverRoute />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>

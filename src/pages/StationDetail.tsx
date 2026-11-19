@@ -26,6 +26,8 @@ import { generatePdfHtml } from "@/lib/pdf-generator";
 import { downloadStationZip } from "@/lib/zip-download";
 import { useVoorbeelden } from "@/components/CategorieSettings";
 import { useInstellingen } from "@/hooks/use-theme";
+import { Kruimelpad, deelLink } from "@/components/url/Kruimelpad";
+import { categorieUrl, caseUrl, korteUrl, opleverUrl, sectieUrl, type Sub } from "@/lib/urls";
 import { GlassBar, Group, Hairline, Pressable, T, R, M, ROW_MIN, ROW_PAD_X, ICON, ICON_GAP, INSET_HEAD, INSET_ROW } from "@/components/apple/Primitives";
 
 const MAX_SIZE = 10 * 1024 * 1024;
@@ -205,8 +207,11 @@ function CategoryRow({ cat, fotos, isSkipped, skipReason, hasOpmerking, onOpen }
 }
 
 /* ==================== MAIN COMPONENT ==================== */
-export default function StationDetail() {
-  const { id } = useParams<{ id: string }>();
+export default function StationDetail({ stationId, sub }: { stationId?: string; sub?: Sub } = {}) {
+  const params = useParams<{ id: string }>();
+  const id = stationId ?? params.id;
+  const documentenRef = useRef<HTMLDivElement | null>(null);
+  const deeplinkRef = useRef<string>("");
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
@@ -420,6 +425,43 @@ export default function StationDetail() {
     setSearchParams({}, { replace: true });
   }, [applicableCategories, openWizardAt, searchParams, setSearchParams]);
 
+  // Deeplinks via de url: sectie openen/scrollen, categorie direct openen, documenten-blok tonen
+  const subKey = sub ? JSON.stringify(sub) : "";
+  useEffect(() => {
+    if (!sub || !station || deeplinkRef.current === subKey) return;
+    if (sub.soort === "sectie") {
+      deeplinkRef.current = subKey;
+      setOpenSections([sub.sectionId]);
+      setTimeout(() => sectionRefs.current[sub.sectionId]?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+    } else if (sub.soort === "documenten") {
+      deeplinkRef.current = subKey;
+      setTimeout(() => documentenRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+    } else if (sub.soort === "categorie") {
+      if (applicableCategories.length === 0 || !fotos) return;
+      deeplinkRef.current = subKey;
+      setOpenSections([sub.sectionId]);
+      const cat = applicableCategories.find((c) => c.id === sub.categorieId);
+      if (cat) openWizardAt(cat);
+      else navigate(caseUrl(station), { replace: true });
+    } else deeplinkRef.current = subKey;
+  }, [subKey, station, applicableCategories, fotos, openWizardAt]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const openCategorie = useCallback((cat: MergedCategory) => {
+    openWizardAt(cat);
+    if (station && sub) {
+      deeplinkRef.current = JSON.stringify({ soort: "categorie", sectionId: cat.section, categorieId: cat.id });
+      navigate(categorieUrl(station, cat), { replace: true });
+    }
+  }, [openWizardAt, station, sub, navigate]);
+
+  const sluitWizard = useCallback(() => {
+    setWizardOpen(false);
+    if (station && sub?.soort === "categorie") {
+      deeplinkRef.current = JSON.stringify({ soort: "sectie", sectionId: sub.sectionId });
+      navigate(sectieUrl(station, sub.sectionId), { replace: true });
+    }
+  }, [station, sub, navigate]);
+
   // Find next incomplete category across applicable categories
   const nextIncomplete = useMemo(() => {
     for (const cat of applicableCategories) {
@@ -473,7 +515,7 @@ export default function StationDetail() {
         <WizardView
           startIndex={wizardStartIndex}
           stationId={id!}
-          onClose={() => setWizardOpen(false)}
+          onClose={sluitWizard}
           onSkip={addSkip}
           onUnskip={removeSkip}
           skipped={skipped}
@@ -507,11 +549,13 @@ export default function StationDetail() {
               <span>Stations</span>
             </Pressable>
             <div className="flex items-center gap-2">
+              <Pressable onClick={() => void deelLink(korteUrl(station), [station.casenummer, station.casenaam].filter(Boolean).join(" ") || station.naam_msr, toast)} style={{ minHeight: 44, padding: "0 8px", color: T.green, fontSize: 17 }}>Link kopiëren</Pressable>
               <Pressable onClick={openPdf} style={{ minHeight: 44, padding: "0 8px", color: T.green, fontSize: 17 }}>Pdf</Pressable>
               <Pressable onClick={async () => { if (vergrendeld && !(await requirePin("Dossier is opgeleverd", "Voer de toegangscode in om te wijzigen."))) return; setEditOpen(true); }} style={{ minHeight: 44, padding: "0 4px 0 8px", color: T.green, fontSize: 17 }}>Wijzig</Pressable>
             </div>
           </div>
 
+          {sub && <Kruimelpad station={station} sectionId={sub.soort === "sectie" || sub.soort === "categorie" ? sub.sectionId : undefined} categorieId={sub.soort === "categorie" ? sub.categorieId : undefined} />}
           {/* ROW 2: Station info */}
           {station.behuizingsnummer && <div style={{ fontSize: 14, color: T.subOnBg, fontFamily: "ui-monospace, monospace", marginBottom: 4 }}>{station.behuizingsnummer}</div>}
           {(station.casenummer || station.casenaam) && <div style={{ fontSize: 14, color: T.subOnBg, marginBottom: 4 }}>Case: {[station.casenummer, station.casenaam].filter(Boolean).join(" · ")}</div>}
@@ -522,7 +566,7 @@ export default function StationDetail() {
             {[station.datum, station.ingevuld_door].filter(Boolean).join(' · ')}
           </p>
           <SharePointStatus station={station} />
-          <SharePointDocumenten stationId={station.id} />
+          <div ref={documentenRef} style={{ scrollMarginTop: 16 }}><SharePointDocumenten stationId={station.id} /></div>
 
           {station.status === 'in uitvoering' && station.review_reden && (
             <div style={{ background: T.dangerBg, borderRadius: R.group, padding: "12px 14px", marginBottom: 16 }}>
@@ -578,7 +622,7 @@ export default function StationDetail() {
                     <Hairline inset={INSET_HEAD} />
                     {sortedCats.map((cat, index) => <div key={cat.id}>
                       {index > 0 && <Hairline />}
-                      <CategoryRow cat={cat} fotos={fotosByCategorie(cat.name)} isSkipped={isSkipped(cat.name)} skipReason={skippedReasons[cat.name]} hasOpmerking={!!opmerkingen?.some(o => o.categorie === cat.name)} onOpen={() => openWizardAt(cat)} />
+                      <CategoryRow cat={cat} fotos={fotosByCategorie(cat.name)} isSkipped={isSkipped(cat.name)} skipReason={skippedReasons[cat.name]} hasOpmerking={!!opmerkingen?.some(o => o.categorie === cat.name)} onOpen={() => openCategorie(cat)} />
                     </div>)}
                   </div>
                 )}
@@ -603,7 +647,7 @@ export default function StationDetail() {
         <GlassBar style={{ position: "fixed", left: 0, right: 0 }}>
           <div className="flex gap-2.5 max-w-3xl mx-auto">
             <Pressable
-              onClick={() => navigate(`/stations/${id}/opleveren`)}
+              onClick={() => navigate(opleverUrl(station))}
               style={{ flex: 1, minHeight: ROW_MIN, background: T.green, color: T.surface, borderRadius: R.control, fontSize: 17, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", gap: 9 }}
             >
               Opleveren

@@ -1,6 +1,7 @@
 // Variant 1b — "Gegroepeerd op wat moet ik doen"
 // Drop-in vervanging voor src/pages/Index.tsx. Data, routes, queries en acties blijven gelijk.
 import { useEffect, useMemo, useRef, useState } from "react";
+import { caseUrl } from "@/lib/urls";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -232,7 +233,7 @@ export default function Dashboard() {
     <StationKaart
       key={item.station.id}
       item={item}
-      onOpen={() => navigate(`/stations/${item.station.id}`)}
+      onOpen={() => navigate(caseUrl(item.station))}
       onMeer={() => setActieTarget(item.station)}
     />
   );
@@ -328,7 +329,7 @@ export default function Dashboard() {
             <SheetDescription className="font-mono">{actieTarget?.behuizingsnummer || "Geen nummer"}</SheetDescription>
           </SheetHeader>
           <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 8 }}>
-            {actieKnop("edit_document", "Invullen", () => { const s = actieTarget; setActieTarget(null); navigate(`/stations/${s.id}`); })}
+            {actieKnop("edit_document", "Invullen", () => { const s = actieTarget; setActieTarget(null); navigate(caseUrl(s)); })}
             {actieKnop("picture_as_pdf", "Pdf openen", () => { const s = actieTarget; setActieTarget(null); openPdf(s); })}
             {actieKnop("folder_zip", "Foto's als zip", () => { const s = actieTarget; setActieTarget(null); downloadZip(s); })}
             {actieKnop("delete", "Verwijderen", () => { const s = actieTarget; setActieTarget(null); setDeleteTarget({ id: s.id, naam: s.naam_msr }); }, true)}

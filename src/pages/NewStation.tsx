@@ -1,5 +1,6 @@
 // Variant 3a — Nieuw station, één formulier gegroepeerd
 import { useState } from "react";
+import { caseUrl } from "@/lib/urls";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -100,7 +101,7 @@ export default function NewStation() {
     setLoading(false);
     if (error) { toast.error("Fout bij opslaan: " + error.message); return; }
     toast.success("Station opgeslagen");
-    navigate(`/stations/${data.id}`);
+    navigate(caseUrl(data));
   };
 
   const datumLabel = form.datum ? new Date(form.datum).toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" }) : "Kies datum";

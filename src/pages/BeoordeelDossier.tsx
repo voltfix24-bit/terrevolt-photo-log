@@ -75,8 +75,9 @@ function MetaRij({ label, value, valueColor }: { label: string; value: string; v
   );
 }
 
-export default function BeoordeelDossier() {
-  const { id } = useParams<{ id: string }>();
+export default function BeoordeelDossier({ stationId }: { stationId?: string } = {}) {
+  const params = useParams<{ id: string }>();
+  const id = stationId ?? params.id;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
