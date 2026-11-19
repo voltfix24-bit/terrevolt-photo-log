@@ -370,6 +370,20 @@ export default function StationDetail() {
     setLightboxOpen(true);
   };
 
+  const downloadZip = async () => {
+    if (!station || !fotos || fotos.length === 0) {
+      toast.error("Geen foto's om te downloaden");
+      return;
+    }
+    const toastId = toast.loading("ZIP wordt voorbereid...");
+    try {
+      await downloadStationZip(station.naam_msr, fotos, (pct) => toast.loading(`ZIP wordt voorbereid... ${pct}%`, { id: toastId }));
+      toast.success("ZIP gedownload", { id: toastId });
+    } catch {
+      toast.error("ZIP download mislukt", { id: toastId });
+    }
+  };
+
   const openPdf = () => {
     if (!station || !fotos) return;
     const html = generatePdfHtml(station, fotos, instellingenData ?? undefined, opmerkingen ?? undefined, skipped.map(categorie => ({ categorie, reden: skippedReasons[categorie] || 'Geen reden opgegeven' })));
@@ -379,15 +393,26 @@ export default function StationDetail() {
     setTimeout(() => setShareOpen(true), 500);
   };
 
-  const openWizardAt = useCallback((cat: MergedCategory | Category) => {
+  const openWizardAt = useCallback(async (cat: MergedCategory | Category) => {
     if (station?.status === 'opgeleverd' || station?.status === 'goedgekeurd') {
-      toast.info('Dit dossier is opgeleverd en kan niet meer worden gewijzigd');
-      return;
+      // Opgeleverd: foto's blijven te bekijken; wijzigen alleen met toegangscode.
+      const ok = await requirePin("Dossier is opgeleverd", "Voer de toegangscode in om te wijzigen. Zonder code openen we alleen de foto's.");
+      if (!ok) {
+        const catFotos = fotosByCategorie(cat.name);
+        if (catFotos.length > 0) {
+          setLightboxSlides(catFotos.map((f) => ({ src: f.url })));
+          setLightboxIndex(0);
+          setLightboxOpen(true);
+        } else {
+          toast.info("Geen foto's in deze categorie");
+        }
+        return;
+      }
     }
     const idx = applicableCategories.findIndex(c => c.id === cat.id);
     setWizardStartIndex(idx >= 0 ? idx : 0);
     setWizardOpen(true);
-  }, [applicableCategories, station?.status]);
+  }, [applicableCategories, station?.status, fotosByCategorie]);
 
   useEffect(() => {
     const categoryId = Number(searchParams.get("categorie"));
@@ -486,7 +511,7 @@ export default function StationDetail() {
             </Pressable>
             <div className="flex items-center gap-2">
               <Pressable onClick={openPdf} style={{ minHeight: 44, padding: "0 8px", color: T.green, fontSize: 17 }}>Pdf</Pressable>
-              <Pressable onClick={() => setEditOpen(true)} style={{ minHeight: 44, padding: "0 4px 0 8px", color: T.green, fontSize: 17 }}>Wijzig</Pressable>
+              <Pressable onClick={async () => { if (vergrendeld && !(await requirePin("Dossier is opgeleverd", "Voer de toegangscode in om te wijzigen."))) return; setEditOpen(true); }} style={{ minHeight: 44, padding: "0 4px 0 8px", color: T.green, fontSize: 17 }}>Wijzig</Pressable>
             </div>
           </div>
 
@@ -599,10 +624,33 @@ export default function StationDetail() {
       )}
       {vergrendeld && !wizardOpen && (
         <GlassBar style={{ position: "fixed", left: 0, right: 0 }}>
-          <div className="max-w-3xl mx-auto" style={{ textAlign: "center", fontSize: 14, color: T.subOnBg, lineHeight: 1.4 }}>
-            {station?.status === 'goedgekeurd'
-              ? `Goedgekeurd door ${station?.opdrachtgever ?? 'de opdrachtgever'}. Dit dossier is afgesloten.`
-              : `Opgeleverd aan ${station?.opdrachtgever ?? 'de opdrachtgever'}. Wijzigen kan niet meer.`}
+          <div className="max-w-3xl mx-auto" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ textAlign: "center", fontSize: 14, color: T.subOnBg, lineHeight: 1.4 }}>
+              {station?.status === 'goedgekeurd'
+                ? `Goedgekeurd door ${station?.opdrachtgever ?? 'de opdrachtgever'}. Wijzigen kan alleen met de toegangscode.`
+                : `Opgeleverd aan ${station?.opdrachtgever ?? 'de opdrachtgever'}. Wijzigen kan alleen met de toegangscode.`}
+            </div>
+            <div className="flex gap-2.5">
+              <Pressable
+                onClick={() => {
+                  if (!fotos || fotos.length === 0) { toast.info("Geen foto's"); return; }
+                  setLightboxSlides(fotos.map((f) => ({ src: f.url })));
+                  setLightboxIndex(0);
+                  setLightboxOpen(true);
+                }}
+                style={{ flex: 1, minHeight: ROW_MIN, background: T.green, color: T.surface, borderRadius: R.control, fontSize: 17, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", gap: 9 }}
+              >
+                Foto's bekijken
+                <span className="material-symbols-rounded" style={{ fontSize: 20 }}>photo_library</span>
+              </Pressable>
+              <Pressable
+                onClick={downloadZip}
+                style={{ minHeight: ROW_MIN, padding: "0 16px", background: T.surface, color: T.green, borderRadius: R.control, fontSize: 17, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, flexShrink: 0 }}
+              >
+                <span className="material-symbols-rounded" style={{ fontSize: 20 }}>download</span>
+                ZIP
+              </Pressable>
+            </div>
           </div>
         </GlassBar>
       )}
