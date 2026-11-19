@@ -393,21 +393,18 @@ export default function StationDetail() {
     setTimeout(() => setShareOpen(true), 500);
   };
 
-  const openWizardAt = useCallback(async (cat: MergedCategory | Category) => {
+  const openWizardAt = useCallback((cat: MergedCategory | Category) => {
     if (station?.status === 'opgeleverd' || station?.status === 'goedgekeurd') {
-      // Opgeleverd: foto's blijven te bekijken; wijzigen alleen met toegangscode.
-      const ok = await requirePin("Dossier is opgeleverd", "Voer de toegangscode in om te wijzigen. Zonder code openen we alleen de foto's.");
-      if (!ok) {
-        const catFotos = fotosByCategorie(cat.name);
-        if (catFotos.length > 0) {
-          setLightboxSlides(catFotos.map((f) => ({ src: f.url })));
-          setLightboxIndex(0);
-          setLightboxOpen(true);
-        } else {
-          toast.info("Geen foto's in deze categorie");
-        }
-        return;
+      // Opgeleverd: foto's direct bekijken zonder code; wijzigen gaat via "Wijzig" (met code).
+      const catFotos = fotosByCategorie(cat.name);
+      if (catFotos.length > 0) {
+        setLightboxSlides(catFotos.map((f) => ({ src: f.url })));
+        setLightboxIndex(0);
+        setLightboxOpen(true);
+      } else {
+        toast.info("Geen foto's in deze categorie");
       }
+      return;
     }
     const idx = applicableCategories.findIndex(c => c.id === cat.id);
     setWizardStartIndex(idx >= 0 ? idx : 0);
