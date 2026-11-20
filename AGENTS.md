@@ -32,4 +32,4 @@
 - Queue only photos and notes offline; reject all other mutations without internet, and surface local persistence failures. Why: prevent false success and data loss.
 - All progress/completion uses the central photo rule, including category 31. Why: one consistent requirement.
 - Case import: logic in `src/lib/case-import.ts`, writes only via RPC `maak_case`; indieningen = rondes ≠ open, score per uitvoerder. Why: atomic retry-safe import, VG must not skew TerreVolt FTR.
-- On hold lives on `stations.on_hold*`; logic in `src/lib/on-hold.ts` (resuming clears the fields and appends a line to `dossier_notitie`, so only the current hold period is stored; wait/doorlooptijd subtract only that period). On the board an on-hold case is one card in the "On hold" group of `on_hold_partij` and doesn't count as open. Why: history without an extra table.
+- On hold: `stations.on_hold*` + `src/lib/on-hold.ts`; resume appends to `dossier_notitie`, only the current hold is stored and subtracted from wait time. Why: history without extra table.
