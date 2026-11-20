@@ -1,9 +1,9 @@
 import { normaliseer, nrSleutel } from "@/lib/case-service";
 import type { ToStatus } from "@/lib/to-rondes";
 
-export type ImportVeld = "casenummer" | "casenaam" | "status" | "ronde" | "wv" | "ingediend_op" | "notitie";
+export type ImportVeld = "casenummer" | "casenaam" | "status" | "ronde" | "wv" | "ingediend_op" | "notitie" | "on_hold" | "on_hold_reden";
 export const VELD_LABEL: Record<ImportVeld, string> = {
-  casenummer: "Casenummer", casenaam: "Casenaam", status: "TO-status", ronde: "Ronde", wv: "WV", ingediend_op: "Ingediend op", notitie: "Notitie",
+  casenummer: "Casenummer", casenaam: "Casenaam", status: "TO-status", ronde: "Ronde", wv: "WV", ingediend_op: "Ingediend op", notitie: "Notitie", on_hold: "On hold", on_hold_reden: "Reden on hold",
 };
 export const VELDEN = Object.keys(VELD_LABEL) as ImportVeld[];
 export type Mapping = (ImportVeld | null)[];
@@ -16,6 +16,8 @@ const SYNONIEMEN: Record<ImportVeld, string[]> = {
   wv: ["wv", "werkverantwoordelijke"],
   ingediend_op: ["datum", "ingediend", "ingediendop"],
   notitie: ["notitie", "opmerking", "opmerkingen"],
+  on_hold: ["onhold"],
+  on_hold_reden: ["reden", "onholdreden", "redenonhold"],
 };
 export const kopSleutel = (k: string) => k.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
 export function herkenKop(k: string): ImportVeld | null {
@@ -86,6 +88,7 @@ export type RijKlasse = "nieuw" | "waarschuwing" | "bestaat" | "fout";
 export type ImportPreviewRij = {
   regel: number; klasse: RijKlasse; redenen: string[];
   casenummer: string; casenaam: string; status: ToStatus; ronde: number; wv: string; ingediend_op: string | null; notitie: string;
+  on_hold: boolean; on_hold_reden: string;
 };
 
 export function bouwPreview(grid: string[][], m: Mapping, bestaand: Iterable<string>, opts: { excelSerial?: boolean } = {}): ImportPreviewRij[] {
@@ -111,6 +114,9 @@ export function bouwPreview(grid: string[][], m: Mapping, bestaand: Iterable<str
       if (!ingediend_op) { klasse = "fout"; redenen.unshift(`Ongeldige datum "${ruweDatum}"`); }
       else if (status === "open") { ingediend_op = null; if (klasse !== "fout") klasse = "waarschuwing"; redenen.push("Datum genegeerd bij TO open"); }
     }
+    const ruweHold = lees(r, "on_hold").toLowerCase();
+    const on_hold = ["ja", "j", "yes", "y", "true", "1", "x", "on hold"].includes(ruweHold);
+    if (ruweHold && !on_hold && !["nee", "n", "no", "false", "0", "-"].includes(ruweHold) && klasse !== "fout") { klasse = "waarschuwing"; redenen.push(`On hold "${ruweHold}" niet herkend → nee`); }
     if (!casenummer) { klasse = "fout"; redenen.unshift("Geen nr."); }
     if (!casenaam) { klasse = "fout"; redenen.unshift("Geen naam"); }
     if (casenummer.length > 100 || casenaam.length > 300) { klasse = "fout"; redenen.unshift("Te lang"); }
@@ -120,7 +126,7 @@ export function bouwPreview(grid: string[][], m: Mapping, bestaand: Iterable<str
       else if (gezien.has(k)) { klasse = "bestaat"; redenen.unshift("Dubbel in plaksel"); }
     }
     if (casenummer) gezien.add(k);
-    return { regel: idx + 2, klasse, redenen, casenummer, casenaam, status, ronde, wv: lees(r, "wv"), ingediend_op, notitie: kol("notitie") >= 0 ? (r[kol("notitie")] ?? "").trim() : "" };
+    return { regel: idx + 2, klasse, redenen, casenummer, casenaam, status, ronde, wv: lees(r, "wv"), ingediend_op, notitie: kol("notitie") >= 0 ? (r[kol("notitie")] ?? "").trim() : "", on_hold, on_hold_reden: on_hold ? lees(r, "on_hold_reden") : "" };
   });
 }
 export const importeerbaar = (rijen: ImportPreviewRij[]) => rijen.filter((r) => r.klasse === "nieuw" || r.klasse === "waarschuwing");

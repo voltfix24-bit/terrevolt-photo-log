@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { ToStatus, Uitvoerder } from "@/lib/to-rondes";
 
-export type NieuweCase = { casenummer: string; casenaam: string; uitvoerder: Uitvoerder; wv?: string; notitie?: string; ronde?: number; toStatus?: ToStatus; ingediendOp?: string | null };
+export type NieuweCase = { casenummer: string; casenaam: string; uitvoerder: Uitvoerder; wv?: string; notitie?: string; ronde?: number; toStatus?: ToStatus; ingediendOp?: string | null; onHold?: boolean; onHoldReden?: string };
 export type CaseResultaat = { ok: true; id: string } | { ok: false; fout: string; bestaat?: boolean };
 
 export const normaliseer = (v?: string | null) => (v ?? "").replace(/\s+/g, " ").trim();
@@ -27,6 +27,8 @@ export async function maakCase(c: NieuweCase): Promise<CaseResultaat> {
     ...(c.ronde && c.ronde !== 1 ? { _ronde: c.ronde } : {}),
     ...(c.toStatus && c.toStatus !== "open" ? { _to_status: c.toStatus } : {}),
     ...(c.ingediendOp ? { _ingediend_op: c.ingediendOp } : {}),
+    // On hold uit import: partij onbekend → TerreVolt (in maak_case)
+    ...(c.onHold ? { _on_hold: true, _on_hold_reden: normaliseer(c.onHoldReden) || undefined } : {}),
   });
   if (error) {
     if (error.code === "23505") return { ok: false, fout: `Casenummer ${normaliseer(c.casenummer)} bestaat al`, bestaat: true };

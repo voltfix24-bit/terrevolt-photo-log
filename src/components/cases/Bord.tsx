@@ -1,6 +1,7 @@
 // Bord "Wie moet wat doen": 4 kolommen, groepen per actie, compacte kaarten
 import { useState } from "react";
-import { ChevronDown, ChevronRight, CornerDownRight } from "lucide-react";
+import { ChevronDown, ChevronRight, CornerDownRight, PauseCircle } from "lucide-react";
+import { hervattenVoorbij } from "@/lib/on-hold";
 import { Pressable, T } from "@/components/apple/Primitives";
 import { UitvoeringLabel } from "@/components/cases/UitvoeringLabel";
 import { uitvoerderVan } from "@/lib/cases-filter";
@@ -16,11 +17,16 @@ const LANES: { key: Lane; sub: string }[] = [
 ];
 const MUTED = "#8A9A8D";
 const opslagKey = (l: Lane, g: GroepKey) => `cases-bord-groep:${l}:${g}`;
+const standaardDicht = (g: GroepKey) => g === "goedgekeurd" || g === "onhold";
 function leesDicht(l: Lane, g: GroepKey) {
-  try { const v = localStorage.getItem(opslagKey(l, g)); return v == null ? g === "goedgekeurd" : v === "1"; } catch { return g === "goedgekeurd"; }
+  try { const v = localStorage.getItem(opslagKey(l, g)); return v == null ? standaardDicht(g) : v === "1"; } catch { return standaardDicht(g); }
 }
 
 function Wacht({ i }: { i: BordItem }) {
+  if (i.groep === "onhold") {
+    const laat = hervattenVoorbij(i.c.station);
+    return <span style={{ fontSize: 12, whiteSpace: "nowrap", color: laat ? "#C2610C" : T.bodyOnBg, fontWeight: laat ? 600 : 400 }}>sinds {i.dagen === 1 ? "1 dag" : `${i.dagen} dagen`}{laat ? " · hervatten?" : ""}</span>;
+  }
   if (i.geenDatum) return <span style={{ fontSize: 12, color: MUTED, whiteSpace: "nowrap" }}>geen datum</span>;
   const rood = i.dagen >= 10;
   return <span style={{ fontSize: 12, whiteSpace: "nowrap", color: rood ? "#B33A3A" : T.bodyOnBg, fontWeight: rood ? 600 : 400 }}>{dagenTekst(i.dagen)}</span>;
@@ -42,7 +48,7 @@ function Kaart({ i, open }: { i: BordItem; open: (s: UrlStation) => void }) {
       </div>
       <div style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.25, color: T.titleOnBg, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{naam}</div>
       {toonStation && <div style={{ fontSize: 12, color: T.subOnBg, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{station}</div>}
-      {i.groep === "actiepunt" && (
+      {(i.groep === "actiepunt" || i.groep === "onhold") && (
         <div style={{ display: "flex", alignItems: "flex-start", gap: 4, fontSize: 12.5, color: "#1F5C3A" }}>
           <CornerDownRight size={14} style={{ flexShrink: 0, marginTop: 1 }} />
           <span>{i.txt}{i.lane === "Derden" && i.label !== "Derden" ? ` · ${i.label}` : ""}</span>
@@ -65,6 +71,7 @@ function Groep({ lane, g, titel, items, open }: { lane: Lane; g: GroepKey; titel
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <button type="button" onClick={toggle} aria-expanded={!dicht} style={{ display: "flex", alignItems: "center", gap: 6, padding: "2px 2px", color: kleur, background: "none", border: 0, cursor: "pointer", textAlign: "left" }}>
         <Chev size={16} />
+        {g === "onhold" && <PauseCircle size={15} />}
         <span style={{ fontSize: 13, fontWeight: 700 }}>{titel}</span>
         <span style={{ fontSize: 12, fontWeight: 600, background: T.surface, color: T.bodyOnBg, borderRadius: 10, padding: "1px 8px" }}>{items.length}</span>
       </button>

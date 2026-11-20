@@ -49,7 +49,7 @@ export function ExcelImportDialog({ open, onOpenChange, bestaand }: { open: bool
     setBezig(true); setFout(null);
     const nieuw: Resultaat = { ...res };
     for (const r of teDoen) {
-      const x = await maakCase({ casenummer: r.casenummer, casenaam: r.casenaam, wv: r.wv, notitie: r.notitie, uitvoerder: "van_gelder", ronde: r.ronde, toStatus: r.status, ingediendOp: r.ingediend_op });
+      const x = await maakCase({ casenummer: r.casenummer, casenaam: r.casenaam, wv: r.wv, notitie: r.notitie, uitvoerder: "van_gelder", ronde: r.ronde, toStatus: r.status, ingediendOp: r.ingediend_op, onHold: r.on_hold, onHoldReden: r.on_hold_reden });
       // "bestaat al" bij een herhaalde poging = eerder al aangemaakt: niet dubbel, telt als klaar
       nieuw[r.regel] = x.ok || ("bestaat" in x && x.bestaat && res[r.regel]) ? { ok: true } : { ok: false, fout: "fout" in x ? x.fout : "Mislukt" };
       setRes({ ...nieuw });

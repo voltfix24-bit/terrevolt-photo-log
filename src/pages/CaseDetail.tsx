@@ -12,6 +12,8 @@ import {
 } from "@/lib/to-rondes";
 import { VgVelden } from "@/components/cases/VgVelden";
 import { UitvoeringLabel } from "@/components/cases/UitvoeringLabel";
+import { OnHoldBalk, OnHoldKnop } from "@/components/cases/OnHold";
+import { dagenZonderHold } from "@/lib/on-hold";
 
 const SUB = T.bodyOnBg;
 const card = { background: T.surface, borderRadius: 16, padding: "20px 22px" } as const;
@@ -82,12 +84,12 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
     { k: "Aantal keer ingediend", v: String(indieningen(rondes)), fg: T.titleOnBg },
     { k: "First time right", v: ftr, fg: ftr === "Ja" ? T.green : ftr === "Nee" ? T.danger : SUB },
     { k: "Eerste indiening", v: fmtDatum(first?.ingediend_op), fg: T.titleOnBg },
-    { k: "Doorlooptijd", v: first?.ingediend_op ? dagenTekst(dagenSinds(first.ingediend_op, apprIdx >= 0 ? rondes[apprIdx].reactie_op : null)) : "—", fg: T.titleOnBg },
+    { k: "Doorlooptijd", v: first?.ingediend_op ? dagenTekst(dagenZonderHold(first.ingediend_op, apprIdx >= 0 ? rondes[apprIdx].reactie_op : null, station)) : "—", fg: T.titleOnBg },
     { k: "Afkeurredenen totaal", v: String(rondes.reduce((t, r) => t + r.redenen.length, 0)), fg: T.titleOnBg },
   ];
   const dateLine = !cur?.ingediend_op ? "Nog niet ingediend"
     : `Ingediend ${fmtDatum(cur.ingediend_op)} bij ${cur.ingediend_bij ?? "Van Gelder"}` +
-      (cur.reactie_op ? ` · reactie ${fmtDatum(cur.reactie_op)} (${dagenTekst(dagenSinds(cur.ingediend_op, cur.reactie_op))})` : ` · ${dagenTekst(dagenSinds(cur.ingediend_op))} in behandeling`);
+      (cur.reactie_op ? ` · reactie ${fmtDatum(cur.reactie_op)} (${dagenTekst(dagenSinds(cur.ingediend_op, cur.reactie_op))})` : ` · ${dagenTekst(dagenZonderHold(cur.ingediend_op, null, station))} in behandeling`);
   const vg = station.uitvoerder === "van_gelder";
   const placeholder = { open: vg ? "Bijv. wacht op stukken van Van Gelder" : "Bijv. wacht op laatste foto's", controle: "Bijv. Van Gelder heeft doorgezet naar Liander", afgekeurd: "Toelichting van Van Gelder / Liander", goedgekeurd: "Bijv. goedgekeurd door Liander, kenmerk …" }[curStatus];
 
@@ -101,9 +103,11 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
         </Pressable>
         <span style={{ color: T.softBorder }}>/</span>
         <span className="font-mono" style={{ fontSize: 15, color: SUB }}>{caseNr(station)}</span>
+        {!station.on_hold && <OnHoldKnop id={station.id} />}
       </div>
 
       <main style={{ padding: "24px 24px 60px", maxWidth: 1400, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+        {station.on_hold && <OnHoldBalk id={station.id} station={station} />}
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
           <div style={{ minWidth: 0 }}>
             <div className="font-mono" style={{ fontSize: 15, fontWeight: 600, color: T.bodyOnBg }}>Case {caseNr(station)}{station.is_nummer ? <span style={{ fontSize: 12, fontWeight: 500, color: SUB, marginLeft: 8 }}>{String(station.is_nummer)}</span> : null}</div>

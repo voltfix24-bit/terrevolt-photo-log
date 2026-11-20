@@ -1,5 +1,6 @@
 // Variant 1b — "Gegroepeerd op wat moet ik doen"
 // Drop-in vervanging voor src/pages/Index.tsx. Data, routes, queries en acties blijven gelijk.
+import { OnHoldLabel } from "@/components/cases/OnHoldLabel";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { categorieKlaar } from "@/lib/foto-regels";
 import { internetVereist } from "@/lib/internet";
@@ -111,6 +112,7 @@ function StationKaart({ item, soort, onOpen, onMeer }: { item: StationItem; soor
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
             <span style={{ flex: 1, minWidth: 0, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 12, color: SUB, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nr}</span>
+            {st.on_hold && <OnHoldLabel />}
             <span style={{ flexShrink: 0, fontSize: 12, color: duurLaat ? "#C2610C" : SUB, fontWeight: duurLaat ? 600 : 400 }}>{duur}</span>
           </div>
           <div className="font-display" style={{ marginTop: 2, color: T.titleOnBg, fontSize: 18, fontWeight: 600, lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{naam}</div>

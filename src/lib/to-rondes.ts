@@ -11,7 +11,7 @@ export type ToActie = { id: string; ronde_id: string; station_id: string; omschr
 export type ToRonde = { id: string; station_id: string; nummer: number; status: ToStatus; ingediend_op: string | null; ingediend_bij: "Van Gelder" | "Liander" | null; reactie_op: string | null; redenen: string[]; notitie: string | null; to_acties: ToActie[] };
 export type BalItem = { wie: Partij; label: string; txt: string; dagen: number; geenDatum?: boolean };
 export type Uitvoerder = "terrevolt" | "van_gelder";
-export type CaseStation = { id: string; naam_msr: string; casenummer: string | null; casenaam: string | null; behuizingsnummer: string | null; status: string | null; dossier_status: string | null; dossier_notitie: string | null; case_verborgen: boolean; created_at: string | null; uitvoerder: Uitvoerder; wv: string | null; is_nummer: string | null; tg: boolean };
+export type CaseStation = { id: string; naam_msr: string; casenummer: string | null; casenaam: string | null; behuizingsnummer: string | null; status: string | null; dossier_status: string | null; dossier_notitie: string | null; case_verborgen: boolean; created_at: string | null; uitvoerder: Uitvoerder; wv: string | null; is_nummer: string | null; tg: boolean } & HoldVelden;
 export type CaseItem = { station: Partial<CaseStation> & { id: string } & Record<string, unknown>; rondes: ToRonde[]; last: ToRonde | null; bal: BalItem[] };
 
 export const TO_STATUS: Record<ToStatus, { label: string; dot: string; bg: string; fg: string }> = {
@@ -46,6 +46,8 @@ export const REDENEN: { key: string; label: string }[] = [
 ];
 export const REDEN_LABEL = Object.fromEntries(REDENEN.map((r) => [r.key, r.label]));
 
+import { dagenZonderHold, type HoldVelden } from "@/lib/on-hold";
+
 export const vandaag = () => new Date().toISOString().slice(0, 10);
 export const dagenSinds = (d?: string | null, tot?: string | null) =>
   d ? Math.max(0, Math.round(((tot ? new Date(tot).getTime() : Date.now()) - new Date(d).getTime()) / 86400000)) : 0;
@@ -72,7 +74,8 @@ export const dagenTekst = (d: number) => (d <= 0 ? "vandaag" : d === 1 ? "1 dag"
 // Alleen gezet als er geen datum is, zodat het bord die kaarten onderaan zet
 const nd = (d?: string | null) => (d ? {} : { geenDatum: true as const });
 
-export function balVan(station: { dossier_status?: string | null }, rondes: ToRonde[]): BalItem[] {
+export function balVan(station: { dossier_status?: string | null } & HoldVelden, rondes: ToRonde[]): BalItem[] {
+  const dagenSinds = (d?: string | null) => dagenZonderHold(d, null, station);
   const n = rondes.length;
   const r = rondes[n - 1];
   if (!r || r.status === "open") {
@@ -100,7 +103,7 @@ export function useCases(opts?: { inclVerborgen?: boolean }) {
     queryFn: async (): Promise<CaseItem[]> => {
       const { data, error } = await db
         .from("stations")
-        .select("id, naam_msr, casenummer, casenaam, behuizingsnummer, status, dossier_status, dossier_notitie, case_verborgen, created_at, uitvoerder, wv, is_nummer, tg, to_rondes(*, to_acties(*))")
+        .select("id, naam_msr, casenummer, casenaam, behuizingsnummer, status, dossier_status, dossier_notitie, case_verborgen, created_at, uitvoerder, wv, is_nummer, tg, on_hold, on_hold_reden, on_hold_sinds, on_hold_tot, on_hold_partij, to_rondes(*, to_acties(*))")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? [])

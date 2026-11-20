@@ -509,6 +509,11 @@ export type Database = {
           ingevuld_door: string | null
           is_nummer: string | null
           naam_msr: string
+          on_hold: boolean
+          on_hold_partij: Database["public"]["Enums"]["on_hold_partij"] | null
+          on_hold_reden: string | null
+          on_hold_sinds: string | null
+          on_hold_tot: string | null
           opdrachtgever: string | null
           review_reden: string | null
           status: string | null
@@ -535,6 +540,11 @@ export type Database = {
           ingevuld_door?: string | null
           is_nummer?: string | null
           naam_msr: string
+          on_hold?: boolean
+          on_hold_partij?: Database["public"]["Enums"]["on_hold_partij"] | null
+          on_hold_reden?: string | null
+          on_hold_sinds?: string | null
+          on_hold_tot?: string | null
           opdrachtgever?: string | null
           review_reden?: string | null
           status?: string | null
@@ -561,6 +571,11 @@ export type Database = {
           ingevuld_door?: string | null
           is_nummer?: string | null
           naam_msr?: string
+          on_hold?: boolean
+          on_hold_partij?: Database["public"]["Enums"]["on_hold_partij"] | null
+          on_hold_reden?: string | null
+          on_hold_sinds?: string | null
+          on_hold_tot?: string | null
           opdrachtgever?: string | null
           review_reden?: string | null
           status?: string | null
@@ -709,6 +724,8 @@ export type Database = {
           _casenummer: string
           _ingediend_op?: string
           _notitie?: string
+          _on_hold?: boolean
+          _on_hold_reden?: string
           _ronde?: number
           _to_status?: string
           _uitvoerder?: Database["public"]["Enums"]["case_uitvoerder"]
@@ -724,6 +741,7 @@ export type Database = {
     Enums: {
       app_role: "admin"
       case_uitvoerder: "terrevolt" | "van_gelder"
+      on_hold_partij: "terrevolt" | "van_gelder" | "liander" | "derden"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -853,6 +871,7 @@ export const Constants = {
     Enums: {
       app_role: ["admin"],
       case_uitvoerder: ["terrevolt", "van_gelder"],
+      on_hold_partij: ["terrevolt", "van_gelder", "liander", "derden"],
     },
   },
 } as const

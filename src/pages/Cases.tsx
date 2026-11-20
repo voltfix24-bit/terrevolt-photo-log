@@ -3,6 +3,7 @@ import { useState } from "react";
 import { FileUp, Plus } from "lucide-react";
 import { CaseToevoegenDialog } from "@/components/cases/CaseToevoegenDialog";
 import { Bord } from "@/components/cases/Bord";
+import { OnHoldLabel } from "@/components/cases/OnHoldLabel";
 import { ExcelImportDialog } from "@/components/cases/ExcelImportDialog";
 import { FILTER_OPTIES, bewaarFilter, filterCases, leesFilter, tellingen, uitvoerderVan, type UitvoerderFilter } from "@/lib/cases-filter";
 import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
@@ -82,7 +83,10 @@ function Score({ cases, open, perUitvoerder }: { cases: CaseItem[]; open: (s: Ur
             <Pressable key={c.station.id} onClick={() => open(c.station)} scale={0.99} style={{ display: "grid", gridTemplateColumns: cols, gap: 12, padding: "11px 18px", alignItems: "center", fontSize: 14, borderBottom: "1px solid #F0F3EF", width: "100%", textAlign: "left", minWidth: 620 }}>
               <span className="font-mono" style={{ fontWeight: 600 }}>{caseNr(c.station)}</span>
               <span style={{ minWidth: 0 }}>
-                <span style={{ display: "block", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{caseNaam(c.station)}</span>
+                <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                  <span style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{caseNaam(c.station)}</span>
+                  {c.station.on_hold && <OnHoldLabel />}
+                </span>
                 {caseSub(c.station) && <span style={{ display: "block", fontSize: 12, color: T.subOnBg, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{caseSub(c.station)}</span>}
               </span>
               <span style={{ display: "flex", gap: 4 }}>
