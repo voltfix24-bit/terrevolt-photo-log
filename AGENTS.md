@@ -15,3 +15,7 @@
 - No app-shell service worker: manifest-only install; `public/sw.js` is a kill-switch that clears old vite-plugin-pwa caches. Why: stale precache caused blank screens on iPhone Safari.
 - Edge functions validate input with zod, require a Bearer header and return generic error text (details only in logs). Why: no internal errors leak to callers.
 - Storage `branding`: anon may insert/read only, never update/delete. Why: logos can't be overwritten from outside; uploads use new filenames.
+- Photo writes go through `src/lib/fotos-service.ts` (upload + DB insert, idempotent by storage_path; row deleted before file); station delete/SharePoint status via `src/lib/station-service.ts`. Why: no false success, retry-safe.
+- Offline queue items are removed only after storage+DB succeed; failed items get status 'error' and retry with a stable path `q_{queueId}`. Why: no lost or duplicate photos.
+- Required photos per category live only in `src/lib/foto-regels.ts` (default 1, no overrides until the user confirms). Why: one rule, no regressions.
+- `generatePdfHtml` escapes all text and validates urls/HSL before building HTML. Why: no script injection in printed reports.

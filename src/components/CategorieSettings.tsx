@@ -49,6 +49,8 @@ export function CategorieSettingsDialog({ open, onOpenChange }: { open: boolean;
 
   const handleUpload = async (categorie: string, files: FileList) => {
     setUploading(categorie);
+    let gelukt = 0, mislukt = 0;
+    try {
     for (const file of Array.from(files)) {
       if (file.size > MAX_SIZE) { toast.error(`${file.name} is groter dan 10MB`); continue; }
 
@@ -61,24 +63,38 @@ export function CategorieSettingsDialog({ open, onOpenChange }: { open: boolean;
 
       const path = `voorbeelden/${categorie.replace(/[^a-z0-9]/gi, "_")}/${Date.now()}_${file.name}`;
       const { error } = await supabase.storage.from("to-fotos").upload(path, compressed);
-      if (error) { toast.error(`Upload mislukt: ${error.message}`); continue; }
+      if (error) { toast.error(`Upload mislukt: ${file.name}`); mislukt++; continue; }
 
       const { data: urlData } = supabase.storage.from("to-fotos").getPublicUrl(path);
-      await supabase.from("categorie_voorbeelden").insert({
+      const { error: insErr } = await supabase.from("categorie_voorbeelden").insert({
         categorie,
         url: urlData.publicUrl,
         storage_path: path,
       });
+      if (insErr) {
+        mislukt++;
+        const { error: rmErr } = await supabase.storage.from("to-fotos").remove([path]);
+        if (rmErr) console.error("[voorbeelden] bestand zonder registratie:", path);
+        toast.error(`${file.name} is niet opgeslagen`);
+        continue;
+      }
+      gelukt++;
     }
-    queryClient.invalidateQueries({ queryKey: ["categorie_voorbeelden"] });
-    setUploading(null);
-    toast.success("Voorbeeld foto geüpload ✓");
+    } catch (e) {
+      console.error(e); mislukt++; toast.error("Upload mislukt");
+    } finally {
+      queryClient.invalidateQueries({ queryKey: ["categorie_voorbeelden"] });
+      setUploading(null);
+    }
+    if (gelukt > 0) toast.success(mislukt ? `${gelukt} geüpload, ${mislukt} mislukt` : "Voorbeeld foto geüpload ✓");
   };
 
   const handleDelete = async (v: VoorbeeldFoto) => {
-    await supabase.storage.from("to-fotos").remove([v.storage_path]);
-    await supabase.from("categorie_voorbeelden").delete().eq("id", v.id);
+    const { error } = await supabase.from("categorie_voorbeelden").delete().eq("id", v.id);
     queryClient.invalidateQueries({ queryKey: ["categorie_voorbeelden"] });
+    if (error) { toast.error("Verwijderen mislukt"); return; }
+    const { error: rmErr } = await supabase.storage.from("to-fotos").remove([v.storage_path]);
+    if (rmErr) console.error("[voorbeelden] bestand niet verwijderd:", v.storage_path);
     toast.success("Voorbeeld verwijderd");
   };
 

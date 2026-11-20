@@ -11,6 +11,8 @@ interface OfflineDB extends DBSchema {
       fileName: string;
       timestamp: string;
       status: 'pending' | 'uploading' | 'done' | 'error';
+      pogingen?: number;
+      laatsteFout?: string;
     };
     indexes: { 'by-station': string; 'by-status': string };
   };
@@ -54,9 +56,10 @@ export async function getPendingPhotos(stationId?: string) {
   const db = await getDB();
   if (stationId) {
     return (await db.getAllFromIndex('photo-queue', 'by-station', stationId))
-      .filter(p => p.status === 'pending');
+      .filter(p => p.status !== 'done');
   }
-  return db.getAllFromIndex('photo-queue', 'by-status', 'pending');
+  // Ook items met een eerdere fout opnieuw proberen
+  return (await db.getAll('photo-queue')).filter(p => p.status !== 'done');
 }
 
 export async function markDone(id: string) {
@@ -65,6 +68,12 @@ export async function markDone(id: string) {
   if (item) {
     await db.put('photo-queue', { ...item, status: 'done' });
   }
+}
+
+export async function markError(id: string, fout: string) {
+  const db = await getDB();
+  const item = await db.get('photo-queue', id);
+  if (item) await db.put('photo-queue', { ...item, status: 'error', pogingen: (item.pogingen ?? 0) + 1, laatsteFout: fout.slice(0, 300) });
 }
 
 export async function clearDone() {
@@ -77,6 +86,5 @@ export async function clearDone() {
 
 export async function getQueueCount(): Promise<number> {
   const db = await getDB();
-  const pending = await db.getAllFromIndex('photo-queue', 'by-status', 'pending');
-  return pending.length;
+  return (await db.getAll('photo-queue')).filter(p => p.status !== 'done').length;
 }

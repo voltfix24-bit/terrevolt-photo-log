@@ -1,6 +1,7 @@
 // Variant 1b — "Gegroepeerd op wat moet ik doen"
 // Drop-in vervanging voor src/pages/Index.tsx. Data, routes, queries en acties blijven gelijk.
 import { useEffect, useMemo, useRef, useState } from "react";
+import { verwijderStation } from "@/lib/station-service";
 import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { caseUrl } from "@/lib/urls";
 import { useNavigate } from "react-router-dom";
@@ -208,7 +209,11 @@ export default function Dashboard() {
   };
 
   const downloadZip = async (station: any) => {
-    try { await downloadStationZip(station.naam_msr, station.fotos ?? []); toast.success("Zip gedownload"); }
+    try {
+      const r = await downloadStationZip(station.naam_msr, station.fotos ?? []);
+      if (r.mislukt > 0) toast.warning(`Zip gedownload, maar ${r.mislukt} van ${r.totaal} foto's ontbreken`, { duration: 8000 });
+      else toast.success("Zip gedownload");
+    }
     catch { toast.error("Zip downloaden mislukt"); }
   };
 
@@ -218,14 +223,10 @@ export default function Dashboard() {
     setDeleteTarget(null);
     const unlocked = await requirePin("Station verwijderen", `Voer de toegangscode in om "${target.naam}" definitief te verwijderen.`);
     if (!unlocked) return;
-    const { data: photos } = await supabase.from("fotos").select("storage_path").eq("station_id", target.id);
-    if (photos?.length) {
-      await supabase.storage.from("to-fotos").remove(photos.map((p) => p.storage_path));
-      await supabase.from("fotos").delete().eq("station_id", target.id);
-    }
-    const { error } = await supabase.from("stations").delete().eq("id", target.id);
-    if (error) { toast.error("Verwijderen mislukt"); return; }
+    const r = await verwijderStation(target.id);
     queryClient.invalidateQueries({ queryKey: ["stations"] });
+    if (!r.ok) { toast.error("Verwijderen mislukt — probeer opnieuw"); return; }
+    if (r.bestandenOver) console.warn(`${r.bestandenOver} fotobestanden niet opgeruimd`);
     toast.success("Station verwijderd");
   };
 

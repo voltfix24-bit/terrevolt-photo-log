@@ -34,11 +34,15 @@ function AppContent() {
           toast.loading(`Verbinding hersteld — ${count} foto's uploaden...`, { id: 'sync-toast' });
           syncPendingPhotos((done, total) => {
             toast.loading(`${done}/${total} foto's uploaden...`, { id: 'sync-toast' });
-          }).then(done => {
-            if (done > 0) {
-              toast.success(`${done} foto's gesynchroniseerd ✓`, { id: 'sync-toast' });
+          }).then(({ gelukt, mislukt }) => {
+            if (gelukt > 0) {
               queryClient.invalidateQueries({ queryKey: ["fotos"] });
               queryClient.invalidateQueries({ queryKey: ["stations"] });
+            }
+            if (mislukt > 0) {
+              toast.error(`${mislukt} foto${mislukt > 1 ? "'s" : ""} nog niet geüpload${gelukt ? ` (${gelukt} wel)` : ""} — blijft bewaard en wordt later opnieuw geprobeerd`, { id: 'sync-toast', duration: 8000 });
+            } else if (gelukt > 0) {
+              toast.success(`${gelukt} foto's gesynchroniseerd ✓`, { id: 'sync-toast' });
             } else {
               toast.dismiss('sync-toast');
             }

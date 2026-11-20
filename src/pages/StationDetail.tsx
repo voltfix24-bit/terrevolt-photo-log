@@ -1,4 +1,6 @@
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { categorieKlaar } from "@/lib/foto-regels";
+import { nieuwPad, uploadEnRegistreer, verwijderFoto } from "@/lib/fotos-service";
 import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { WizardView } from "@/components/WizardView";
 import { SharePointStatus } from "@/components/SharePointStatus";
@@ -302,9 +304,9 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
     [fotos]
   );
 
-  // Categorie 31 ("Stroomtransformatoren") vereist 3 foto's, alle anderen 1.
+  // Aantal benodigde foto's staat centraal in src/lib/foto-regels.ts
   const catDone = useCallback(
-    (c: { id: number; name: string }) => fotosByCategorie(c.name).length >= 1,
+    (c: { id: number; name: string }) => categorieKlaar(c.id, fotosByCategorie(c.name).length),
     [fotosByCategorie]
   );
 
@@ -319,6 +321,7 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
 
   // Geeft de bestandsnamen terug die NIET zijn opgeslagen (te groot, ongeldig type of mislukte upload),
   // zodat de wizard de bijbehorende lokale previews kan verwijderen.
+  const uploadBezig = useRef<Set<string>>(new Set());
   const handleUpload = async (categorie: string, files: FileList): Promise<string[]> => {
     const mislukt: string[] = [];
     if (!isOnline) {
@@ -337,41 +340,46 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
       return mislukt;
     }
 
+    if (uploadBezig.current.has(categorie)) { toast.info("Upload loopt al voor deze categorie"); return Array.from(files).map((f) => f.name); }
+    uploadBezig.current.add(categorie);
     setUploadingCat(categorie);
-    const catSlug = slugify(categorie);
     const total = files.length;
     let done = 0;
-
-    for (const file of Array.from(files)) {
-      if (file.size > MAX_SIZE) { toast.error(`${file.name} is groter dan 10MB`); mislukt.push(file.name); continue; }
-      if (!ACCEPTED.includes(file.type) && !file.name.toLowerCase().endsWith(".heic")) { toast.error(`${file.name}: ongeldig bestandstype`); mislukt.push(file.name); continue; }
-
-      const compressed = await compressImage(file);
-      const storagePath = `stations/${id}/${catSlug}/${Date.now()}_${file.name}`;
-      const { error: uploadError } = await supabase.storage.from("to-fotos").upload(storagePath, compressed);
-      if (uploadError) { toast.error(`Upload mislukt: ${uploadError.message}`); mislukt.push(file.name); continue; }
-
-      const { data: urlData } = supabase.storage.from("to-fotos").getPublicUrl(storagePath);
-      await supabase.from("fotos").insert({ station_id: id!, categorie, storage_path: storagePath, url: urlData.publicUrl, volgorde: fotosByCategorie(categorie).length + done, uploaded_at: new Date().toISOString() });
-
-      done++;
-      setUploadProgress((p) => ({ ...p, [categorie]: Math.round((done / total) * 100) }));
+    try {
+      for (const file of Array.from(files)) {
+        if (file.size > MAX_SIZE) { toast.error(`${file.name} is groter dan 10MB`); mislukt.push(file.name); continue; }
+        if (!ACCEPTED.includes(file.type) && !file.name.toLowerCase().endsWith(".heic")) { toast.error(`${file.name}: ongeldig bestandstype`); mislukt.push(file.name); continue; }
+        try {
+          const compressed = await compressImage(file);
+          const r = await uploadEnRegistreer(nieuwPad(id!, categorie, file.name), compressed, { stationId: id!, categorie, volgorde: fotosByCategorie(categorie).length + done });
+          if ("stap" in r) {
+            toast.error(r.stap === "opslag" ? `Upload mislukt: ${file.name}` : `${file.name} is niet opgeslagen in de app — probeer opnieuw`);
+            mislukt.push(file.name); continue;
+          }
+          done++;
+          setUploadProgress((p) => ({ ...p, [categorie]: Math.round((done / total) * 100) }));
+        } catch (e) {
+          console.error("upload mislukt", e);
+          toast.error(`Upload mislukt: ${file.name}`); mislukt.push(file.name);
+        }
+      }
+    } finally {
+      uploadBezig.current.delete(categorie);
+      queryClient.invalidateQueries({ queryKey: ["fotos", id] });
+      queryClient.invalidateQueries({ queryKey: ["stations"] });
+      setUploadingCat(null);
+      setUploadProgress((p) => { const next = { ...p }; delete next[categorie]; return next; });
     }
-
-    queryClient.invalidateQueries({ queryKey: ["fotos", id] });
-    queryClient.invalidateQueries({ queryKey: ["stations"] });
-    setUploadingCat(null);
-    setUploadProgress((p) => { const next = { ...p }; delete next[categorie]; return next; });
-    if (done > 0) toast.success("Foto's geüpload ✓");
+    if (done > 0) toast.success(done === total ? "Foto's geüpload ✓" : `${done} van ${total} foto's geüpload`);
     if (done > 0 && isSkipped(categorie)) { removeSkip(categorie); toast.info("N.v.t. opgeheven: er is toch een foto"); }
     return mislukt;
   };
 
   const handleDelete = async (fotoId: string, storagePath: string) => {
-    await supabase.storage.from("to-fotos").remove([storagePath]);
-    await supabase.from("fotos").delete().eq("id", fotoId);
+    const r = await verwijderFoto(fotoId, storagePath);
     queryClient.invalidateQueries({ queryKey: ["fotos", id] });
     queryClient.invalidateQueries({ queryKey: ["stations"] });
+    if (!r.ok) { toast.error("Foto verwijderen mislukt — probeer opnieuw"); return; }
     toast.success("Foto verwijderd");
   };
 
@@ -389,8 +397,9 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
     }
     const toastId = toast.loading("ZIP wordt voorbereid...");
     try {
-      await downloadStationZip(station.naam_msr, fotos, (pct) => toast.loading(`ZIP wordt voorbereid... ${pct}%`, { id: toastId }));
-      toast.success("ZIP gedownload", { id: toastId });
+      const r = await downloadStationZip(station.naam_msr, fotos, (pct) => toast.loading(`ZIP wordt voorbereid... ${pct}%`, { id: toastId }));
+      if (r.mislukt > 0) toast.warning(`ZIP gedownload, maar ${r.mislukt} van ${r.totaal} foto's ontbreken`, { id: toastId, duration: 8000 });
+      else toast.success("ZIP gedownload", { id: toastId });
     } catch {
       toast.error("ZIP download mislukt", { id: toastId });
     }
@@ -743,8 +752,9 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
                 }
                 const toastId = toast.loading("ZIP wordt voorbereid...");
                 try {
-                  await downloadStationZip(station.naam_msr, fotos, (pct) => toast.loading(`ZIP wordt voorbereid... ${pct}%`, { id: toastId }));
-                  toast.success("ZIP gedownload", { id: toastId });
+                  const r = await downloadStationZip(station.naam_msr, fotos, (pct) => toast.loading(`ZIP wordt voorbereid... ${pct}%`, { id: toastId }));
+                  if (r.mislukt > 0) toast.warning(`ZIP gedownload, maar ${r.mislukt} van ${r.totaal} foto's ontbreken`, { id: toastId, duration: 8000 });
+                  else toast.success("ZIP gedownload", { id: toastId });
                 } catch {
                   toast.error("ZIP download mislukt", { id: toastId });
                 }

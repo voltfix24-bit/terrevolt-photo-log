@@ -84,7 +84,7 @@ export default function Opleveren({ stationId }: { stationId?: string } = {}) {
       body: { station_id: id, opdrachtgever: client, submitted_by: monteur },
     });
     setVersturen(false);
-    if (error) {
+    if (error || (data as { ok?: boolean } | null)?.ok !== true) {
       toast.error("Opleveren mislukt. Probeer het opnieuw.");
       return;
     }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { sharepointStatusBijwerken } from "@/lib/station-service";
 import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -177,7 +178,8 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
 
   const keurGoed = useCallback(async () => {
     if (!selected) return;
-    await supabase.from("fotos").update({ review_status: "approved", review_reden: null, reviewed_at: new Date().toISOString() }).eq("id", selected.id);
+    const { error } = await supabase.from("fotos").update({ review_status: "approved", review_reden: null, reviewed_at: new Date().toISOString() }).eq("id", selected.id);
+    if (error) { toast.error("Goedkeuren mislukt — probeer opnieuw"); return; }
     volgende();
     ververs();
   }, [selected, volgende]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -185,22 +187,27 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
   const bevestigAfkeuren = async () => {
     if (!rejectFor || !id) return;
     const tekst = reden === "Anders" ? (toelichting.trim() || "Anders") : `${reden}${toelichting.trim() ? ` — ${toelichting.trim()}` : ""}`;
-    await supabase.from("fotos").update({ review_status: "rejected", review_reden: tekst, reviewed_at: new Date().toISOString() }).eq("id", rejectFor);
-    await supabase.from("stations").update({ status: "in uitvoering", review_reden: tekst }).eq("id", id);
-    supabase.functions.invoke("sharepoint-sync", { body: { station_id: id, alleen_status: true } }).catch(() => {});
+    const { error: fErr } = await supabase.from("fotos").update({ review_status: "rejected", review_reden: tekst, reviewed_at: new Date().toISOString() }).eq("id", rejectFor);
+    if (fErr) { toast.error("Afkeuren mislukt — probeer opnieuw"); return; }
+    const { error: sErr } = await supabase.from("stations").update({ status: "in uitvoering", review_reden: tekst }).eq("id", id);
+    if (sErr) { ververs(); toast.error("Foto afgekeurd, maar de taak is niet heropend bij de monteur — probeer opnieuw"); return; }
+    const spOk = await sharepointStatusBijwerken(id);
     setRejectFor(null);
     setToelichting("");
     setReden(REDENEN[0]);
     ververs();
     toast.success("Afgekeurd — de taak staat weer open bij de monteur");
+    if (!spOk) toast.error("Status in SharePoint is niet bijgewerkt — zie SharePoint-status bij het station");
   };
 
   const afronden = async () => {
     if (!id || tellingen.pending > 0) return;
-    await supabase.from("stations").update({ status: "goedgekeurd", review_reden: null }).eq("id", id);
-    supabase.functions.invoke("sharepoint-sync", { body: { station_id: id, alleen_status: true } }).catch(() => {});
+    const { error } = await supabase.from("stations").update({ status: "goedgekeurd", review_reden: null }).eq("id", id);
+    if (error) { toast.error("Goedkeuren van het dossier mislukt — probeer opnieuw"); return; }
+    const spOk = await sharepointStatusBijwerken(id);
     ververs();
     toast.success("Dossier goedgekeurd en afgesloten");
+    if (!spOk) toast.error("Status in SharePoint is niet bijgewerkt — zie SharePoint-status bij het station");
   };
 
   const openRapport = async () => {
