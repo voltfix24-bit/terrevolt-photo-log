@@ -1,0 +1,5 @@
+- SharePoint logic is shared in `supabase/functions/_shared/sharepoint.ts` (used by `sharepoint-sync` and `sharepoint-weekly`); `supabase/functions/_shared/sharepoint-categories.ts` is a copy of SECTIONS/CATEGORIES (id, section, name) and must be regenerated when categories change. Why: edge functions can't import src/.
+- `sharepoint-weekly` mirrors all stations; cron fires Sat/Sun 23:00+00:00 UTC and the function only runs when Amsterdam is Sunday 01:xx, chaining batches of 2 via the cron secret. Why: DST-safe and avoids edge time limits.
+- `sharepoint_sync` has no FK to stations so deleted stations' folders can be moved to `_Verwijderd`. Why: item id must survive station deletion.
+- `rapport-pdf` prints the short link `https://to-foto.lovable.app/c/{casenummer}` on the cover; keep it in sync with `korteUrl`. Why: edge functions can't import src/.
+- Edge functions: zod input, Bearer required, generic errors (details in logs). Why: no leaks.
