@@ -86,7 +86,7 @@ export function balVan(station: { dossier_status?: string | null }, rondes: ToRo
     return [{ wie: "TerreVolt", label: "TerreVolt", txt: `Opnieuw indienen (ronde ${n + 1})`, dagen: dagenSinds(r.reactie_op) }];
   }
   return station.dossier_status !== "afgerond"
-    ? [{ wie: "TerreVolt", label: "TerreVolt", txt: "Goedgekeurd: case afronden", dagen: dagenSinds(r.reactie_op) }]
+    ? [{ wie: "Liander", label: "Liander", txt: "TO goedgekeurd", dagen: dagenSinds(r.reactie_op) }]
     : [];
 }
 

@@ -159,3 +159,11 @@ describe("VG-casepagina velden", () => {
     expect(update).not.toHaveBeenCalled();
   });
 });
+
+import { balVan } from "@/lib/to-rondes";
+describe("bal bij goedgekeurde TO", () => {
+  it("staat onder Liander tot het dossier is afgerond", () => {
+    expect(balVan({ dossier_status: "ingediend" }, [r("goedgekeurd")])[0].wie).toBe("Liander");
+    expect(balVan({ dossier_status: "afgerond" }, [r("goedgekeurd")])).toEqual([]);
+  });
+});
