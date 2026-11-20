@@ -12,3 +12,4 @@
 - Notes (categorie_opmerkingen) are edited only in `NotitieSheet` (visualViewport-positioned bottom sheet, autosave) and saved via `src/lib/notities.ts` with a localStorage offline queue flushed when back online. Why: iOS keyboard covered inline fields.
 - A photo upload for a skipped category removes the skip; SharePoint gets `{nr}_{cat}_NIET GEMAAKT.txt` per skipped category without photos (sync-managed, deleted when no longer wanted) and an `Opmerking` column on files. Why: no contradictory status.
 - `src/components/TerreVoltLoader.tsx` is the user's file, kept verbatim; the only loading indicator is via `src/components/Laden.tsx` (PaginaLader 80, BlokLader 48, KnopLader 20, LaadAfbeelding 40) — no skeletons/spinners. Why: one brand loader everywhere.
+- No app-shell service worker: manifest-only install; `public/sw.js` is a kill-switch that clears old vite-plugin-pwa caches. Why: stale precache caused blank screens on iPhone Safari.
