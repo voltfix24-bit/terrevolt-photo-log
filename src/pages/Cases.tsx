@@ -31,8 +31,9 @@ function StatusPil({ status, prefix }: { status: keyof typeof TO_STATUS; prefix?
 }
 
 function Bal({ cases, open }: { cases: CaseItem[]; open: (s: UrlStation) => void }) {
-  // Van Gelder-cases staan altijd in de kolom Van Gelder, ongeacht bij wie de TO-bal ligt
-  const items = cases.flatMap((c) => uitvoerderVan(c) === "van_gelder"
+  // Van Gelder-cases staan in de kolom Van Gelder, behalve goedgekeurde
+  // Goedgekeurde TO's staan altijd bij Liander: alleen Liander keurt goed
+  const items = cases.flatMap((c) => uitvoerderVan(c) === "van_gelder" && c.last?.status !== "goedgekeurd"
     ? [{ ...(c.bal[0] ?? { label: "Van Gelder", txt: "TO afgerond", dagen: 0 }), wie: "Van Gelder" as Partij, c }]
     : c.bal.map((b) => ({ ...b, c })));
   return (
