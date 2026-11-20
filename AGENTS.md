@@ -5,7 +5,7 @@
 - SharePoint only syncs stations with status opgeleverd/goedgekeurd and trimmed casenummer+casenaam (`nietSyncReden`, mirrored in SharePointStatus.tsx); target is the case folder, a station subfolder only when a case has several stations; old {case}/{station} folders are flattened automatically on next sync. Why: one station per case, no half-finished data in SharePoint.
 - SharePoint "10 Documenten" in each case folder is never written/deleted by sync; app reads it via `sharepoint-documenten` (temporary downloadUrl). Metadata columns are created per run and skipped silently on 403; missing Entra permissions and key expiry are stored on `instellingen` (sp_*). Why: sync must keep working without extra permissions.
 - `rapport-pdf` builds the PDF report (pdf-lib): it recompresses one photo per call into `rapporten/{id}/pdf-cache/` (self-chaining, retrying on the runtime's per-trace rate limit), then assembles `{id}/rapport.pdf`, records status in `rapport_pdf`, and only then triggers `sharepoint-sync`. Why: edge CPU limit; SharePoint must get the finished PDF.
-- `oplever-rapport` still writes rapport.html as a fallback for the app viewer, but SharePoint "00 Rapport" only holds `Opleverrapport {casenummer} - {casenaam}.pdf` (html is removed by cleanup). Why: one authoritative report in SharePoint.
+- SharePoint "00 Rapport" holds only `Opleverrapport {casenummer} - {casenaam}.pdf`; rapport.html is an app-only fallback. Why: one report.
 - App urls mirror SharePoint folders (`/{opdrachtgever}/{jaar}/{casenummer-casenaam}/…`); all links come from `src/lib/urls.ts`, routes resolve via `src/pages/UrlRoutes.tsx` by casenummer and `replace`-redirect to the canonical url. Why: shared/old links keep working when names change.
 - `/:og` routes come after all fixed routes and only accept opdrachtgevers from the table (or used on stations); `/cases/:key` and `/beoordelen/:key` keep their own screens with readable slugs. Why: no collisions with fixed pages.
 - `rapport-pdf` prints the short link `https://to-foto.lovable.app/c/{casenummer}` on the cover; keep it in sync with `korteUrl`. Why: edge functions can't import src/.
@@ -13,13 +13,13 @@
 - A photo upload for a skipped category removes the skip; SharePoint gets `{nr}_{cat}_NIET GEMAAKT.txt` per skipped category without photos (sync-managed, deleted when no longer wanted) and an `Opmerking` column on files. Why: no contradictory status.
 - `src/components/TerreVoltLoader.tsx` is the user's file, kept verbatim; the only loading indicator is via `src/components/Laden.tsx` (PaginaLader 80, BlokLader 48, KnopLader 20, LaadAfbeelding 40) — no skeletons/spinners. Why: one brand loader everywhere.
 - No app-shell service worker: manifest-only install; `public/sw.js` is a kill-switch that clears old vite-plugin-pwa caches. Why: stale precache caused blank screens on iPhone Safari.
-- Edge functions validate input with zod, require a Bearer header and return generic error text (details only in logs). Why: no internal errors leak to callers.
+- Edge functions: zod input, Bearer required, generic errors (details in logs). Why: no leaks.
 - Storage `branding`: anon may insert/read only, never update/delete. Why: logos can't be overwritten from outside; uploads use new filenames.
 - Photo writes go through `src/lib/fotos-service.ts` (upload + DB insert, idempotent by storage_path; row deleted before file); station delete/SharePoint status via `src/lib/station-service.ts`. Why: no false success, retry-safe.
 - Offline queue items are removed only after storage+DB succeed; failed items get status 'error' and retry with a stable path `q_{queueId}`. Why: no lost or duplicate photos.
 - Required photos per category live only in `src/lib/foto-regels.ts` (default 1, no overrides until the user confirms). Why: one rule, no regressions.
-- `generatePdfHtml` escapes all text and validates urls/HSL before building HTML. Why: no script injection in printed reports.
+- `generatePdfHtml` escapes text, validates urls/HSL. Why: no injection.
 - PIN is verified server-side by `pin-sessie` (PBKDF2 hash in secret ADMIN_PIN_HASH, rate-limited via `pin_pogingen`); success returns a real session for the admin account (`user_roles` role admin, password in ADMIN_SESSION_PASSWORD). No PIN in frontend code. Why: RLS can trust admin actions.
 - RLS: deleting stations, fotos and to-fotos files requires `has_role(auth.uid(),'admin')`; deletes return rows (`.select`) so 0 rows = no success. Sign-ups are disabled. Why: destructive actions only behind the PIN, no lock-out of normal use.
 - `sharepoint-sync {controle}` and `sharepoint-weekly` (manual/dry-run) require an admin session (`_shared/admin-auth.ts`); station sync paths stay anon-callable for rapport-pdf. Why: background chain must keep working.
-- Dashboard (Index) loads only `fotos(categorie, review_status)`; pdf/zip fetch full photos per station via `fotosVan`. Why: payload size.
+- Index loads only `fotos(categorie, review_status)`; pdf/zip use `fotosVan`. Why: payload.
