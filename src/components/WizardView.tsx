@@ -2,6 +2,7 @@
 // Nieuw bestand: src/components/WizardView.tsx
 // Vervangt de lokale `WizardView` + `WizardViewProps` in src/pages/StationDetail.tsx (zelfde props).
 import { useCallback, useEffect, useRef, useState } from "react";
+import { categorieKlaar, minFotos } from "@/lib/foto-regels";
 import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Lightbox from "yet-another-react-lightbox";
@@ -129,7 +130,7 @@ export function WizardView({
   const cat = applicableCategories[currentIndex];
   const catFotos = cat ? fotosByCategorie(cat.name) : [];
   const isCatSkipped = cat ? skipped.includes(cat.name) : false;
-  const required = 1;
+  const required = cat ? minFotos(cat.id) : 1;
   const section = cat ? SECTIONS.find((s) => s.id === cat.section) : null;
   const catVoorbeelden = cat ? voorbeelden.filter((v) => v.categorie === cat.name) : [];
   const isLast = currentIndex >= applicableCategories.length - 1;
@@ -167,7 +168,7 @@ export function WizardView({
     return r;
   }, [cat, stationId, queryClient]);
 
-  const incompleteCategories = applicableCategories.filter((c) => fotosByCategorie(c.name).length === 0 && !skipped.includes(c.name));
+  const incompleteCategories = applicableCategories.filter((c) => !categorieKlaar(c.id, fotosByCategorie(c.name).length) && !skipped.includes(c.name));
 
   const goTo = (index: number) => { setCurrentIndex(index); setArmed(false); setAutoNext(false); setLokaal([]); };
   const goNext = () => { if (!isLast) goTo(currentIndex + 1); else { setAutoNext(false); setShowComplete(true); } };

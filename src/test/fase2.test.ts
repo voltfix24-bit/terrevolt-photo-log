@@ -11,7 +11,7 @@ import { categorieKlaar, minFotos } from "@/lib/foto-regels";
 import { verwijderStation } from "@/lib/station-service";
 
 // Nep-client: storage + fotos-tabel in geheugen
-function nepDb(opt: { uploadFout?: string; insertFout?: string; rmFout?: string; deleteFout?: string } = {}) {
+function nepDb(opt: { uploadFout?: string; insertFout?: string; rmFout?: string; deleteFout?: string; geenRij?: boolean } = {}) {
   const bestanden = new Set<string>(); const rijen: { storage_path: string }[] = [];
   const db = {
     bestanden, rijen,
@@ -23,7 +23,7 @@ function nepDb(opt: { uploadFout?: string; insertFout?: string; rmFout?: string;
     from: () => ({
       select: () => ({ eq: (_k: string, v: string) => ({ limit: async () => ({ data: rijen.filter((r) => r.storage_path === v), error: null }), then: (r: (x: unknown) => void) => r({ data: rijen, error: null }) }) }),
       insert: async (r: { storage_path: string }) => { if (opt.insertFout) return { error: { message: opt.insertFout } }; rijen.push(r); return { error: null }; },
-      delete: () => ({ eq: async () => ({ error: opt.deleteFout ? { message: opt.deleteFout } : null }) }),
+      delete: () => ({ eq: () => ({ select: async () => (opt.deleteFout ? { data: null, error: { message: opt.deleteFout } } : { data: opt.geenRij ? [] : [{ id: "1" }], error: null }) }) }),
     }),
   };
   return db;
@@ -51,6 +51,13 @@ describe("fotos-service", () => {
   });
   it("verwijderen meldt fout bij mislukte rij-delete", async () => {
     expect((await verwijderFoto("1", "a.jpg", nepDb({ deleteFout: "nee" }))).ok).toBe(false);
+  });
+  it("verwijderen zonder rechten (0 rijen) is geen succes", async () => {
+    expect((await verwijderFoto("1", "a.jpg", nepDb({ geenRij: true }))).ok).toBe(false);
+  });
+  it("verwijderen met rechten: rij en bestand weg", async () => {
+    const db = nepDb(); db.bestanden.add("a.jpg");
+    expect((await verwijderFoto("1", "a.jpg", db)).ok).toBe(true); expect(db.bestanden.has("a.jpg")).toBe(false);
   });
   it("wachtrijpad is stabiel per item", () => {
     expect(wachtrijPad("s1", "Trafo", "q1", blob, "a.jpg")).toBe(wachtrijPad("s1", "Trafo", "q1", blob, "a.jpg"));
@@ -89,6 +96,9 @@ describe("offline sync", () => {
 describe("station verwijderen", () => {
   it("faalt zonder succes als de rij niet weg kan", async () => {
     expect((await verwijderStation("s1", nepDb({ deleteFout: "fk" }))).ok).toBe(false);
+  });
+  it("geen succes zonder beheerderssessie (0 rijen)", async () => {
+    expect((await verwijderStation("s1", nepDb({ geenRij: true }))).ok).toBe(false);
   });
 });
 

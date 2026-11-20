@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";
+import { isBeheerder } from "../_shared/admin-auth.ts";
 import { context, controleerSleutel, nietSyncReden, syncStation, zetStatus } from "../_shared/sharepoint.ts";
 
 const Body = z.union([
@@ -19,6 +20,7 @@ Deno.serve(async (req) => {
 
   const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   if ("controle" in parsed.data) {
+    if (!(await isBeheerder(req))) return json({ error: "Alleen na de toegangscode" }, 403);
     // Sleutel + machtigingen controleren (knop in Instellingen)
     const sleutel = await controleerSleutel(db);
     try { await context(db); } catch (e) { console.error((e as Error).message); }

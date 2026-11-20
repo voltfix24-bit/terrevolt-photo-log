@@ -5,8 +5,9 @@ import { FOTO_BUCKET, type Db } from "@/lib/fotos-service";
 export async function verwijderStation(stationId: string, db: Db = supabase): Promise<{ ok: boolean; fout?: string; bestandenOver?: number }> {
   const { data: fotos, error: lees } = await db.from("fotos").select("storage_path").eq("station_id", stationId);
   if (lees) return { ok: false, fout: lees.message };
-  const { error } = await db.from("stations").delete().eq("id", stationId);
+  const { data: weg, error } = await db.from("stations").delete().eq("id", stationId).select("id");
   if (error) return { ok: false, fout: error.message };
+  if (!weg || weg.length === 0) return { ok: false, fout: "Niet verwijderd (toegangscode nodig)" };
   const paden = (fotos ?? []).map((f: { storage_path: string }) => f.storage_path);
   if (paden.length) {
     const { error: rmErr } = await db.storage.from(FOTO_BUCKET).remove(paden);

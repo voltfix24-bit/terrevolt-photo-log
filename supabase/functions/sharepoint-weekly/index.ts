@@ -2,6 +2,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";
+import { isBeheerder } from "../_shared/admin-auth.ts";
 import { authenticateCronRequest } from "../_shared/cron-auth.ts";
 import { context, controleerSleutel, nietSyncReden, syncStation, verplaatsVerwijderd, zetStatus } from "../_shared/sharepoint.ts";
 
@@ -117,6 +118,7 @@ Deno.serve(async (req) => {
   }
 
   if (!req.headers.get("Authorization")?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
+  if (!(await isBeheerder(req))) return json({ error: "Alleen na de toegangscode" }, 403);
   if ("handmatig" in b) return start(true);
 
   // Dry-run: rapporteert wat er zou gebeuren, verandert niets

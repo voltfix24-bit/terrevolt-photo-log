@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-// Nieuwe tabellen: cast tot de Supabase-types opnieuw gegenereerd zijn
-export const db = supabase as any;
+// Losse typing: CaseDetail geeft de query-builders door als Promise; strikte types vragen een grotere ombouw
+export const db = supabase as any; // eslint-disable-line @typescript-eslint/no-explicit-any
 
 export type ToStatus = "open" | "controle" | "afgekeurd" | "goedgekeurd";
 export type Partij = "TerreVolt" | "Van Gelder" | "Liander" | "Derden";
@@ -61,12 +61,13 @@ export const netjes = (t?: string | null) => {
   if (!allCaps) return t;
   return t.toLocaleLowerCase("nl-NL").replace(/(^|[\s\-/·.])([\p{L}\p{N}]+)/gu, (_m, p, w) => AFK.has(w) ? p + w.toUpperCase() : p + w.charAt(0).toLocaleUpperCase("nl-NL") + w.slice(1));
 };
-export const caseNr = (s: any) => s?.casenummer || s?.behuizingsnummer || "Geen casenummer";
-export const caseNaam = (s: any) => netjes(s?.casenaam) || netjes(s?.naam_msr) || "Naamloos";
-export const caseSub = (s: any) => (s?.casenaam && s?.naam_msr ? netjes(s.naam_msr) : "");
+type CaseStationLike = { casenummer?: string | null; casenaam?: string | null; naam_msr?: string | null; behuizingsnummer?: string | null } | null | undefined;
+export const caseNr = (s: CaseStationLike) => s?.casenummer || s?.behuizingsnummer || "Geen casenummer";
+export const caseNaam = (s: CaseStationLike) => netjes(s?.casenaam) || netjes(s?.naam_msr) || "Naamloos";
+export const caseSub = (s: CaseStationLike) => (s?.casenaam && s?.naam_msr ? netjes(s.naam_msr) : "");
 export const dagenTekst = (d: number) => (d <= 0 ? "vandaag" : d === 1 ? "1 dag" : `${d} dagen`);
 
-export function balVan(station: any, rondes: ToRonde[]): BalItem[] {
+export function balVan(station: { dossier_status?: string | null }, rondes: ToRonde[]): BalItem[] {
   const n = rondes.length;
   const r = rondes[n - 1];
   if (!r || r.status === "open") {

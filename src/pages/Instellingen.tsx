@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { controleerPin } from "@/lib/require-pin";
 import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -42,7 +43,6 @@ const COLOR_PRESETS = [
   },
 ];
 
-const ACCESS_CODE = '24491';
 
 export default function Instellingen() {
   const navigate = useNavigate();
@@ -60,8 +60,9 @@ export default function Instellingen() {
   const [form, setForm] = useState<Partial<AppInstellingen>>({});
   const current = { ...instellingen, ...form } as AppInstellingen;
 
-  const handlePinSubmit = () => {
-    if (pinInput === ACCESS_CODE) {
+  const handlePinSubmit = async () => {
+    const r = await controleerPin(pinInput);
+    if (r.ok) {
       setUnlocked(true);
       setPinError(false);
     } else {

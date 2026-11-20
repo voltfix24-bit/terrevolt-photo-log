@@ -57,10 +57,19 @@ export async function uploadEnRegistreer(pad: string, blob: Blob, reg: Registrat
   return { ok: true, pad, url, al: false };
 }
 
+/** Volledige fotolijst van één station, alleen opgehaald als hij nodig is (pdf/zip). */
+export async function fotosVan(stationId: string, db: Db = supabase): Promise<{ id: string; categorie: string; url: string; uploaded_at: string | null }[]> {
+  const { data, error } = await db.from("fotos").select("id, categorie, url, uploaded_at").eq("station_id", stationId).order("categorie");
+  if (error) throw error;
+  return data ?? [];
+}
+
 /** Verwijdert eerst de rij (bron van waarheid), daarna het bestand. */
 export async function verwijderFoto(fotoId: string, pad: string, db: Db = supabase): Promise<{ ok: boolean; fout?: string; bestandBlijft?: boolean }> {
-  const { error } = await db.from("fotos").delete().eq("id", fotoId);
+  const { data, error } = await db.from("fotos").delete().eq("id", fotoId).select("id");
   if (error) return { ok: false, fout: error.message };
+  // Geen rij verwijderd = geen rechten (geen beheerderssessie) of al weg: geen succes melden
+  if (!data || data.length === 0) return { ok: false, fout: "Niet verwijderd (toegangscode nodig)" };
   const { error: rmErr } = await db.storage.from(FOTO_BUCKET).remove([pad]);
   if (rmErr) { console.error("[fotos] bestand niet verwijderd, handmatig opruimen:", pad, rmErr.message); return { ok: true, bestandBlijft: true }; }
   return { ok: true };

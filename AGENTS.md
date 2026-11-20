@@ -19,3 +19,7 @@
 - Offline queue items are removed only after storage+DB succeed; failed items get status 'error' and retry with a stable path `q_{queueId}`. Why: no lost or duplicate photos.
 - Required photos per category live only in `src/lib/foto-regels.ts` (default 1, no overrides until the user confirms). Why: one rule, no regressions.
 - `generatePdfHtml` escapes all text and validates urls/HSL before building HTML. Why: no script injection in printed reports.
+- PIN is verified server-side by `pin-sessie` (PBKDF2 hash in secret ADMIN_PIN_HASH, rate-limited via `pin_pogingen`); success returns a real session for the admin account (`user_roles` role admin, password in ADMIN_SESSION_PASSWORD). No PIN in frontend code. Why: RLS can trust admin actions.
+- RLS: deleting stations, fotos and to-fotos files requires `has_role(auth.uid(),'admin')`; deletes return rows (`.select`) so 0 rows = no success. Sign-ups are disabled. Why: destructive actions only behind the PIN, no lock-out of normal use.
+- `sharepoint-sync {controle}` and `sharepoint-weekly` (manual/dry-run) require an admin session (`_shared/admin-auth.ts`); station sync paths stay anon-callable for rapport-pdf. Why: background chain must keep working.
+- Dashboard (Index) loads only `fotos(categorie, review_status)`; pdf/zip fetch full photos per station via `fotosVan`. Why: payload size.

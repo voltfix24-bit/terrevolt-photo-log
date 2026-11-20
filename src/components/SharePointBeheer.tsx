@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useInstellingen } from "@/hooks/use-theme";
+import { zorgVoorBeheer } from "@/lib/require-pin";
 import { dagenTotVerlopen } from "@/components/SharePointSleutelBanner";
 
 // Exacte namen zoals ze in Microsoft Entra (API-machtigingen → Microsoft Graph → Toepassingsmachtigingen) staan
@@ -44,6 +45,7 @@ export function SharePointBeheer() {
   const dagen = dagenTotVerlopen(inst?.sp_sleutel_verloopt_op);
 
   const controleer = async () => {
+    if (!(await zorgVoorBeheer())) return;
     setControle(true);
     const { error } = await supabase.functions.invoke("sharepoint-sync", { body: { controle: true } });
     setControle(false);
@@ -60,6 +62,7 @@ export function SharePointBeheer() {
   const fouten = Array.isArray(run?.fouten) ? run!.fouten.length : 0;
 
   const nu = async () => {
+    if (!(await zorgVoorBeheer())) return;
     setStart(true);
     const { error } = await supabase.functions.invoke("sharepoint-weekly", { body: { handmatig: true } });
     setStart(false);

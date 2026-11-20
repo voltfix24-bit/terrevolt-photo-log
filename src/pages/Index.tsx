@@ -1,6 +1,8 @@
 // Variant 1b — "Gegroepeerd op wat moet ik doen"
 // Drop-in vervanging voor src/pages/Index.tsx. Data, routes, queries en acties blijven gelijk.
 import { useEffect, useMemo, useRef, useState } from "react";
+import { categorieKlaar } from "@/lib/foto-regels";
+import { fotosVan } from "@/lib/fotos-service";
 import { verwijderStation } from "@/lib/station-service";
 import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { caseUrl } from "@/lib/urls";
@@ -128,7 +130,7 @@ export default function Dashboard() {
   const { data: stations, isLoading } = useQuery({
     queryKey: ["stations"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("stations").select("*, fotos(categorie, id, url, storage_path, created_at, uploaded_at, review_status)").order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("stations").select("*, fotos(categorie, review_status)").order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
@@ -168,9 +170,8 @@ export default function Dashboard() {
       const applicable = getApplicableCategories(station);
       const skipped = skippedByStation.get(station.id) ?? new Set<string>();
       const perCat = new Map<string, number>();
-      for (const f of (station.fotos ?? []).filter((f: any) => f.review_status !== "rejected")) perCat.set(f.categorie, (perCat.get(f.categorie) ?? 0) + 1);
-      const requiredPhotos = (_c: Category) => 1;
-      const isDone = (c: Category) => skipped.has(c.name) || (perCat.get(c.name) ?? 0) >= requiredPhotos(c);
+      for (const f of (station.fotos ?? []).filter((f) => f.review_status !== "rejected")) perCat.set(f.categorie, (perCat.get(f.categorie) ?? 0) + 1);
+      const isDone = (c: Category) => skipped.has(c.name) || categorieKlaar(c.id, perCat.get(c.name) ?? 0);
       const total = applicable.length;
       const done = applicable.filter(isDone).length;
       return {
@@ -203,14 +204,14 @@ export default function Dashboard() {
 
   const openPdf = async (station: any) => {
     const { data: opmerkingen } = await supabase.from("categorie_opmerkingen").select("categorie, opmerking").eq("station_id", station.id);
-    const html = generatePdfHtml(station, station.fotos ?? [], instellingenData ?? undefined, opmerkingen ?? undefined);
+    const html = generatePdfHtml(station, await fotosVan(station.id), instellingenData ?? undefined, opmerkingen ?? undefined);
     const w = window.open("", "_blank");
     if (w) { w.document.write(html); w.document.close(); }
   };
 
   const downloadZip = async (station: any) => {
     try {
-      const r = await downloadStationZip(station.naam_msr, station.fotos ?? []);
+      const r = await downloadStationZip(station.naam_msr, await fotosVan(station.id));
       if (r.mislukt > 0) toast.warning(`Zip gedownload, maar ${r.mislukt} van ${r.totaal} foto's ontbreken`, { duration: 8000 });
       else toast.success("Zip gedownload");
     }

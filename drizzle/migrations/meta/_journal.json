@@ -64,6 +64,13 @@
       "when": 1795167327380,
       "tag": "0008_branding_no_anon_overwrite",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795167861985,
+      "tag": "0009_admin_role_pin_session",
+      "breakpoints": true
     }
   ]
 }
