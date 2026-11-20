@@ -1,12 +1,11 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";
-import { context, controleerSleutel, enc, graph, nietSyncReden, syncStation, zetStatus } from "../_shared/sharepoint.ts";
+import { context, controleerSleutel, nietSyncReden, syncStation, zetStatus } from "../_shared/sharepoint.ts";
 
 const Body = z.union([
   z.object({ station_id: z.string().uuid(), alleen_status: z.boolean().optional() }),
   z.object({ controle: z.literal(true) }),
-  z.object({ opruimen_onbekend: z.literal(true) }),
 ]);
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -18,16 +17,6 @@ Deno.serve(async (req) => {
   const parsed = Body.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return json({ error: parsed.error.flatten().fieldErrors }, 400);
 
-  if ("opruimen_onbekend" in parsed.data) {
-    // Verplaatst alleen de oude map "Onbekende opdrachtgever" naar de SharePoint-prullenbak
-    try {
-      const ctx = await context();
-      const r = await graph(ctx.tok, `${ctx.root}:/${enc([...ctx.prefix, "Onbekende opdrachtgever"].join("/"))}`, { method: "DELETE" }, [404]);
-      return json({ ok: true, verwijderd: r.status !== 404 });
-    } catch (e) {
-      return json({ error: (e as Error).message }, 500);
-    }
-  }
   const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   if ("controle" in parsed.data) {
     // Sleutel + machtigingen controleren (knop in Instellingen)
@@ -44,7 +33,7 @@ Deno.serve(async (req) => {
     const { data: r } = await db.from("sharepoint_sync").select("sharepoint_item_id").eq("station_id", stationId).maybeSingle();
     if (!r?.sharepoint_item_id) return json({ ok: true, overgeslagen: "niet in SharePoint" });
     try { return json({ ok: true, bijgewerkt: await zetStatus(await context(db), r.sharepoint_item_id, station) }); }
-    catch (e) { return json({ error: (e as Error).message }, 500); }
+    catch (e) { console.error("status bijwerken mislukt:", (e as Error).message); return json({ error: "Status bijwerken mislukt" }, 500); }
   }
   const reden = nietSyncReden(station);
   if (reden) return json({ ok: true, overgeslagen: reden });
@@ -62,6 +51,6 @@ Deno.serve(async (req) => {
     const fout = (e as Error).message;
     console.error("sharepoint-sync mislukt:", fout);
     await status({ status: "mislukt", fout: fout.slice(0, 1000) });
-    return json({ error: fout }, 500);
+    return json({ error: "Synchronisatie mislukt" }, 500);
   }
 });

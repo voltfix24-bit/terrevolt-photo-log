@@ -57,6 +57,13 @@
       "when": 1795042138008,
       "tag": "0007_rapport_pdf_status",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795167327380,
+      "tag": "0008_branding_no_anon_overwrite",
+      "breakpoints": true
     }
   ]
 }

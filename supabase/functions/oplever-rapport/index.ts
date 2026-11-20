@@ -1,4 +1,14 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.58.0";
+import { z } from "npm:zod@3";
+
+const Body = z.object({
+  actie: z.enum(["submit", "rapport-url"]).optional(),
+  station_id: z.string().uuid(),
+  opdrachtgever: z.string().trim().max(200).nullish(),
+  submitted_by: z.string().trim().max(200).nullish(),
+});
+const fout = (status: number, error: unknown) =>
+  new Response(JSON.stringify({ error }), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,16 +22,20 @@ const escape = (value: unknown) =>
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  if (req.method !== "POST") return fout(405, "Alleen POST");
+  if (!req.headers.get("Authorization")?.startsWith("Bearer ")) return fout(401, "Unauthorized");
+  const parsed = Body.safeParse(await req.json().catch(() => ({})));
+  if (!parsed.success) return fout(400, parsed.error.flatten().fieldErrors);
+
   try {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const body = await req.json();
+    const body = parsed.data;
     const actie = body.actie ?? "submit";
-    const stationId = body.station_id as string;
-    if (!stationId) throw new Error("station_id ontbreekt");
+    const stationId = body.station_id;
 
     if (actie === "rapport-url") {
       const { data: station } = await supabase.from("stations").select("id").eq("id", stationId).single();
@@ -45,8 +59,8 @@ Deno.serve(async (req) => {
 
     if (!station) throw new Error("Station niet gevonden");
 
-    const opdrachtgever = body.opdrachtgever ?? station.opdrachtgever ?? "van Gelder";
-    const submittedBy = body.submitted_by ?? station.ingevuld_door ?? "Onbekend";
+    const opdrachtgever = body.opdrachtgever || (station.opdrachtgever ?? "van Gelder");
+    const submittedBy = body.submitted_by || (station.ingevuld_door ?? "Onbekend");
     const submittedAt = new Date().toISOString();
 
     const perCategorie = new Map<string, { url: string }[]>();
@@ -112,9 +126,8 @@ ${(skips ?? []).length ? `<h2>Niet van toepassing</h2>${(skips ?? []).map((skip)
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: (error as Error).message }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    const msg = (error as Error).message;
+    console.error("oplever-rapport mislukt:", msg);
+    return fout(msg === "Station niet gevonden" ? 404 : 500, msg === "Station niet gevonden" ? msg : "Opleveren is mislukt");
   }
 });

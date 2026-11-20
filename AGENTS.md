@@ -13,3 +13,5 @@
 - A photo upload for a skipped category removes the skip; SharePoint gets `{nr}_{cat}_NIET GEMAAKT.txt` per skipped category without photos (sync-managed, deleted when no longer wanted) and an `Opmerking` column on files. Why: no contradictory status.
 - `src/components/TerreVoltLoader.tsx` is the user's file, kept verbatim; the only loading indicator is via `src/components/Laden.tsx` (PaginaLader 80, BlokLader 48, KnopLader 20, LaadAfbeelding 40) — no skeletons/spinners. Why: one brand loader everywhere.
 - No app-shell service worker: manifest-only install; `public/sw.js` is a kill-switch that clears old vite-plugin-pwa caches. Why: stale precache caused blank screens on iPhone Safari.
+- Edge functions validate input with zod, require a Bearer header and return generic error text (details only in logs). Why: no internal errors leak to callers.
+- Storage `branding`: anon may insert/read only, never update/delete. Why: logos can't be overwritten from outside; uploads use new filenames.
