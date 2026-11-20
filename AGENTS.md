@@ -31,5 +31,4 @@
 - Keep `to-fotos` public and existing direct URLs; do not broaden permissions or backfill signed URLs. Why: preserve shared links.
 - Queue only photos and notes offline; reject all other mutations without internet, and surface local persistence failures. Why: prevent false success and data loss.
 - All progress/completion uses the central photo rule, including category 31. Why: one consistent requirement.
-- Case import (paste TSV primary, .xlsx optional) is pure logic in `src/lib/case-import.ts`; rows are created only via RPC `maak_case` (ronde N → rondes 1..N-1 afgekeurd without date; open never gets a date), duplicates checked against all stations. Why: atomic, retry-safe import, testable.
-- TO "aantal indieningen" = rondes with status ≠ open (`indieningen`), score per executor via `scorePerUitvoerder`. Why: imported earlier rounds have no date; VG must not skew TerreVolt FTR.
+- Case import: logic in `src/lib/case-import.ts`, writes only via RPC `maak_case`; indieningen = rondes ≠ open, score per uitvoerder. Why: atomic retry-safe import, VG must not skew TerreVolt FTR.
