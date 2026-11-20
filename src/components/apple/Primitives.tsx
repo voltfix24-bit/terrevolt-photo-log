@@ -19,6 +19,11 @@ export const T = {
   upload: "#1A4E8A",
   soft: "#F2F6F1",
   softBorder: "#D4DFD2",
+  cardBorder: "#DCE6DA",
+  doneBg: "#D9F2D3",
+  doneBorder: "#A9D7A0",
+  hoverBorder: "#1F5C3A",
+  cardShadow: "0 4px 14px rgba(10,42,24,0.12)",
 } as const;
 
 export const R = { screen: 20, group: 16, control: 16, small: 12 } as const;
@@ -59,8 +64,37 @@ export const Group = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   return <div ref={ref} {...rest} style={{ background: T.surface, borderRadius: R.group, overflow: "hidden", marginBottom: 20, ...style }}>{children}</div>;
 });
 
-export function Hairline({ inset = INSET_ROW }: { inset?: number }) {
-  return <div aria-hidden="true" style={{ height: "0.5px", background: T.hairline, marginLeft: inset }} />;
+/**
+ * Sectiekaart: wit zolang er werk openstaat, groen zodra de sectie voltooid is.
+ * Keuringsstatus verandert nooit de helderheid van de inhoud, alleen de kaart zelf.
+ */
+export const Kaart = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement> & { done?: boolean }>(function Kaart({ children, done, style, ...rest }, ref) {
+  const [hover, setHover] = useState(false);
+  return (
+    <div
+      ref={ref}
+      {...rest}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        background: done ? T.doneBg : T.surface,
+        border: `1px solid ${hover ? T.hoverBorder : done ? T.doneBorder : T.cardBorder}`,
+        borderRadius: R.group,
+        overflow: "hidden",
+        marginBottom: 20,
+        boxShadow: hover ? T.cardShadow : "none",
+        transition: `border-color 150ms ${M.ease}, box-shadow 150ms ${M.ease}`,
+        cursor: "pointer",
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+});
+
+export function Hairline({ inset = INSET_ROW, color = T.hairline }: { inset?: number; color?: string }) {
+  return <div aria-hidden="true" style={{ height: "0.5px", background: color, marginLeft: inset }} />;
 }
 
 export function GlassBar({ children, position = "bottom", style }: { children: ReactNode; position?: "top" | "bottom"; style?: CSSProperties }) {

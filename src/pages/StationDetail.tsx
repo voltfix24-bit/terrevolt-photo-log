@@ -31,7 +31,8 @@ import { useVoorbeelden } from "@/components/CategorieSettings";
 import { useInstellingen } from "@/hooks/use-theme";
 import { Kruimelpad, deelLink } from "@/components/url/Kruimelpad";
 import { categorieUrl, caseUrl, korteUrl, opleverUrl, sectieUrl, type Sub } from "@/lib/urls";
-import { GlassBar, Group, Hairline, Pressable, T, R, M, ROW_MIN, ROW_PAD_X, ICON, ICON_GAP, INSET_HEAD, INSET_ROW } from "@/components/apple/Primitives";
+import { GlassBar, Hairline, Kaart, Pressable, T, R, M, ROW_MIN, ROW_PAD_X, ICON, ICON_GAP, INSET_HEAD, INSET_ROW } from "@/components/apple/Primitives";
+import { Check, CheckCircle2, ChevronDown } from "lucide-react";
 
 const MAX_SIZE = 10 * 1024 * 1024;
 const ACCEPTED = ["image/jpeg", "image/png", "image/heic", "image/webp"];
@@ -185,6 +186,17 @@ function useSkippedCategories(stationId: string | undefined) {
 }
 
 /* ==================== CATEGORY ROW ==================== */
+function VoltooidVink() {
+  return (
+    <span aria-hidden="true" style={{ position: "relative", display: "inline-flex", width: 16, height: 16, color: T.green, flexShrink: 0 }}>
+      <CheckCircle2 size={16} strokeWidth={1.4} fill="currentColor" stroke="currentColor" />
+      <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", transform: "translateY(0.7px)" }}>
+        <Check size={11} strokeWidth={3.2} color={T.surface} />
+      </span>
+    </span>
+  );
+}
+
 function CategoryRow({ cat, fotos, isSkipped, skipReason, opmerking, onOpen }: {
   cat: MergedCategory; fotos: FotoRow[]; isSkipped?: boolean; skipReason?: string; opmerking?: string; onOpen: () => void;
 }) {
@@ -192,7 +204,7 @@ function CategoryRow({ cat, fotos, isSkipped, skipReason, opmerking, onOpen }: {
 
   const nvt = Boolean(isSkipped && !hasPhotos);
   const icon = nvt ? "block" : hasPhotos ? "check_circle" : "photo_camera";
-  const iconColor = nvt ? T.muted : hasPhotos ? T.done : T.green;
+  const iconColor = nvt ? T.bodyOnBg : T.green;
   return (
     <Pressable
       data-cat-id={cat.id}
@@ -202,7 +214,7 @@ function CategoryRow({ cat, fotos, isSkipped, skipReason, opmerking, onOpen }: {
     >
       <span className="material-symbols-rounded shrink-0" style={{ fontSize: ICON, color: iconColor, fontVariationSettings: hasPhotos ? "'FILL' 1" : undefined }}>{icon}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 17, color: nvt || hasPhotos ? T.rowSub : T.rowText, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{cat.effectiveName}</div>
+        <div style={{ fontSize: 17, color: T.titleOnBg, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{cat.effectiveName}</div>
         {nvt && <div style={{ fontSize: 14, color: T.subOnBg, marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}><span style={{ fontWeight: 600 }}>N.v.t.</span> · {skipReason || "Geen reden opgegeven"}</div>}
         {opmerking && (
           <div style={{ fontSize: 14, color: "#8A6A00", marginTop: 2, display: "flex", alignItems: "center", gap: 4, minWidth: 0 }}>
@@ -211,7 +223,7 @@ function CategoryRow({ cat, fotos, isSkipped, skipReason, opmerking, onOpen }: {
           </div>
         )}
       </div>
-      {hasPhotos && <span style={{ fontSize: 15, color: T.muted, fontFamily: "ui-monospace, monospace" }}>{fotos.length}</span>}
+      {hasPhotos && <span style={{ fontSize: 15, color: T.bodyOnBg, fontFamily: "ui-monospace, monospace" }}>{fotos.length}</span>}
       <span className="material-symbols-rounded shrink-0" style={{ fontSize: 19, color: T.chevron }}>chevron_right</span>
     </Pressable>
   );
@@ -602,41 +614,48 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
             const skippedCats = cats.filter(c => fotosByCategorie(c.name).length === 0 && isSkipped(c.name));
             const isComplete = openCats.length === 0;
             const isSectionOpen = openSections.includes(section.id);
+            const sectieFotos = cats.reduce((n, c) => n + fotosByCategorie(c.name).length, 0);
+            const lijn = isComplete ? "rgba(31,92,58,0.16)" : T.hairline;
 
             // Sort: open first, then in-progress (has photos), then skipped
             const sortedCats = [...openCats, ...doneCats, ...skippedCats];
 
             return (
-              <Group ref={el => { sectionRefs.current[section.id] = el; }} key={section.id}>
+              <Kaart ref={el => { sectionRefs.current[section.id] = el; }} key={section.id} done={isComplete}>
                 {/* Section header */}
                 <Pressable
                   onClick={() => toggleSection(section.id)}
+                  scale={0.99}
+                  aria-expanded={isSectionOpen}
                   style={{ display: "flex", minHeight: ROW_MIN, alignItems: "center", justifyContent: "space-between", padding: `15px ${ROW_PAD_X}px`, width: "100%", textAlign: "left" }}
                 >
-                  <div>
-                      <h2 className="font-display" style={{ fontSize: 18, fontWeight: 600, color: isComplete ? T.done : T.rowText }}>
+                  <div style={{ minWidth: 0 }}>
+                      <h2 className="font-display" style={{ fontSize: 17, fontWeight: 600, color: T.titleOnBg }}>
                         {section.label}
                       </h2>
-                      <p style={{ fontSize: 14, marginTop: 2, color: isComplete ? T.done : T.rowSub }}>
-                        {isComplete ? "Voltooid" : `${openCats.length} open`}
-                      </p>
+                      {isComplete ? (
+                        <p style={{ fontSize: 13, fontWeight: 600, marginTop: 3, color: T.green, display: "flex", alignItems: "center", gap: 5 }}>
+                          <VoltooidVink />
+                          <span>Voltooid · {sectieFotos} foto&apos;s</span>
+                        </p>
+                      ) : (
+                        <p style={{ fontSize: 13, marginTop: 3, color: T.bodyOnBg }}>{doneCats.length} van {cats.length} gedaan</p>
+                      )}
                   </div>
-                  <span className="material-symbols-rounded" style={{ fontSize: 20, color: T.chevron, transform: isSectionOpen ? "rotate(180deg)" : "rotate(0deg)", transition: `transform 0.3s ${M.spring}` }}>
-                    expand_more
-                  </span>
+                  <ChevronDown size={22} color={T.titleOnBg} style={{ flexShrink: 0, transform: isSectionOpen ? "rotate(180deg)" : "rotate(0deg)", transition: `transform 0.3s ${M.spring}` }} />
                 </Pressable>
 
                 {/* Expanded content */}
                 {isSectionOpen && (
                   <div>
-                    <Hairline inset={INSET_HEAD} />
+                    <Hairline inset={INSET_HEAD} color={lijn} />
                     {sortedCats.map((cat, index) => <div key={cat.id}>
-                      {index > 0 && <Hairline />}
+                      {index > 0 && <Hairline color={lijn} />}
                       <CategoryRow cat={cat} fotos={fotosByCategorie(cat.name)} isSkipped={isSkipped(cat.name)} skipReason={skippedReasons[cat.name]} opmerking={opmerkingen?.find(o => o.categorie === cat.name)?.opmerking?.trim() || undefined} onOpen={() => openCategorie(cat)} />
                     </div>)}
                   </div>
                 )}
-              </Group>
+              </Kaart>
             );
           })}
         </div>
