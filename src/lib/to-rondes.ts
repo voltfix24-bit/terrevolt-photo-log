@@ -138,3 +138,17 @@ export function scoreVan(cases: CaseItem[]) {
     redenen: REDENEN.map((r) => ({ ...r, n: cnt[r.key] ?? 0 })).filter((r) => r.n).sort((a, b) => b.n - a.n),
   };
 }
+
+/** Aantal TO-indieningen: elke ronde die niet meer open staat is ingediend, ook geïmporteerde eerdere rondes zonder datum. */
+export const indieningen = (rondes: Pick<ToRonde, "status">[]) => rondes.filter((r) => r.status !== "open").length;
+
+export type UitvoerderScore = { uitvoerder: Uitvoerder; casesN: number; judgedN: number; ftrN: number; ftrPct: number | null; goedgekeurdN: number; gemRondes: number | null; gemIndieningen: number | null };
+/** TO-score per uitvoerder, zodat Van Gelder de TerreVolt-score niet vertekent. */
+export function scorePerUitvoerder(cases: CaseItem[]): UitvoerderScore[] {
+  return (["terrevolt", "van_gelder"] as Uitvoerder[]).map((u) => {
+    const sub = cases.filter((c) => (c.station.uitvoerder === "van_gelder" ? "van_gelder" : "terrevolt") === u);
+    const s = scoreVan(sub);
+    const ing = sub.map((c) => indieningen(c.rondes)).filter((n) => n > 0);
+    return { uitvoerder: u, casesN: sub.length, judgedN: s.judgedN, ftrN: s.ftrN, ftrPct: s.ftrPct, goedgekeurdN: s.goedgekeurdN, gemRondes: s.gemRondes, gemIndieningen: ing.length ? ing.reduce((a, b) => a + b, 0) / ing.length : null };
+  });
+}

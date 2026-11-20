@@ -85,6 +85,13 @@
       "when": 1795183279553,
       "tag": "0011_case_uitvoerder",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1795183766493,
+      "tag": "0012_maak_case_import",
+      "breakpoints": true
     }
   ]
 }

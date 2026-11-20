@@ -701,7 +701,10 @@ export type Database = {
         Args: {
           _casenaam: string
           _casenummer: string
+          _ingediend_op?: string
           _notitie?: string
+          _ronde?: number
+          _to_status?: string
           _uitvoerder?: Database["public"]["Enums"]["case_uitvoerder"]
           _wv?: string
         }

@@ -8,7 +8,7 @@ import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/
 import { casesUrl, type UrlStation } from "@/lib/urls";
 import { useNavigate } from "react-router-dom";
 import { Pressable, R, T } from "@/components/apple/Primitives";
-import { CaseItem, PARTIJ_STIJL, Partij, TO_STATUS, caseNaam, caseNr, caseSub, dagenTekst, scoreVan, useCases } from "@/lib/to-rondes";
+import { CaseItem, PARTIJ_STIJL, Partij, TO_STATUS, caseNaam, caseNr, caseSub, dagenTekst, scoreVan, scorePerUitvoerder, useCases } from "@/lib/to-rondes";
 
 const SUB = T.bodyOnBg;
 const card = { background: T.surface, borderRadius: 14 } as const;
@@ -75,7 +75,25 @@ function Bal({ cases, open }: { cases: CaseItem[]; open: (s: UrlStation) => void
   );
 }
 
-function Score({ cases, open }: { cases: CaseItem[]; open: (s: UrlStation) => void }) {
+const fmt1 = (v: number | null) => (v == null ? "—" : v.toFixed(1).replace(".", ","));
+function PerUitvoerder({ cases }: { cases: CaseItem[] }) {
+  return (
+    <div aria-label="TO-score per uitvoerder" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12 }}>
+      {scorePerUitvoerder(cases).map((u) => (
+        <div key={u.uitvoerder} style={{ ...card, padding: "16px 20px" }}>
+          <div className="font-display" style={{ fontWeight: 700, fontSize: 17, color: T.titleOnBg }}>{u.uitvoerder === "van_gelder" ? "Van Gelder" : "TerreVolt"} <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 500, fontSize: 14, color: SUB }}>{u.casesN} cases</span></div>
+          <div style={{ display: "flex", gap: 20, marginTop: 8, flexWrap: "wrap" }}>
+            <div><div style={{ fontSize: 13, color: SUB }}>First time right</div><div className="font-display" style={{ fontWeight: 800, fontSize: 26, color: T.green }}>{u.ftrPct == null ? "—" : `${u.ftrPct}%`}</div><div style={{ fontSize: 12, color: SUB }}>{u.ftrN} van {u.judgedN} beoordeeld</div></div>
+            <div><div style={{ fontSize: 13, color: SUB }}>Gem. rondes tot goedkeuring</div><div className="font-display" style={{ fontWeight: 800, fontSize: 26, color: T.titleOnBg }}>{fmt1(u.gemRondes)}</div><div style={{ fontSize: 12, color: SUB }}>{u.goedgekeurdN} goedgekeurd</div></div>
+            <div><div style={{ fontSize: 13, color: SUB }}>Gem. indieningen</div><div className="font-display" style={{ fontWeight: 800, fontSize: 26, color: T.titleOnBg }}>{fmt1(u.gemIndieningen)}</div><div style={{ fontSize: 12, color: SUB }}>per ingediende case</div></div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Score({ cases, open, perUitvoerder }: { cases: CaseItem[]; open: (s: UrlStation) => void; perUitvoerder?: boolean }) {
   const s = scoreVan(cases);
   const max = Math.max(1, ...s.redenen.map((r) => r.n));
   const kpis = [
@@ -87,6 +105,7 @@ function Score({ cases, open }: { cases: CaseItem[]; open: (s: UrlStation) => vo
   const cols = "100px minmax(0,1fr) 120px 130px 150px";
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {perUitvoerder && <PerUitvoerder cases={cases} />}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
         {kpis.map((k) => (
           <div key={k.label} style={{ ...card, padding: "18px 20px" }}>
@@ -119,7 +138,7 @@ function Score({ cases, open }: { cases: CaseItem[]; open: (s: UrlStation) => vo
                 {caseSub(c.station) && <span style={{ display: "block", fontSize: 12, color: T.subOnBg, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{caseSub(c.station)}</span>}
               </span>
               <span style={{ display: "flex", gap: 4 }}>
-                {(c.rondes.length ? c.rondes : [{ status: "open" } as any]).map((r, k) => <span key={k} style={{ width: 14, height: 14, borderRadius: 4, background: TO_STATUS[r.status as keyof typeof TO_STATUS].dot }} />)}
+                {(c.rondes.length ? c.rondes : [{ status: "open" as const }]).map((r, k) => <span key={k} style={{ width: 14, height: 14, borderRadius: 4, background: TO_STATUS[r.status as keyof typeof TO_STATUS].dot }} />)}
               </span>
               <span><StatusPil status={c.last?.status ?? "open"} /></span>
               <span style={{ fontWeight: 600, color: SUB, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{[...new Set(c.bal.map((b) => b.label))].join(", ") || "—"}</span>
@@ -184,7 +203,7 @@ export default function Cases() {
           <PaginaLader label="Cases laden…" />
         ) : !cases.length ? (
           <div style={{ padding: "52px 20px", textAlign: "center", color: SUB, fontSize: 15 }}>Geen cases</div>
-        ) : tab === "bal" ? <Bal cases={cases} open={open} /> : <Score cases={cases} open={open} />}
+        ) : tab === "bal" ? <Bal cases={cases} open={open} /> : <Score cases={cases} open={open} perUitvoerder={filter === "alle"} />}
       </main>
     </div>
   );

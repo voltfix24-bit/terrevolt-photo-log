@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { readSheet } from "read-excel-file/browser";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -7,62 +7,145 @@ import { KnopLader } from "@/components/Laden";
 import { T } from "@/components/apple/Primitives";
 import { internetVereist } from "@/lib/internet";
 import { maakCase } from "@/lib/case-service";
-import { leesImportRijen, type ImportRij } from "@/lib/excel-cases";
+import { TO_STATUS } from "@/lib/to-rondes";
+import {
+  VELDEN, VELD_LABEL, bouwPreview, celTekst, importeerbaar, isDubbelHerkend, ontbrekendeVerplicht, parseTsv, startMapping, zetMapping,
+  type ImportPreviewRij, type ImportVeld, type Mapping,
+} from "@/lib/case-import";
 
-const STATUS_TEKST: Record<ImportRij["status"], string> = { nieuw: "Nieuw", bestaat: "Bestaat al — overgeslagen", dubbel: "Dubbel in bestand — overgeslagen", onvolledig: "Onvolledig — overgeslagen" };
+const ORANJE = "#B5541A", ORANJE_BG = "#FDEFE4";
+type Resultaat = Record<number, { ok: boolean; fout?: string }>;
 
-/** Basisimport: Van Gelder-cases (casenummer, casenaam, WV) uit .xlsx; elke case + ronde 1 via maak_case. */
+/** Van Gelder-cases plakken uit Excel (TSV, primair) of optioneel .xlsx; elke case + rondes via maak_case (atomair). Niets wordt lokaal bewaard. */
 export function ExcelImportDialog({ open, onOpenChange, bestaand }: { open: boolean; onOpenChange: (o: boolean) => void; bestaand: string[] }) {
   const qc = useQueryClient();
-  const [rijen, setRijen] = useState<ImportRij[] | null>(null);
+  const [tekst, setTekst] = useState("");
+  const [grid, setGrid] = useState<string[][]>([]);
+  const [serial, setSerial] = useState(false);
+  const [mapping, setMapping] = useState<Mapping>([]);
   const [fout, setFout] = useState<string | null>(null);
   const [bezig, setBezig] = useState(false);
-  const nieuw = rijen?.filter((r) => r.status === "nieuw") ?? [];
+  const [res, setRes] = useState<Resultaat>({});
 
-  const kies = async (file?: File) => {
-    setFout(null); setRijen(null);
+  const laad = (g: string[][], xlsx: boolean) => { setGrid(g); setSerial(xlsx); setMapping(g.length ? startMapping(g[0]) : []); setRes({}); setFout(null); };
+  const plak = (t: string) => { setTekst(t); laad(parseTsv(t), false); };
+  const kiesBestand = async (file?: File) => {
     if (!file) return;
-    try { setRijen(leesImportRijen((await readSheet(file)) as unknown[][], bestaand)); }
-    catch (e) { setFout((e as Error).message || "Bestand kon niet gelezen worden"); }
+    try { const rows = (await readSheet(file)) as unknown[][]; const g = rows.map((r) => r.map(celTekst)).filter((r) => r.some(Boolean)); setTekst(""); laad(g, true); }
+    catch { setFout("Bestand kon niet gelezen worden"); }
   };
+  const reset = () => { setTekst(""); laad([], false); };
+
+  const koppen = grid[0] ?? [];
+  const mist = ontbrekendeVerplicht(mapping);
+  const preview = useMemo(() => (grid.length > 1 && !mist.length ? bouwPreview(grid, mapping, bestaand, { excelSerial: serial }) : []), [grid, mapping, bestaand, serial, mist.length]);
+  const teDoen = importeerbaar(preview).filter((r) => !res[r.regel]?.ok);
+  const tel = { nieuw: importeerbaar(preview).length, bestaat: preview.filter((r) => r.klasse === "bestaat").length, fout: preview.filter((r) => r.klasse === "fout").length };
+  const waarschuwingen = preview.filter((r) => r.klasse === "waarschuwing");
+  const dubbelKolom = koppen.some((_, i) => isDubbelHerkend(koppen, mapping, i));
+
   const importeer = async () => {
-    if (!internetVereist() || !nieuw.length) return;
-    setBezig(true);
-    let ok = 0; const mislukt: string[] = [];
-    for (const r of nieuw) {
-      const res = await maakCase({ casenummer: r.casenummer, casenaam: r.casenaam, wv: r.wv, uitvoerder: "van_gelder" });
-      if ("fout" in res) mislukt.push(`${r.casenummer}: ${res.fout}`); else ok++;
+    if (!internetVereist() || !teDoen.length) return;
+    setBezig(true); setFout(null);
+    const nieuw: Resultaat = { ...res };
+    for (const r of teDoen) {
+      const x = await maakCase({ casenummer: r.casenummer, casenaam: r.casenaam, wv: r.wv, notitie: r.notitie, uitvoerder: "van_gelder", ronde: r.ronde, toStatus: r.status, ingediendOp: r.ingediend_op });
+      // "bestaat al" bij een herhaalde poging = eerder al aangemaakt: niet dubbel, telt als klaar
+      nieuw[r.regel] = x.ok || ("bestaat" in x && x.bestaat && res[r.regel]) ? { ok: true } : { ok: false, fout: "fout" in x ? x.fout : "Mislukt" };
+      setRes({ ...nieuw });
     }
     setBezig(false);
     await Promise.all([qc.invalidateQueries({ queryKey: ["cases"] }), qc.invalidateQueries({ queryKey: ["url-index"] })]);
-    if (mislukt.length) { setFout(`${ok} geïmporteerd, ${mislukt.length} mislukt: ${mislukt.slice(0, 3).join("; ")}`); return; }
+    const mislukt = teDoen.filter((r) => !nieuw[r.regel]?.ok).length;
+    const ok = teDoen.length - mislukt;
+    if (mislukt) { setFout(`${ok} geïmporteerd, ${mislukt} mislukt — zie de rijen hieronder en probeer opnieuw.`); return; }
     toast.success(`${ok} case${ok === 1 ? "" : "s"} geïmporteerd`);
-    setRijen(null); onOpenChange(false);
+    reset(); onOpenChange(false);
   };
 
+  const kleurRij = (r: ImportPreviewRij) => {
+    const x = res[r.regel];
+    if (x?.ok) return { icoon: "check_circle", kleur: T.green, tekst: "Geïmporteerd" };
+    if (x && !x.ok) return { icoon: "error", kleur: T.danger, tekst: x.fout ?? "Mislukt" };
+    if (r.klasse === "nieuw") return { icoon: "check_circle", kleur: T.green, tekst: "Nieuw" };
+    if (r.klasse === "waarschuwing") return { icoon: "warning", kleur: ORANJE, tekst: r.redenen.join(" · ") };
+    if (r.klasse === "bestaat") return { icoon: "block", kleur: T.subOnBg, tekst: r.redenen[0] };
+    return { icoon: "error", kleur: T.danger, tekst: r.redenen.join(" · ") };
+  };
+  const th = { textAlign: "left", padding: "6px 8px", fontSize: 12, fontWeight: 700, color: T.subOnBg, whiteSpace: "nowrap" } as const;
+  const td = { padding: "6px 8px", fontSize: 13, borderTop: `1px solid ${T.hairline}`, verticalAlign: "top" } as const;
+
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!bezig) { onOpenChange(o); if (!o) { setRijen(null); setFout(null); } } }}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto">
+    <Dialog open={open} onOpenChange={(o) => { if (!bezig) { onOpenChange(o); if (!o) reset(); } }}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Importeren uit Excel</DialogTitle>
-          <DialogDescription>Van Gelder-cases zonder foto's. Eerste rij met kolommen "Casenummer", "Casenaam" en optioneel "WV". Bestaande casenummers worden overgeslagen.</DialogDescription>
+          <DialogTitle>Van Gelder-cases importeren</DialogTitle>
+          <DialogDescription>Kopieer de rijen in Excel, inclusief de kopregel, en plak ze hieronder.</DialogDescription>
         </DialogHeader>
-        <input type="file" accept=".xlsx" onChange={(e) => void kies(e.target.files?.[0])} />
-        {rijen && (
-          <div style={{ fontSize: 14, marginTop: 8 }}>
-            <div style={{ fontWeight: 600, marginBottom: 6 }}>{nieuw.length} nieuw · {rijen.length - nieuw.length} overgeslagen</div>
-            {rijen.slice(0, 200).map((r, i) => (
-              <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "5px 0", borderTop: `1px solid ${T.hairline}` }}>
-                <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}><span className="font-mono">{r.casenummer || "—"}</span> {r.casenaam}</span>
-                <span style={{ color: r.status === "nieuw" ? T.green : T.subOnBg, whiteSpace: "nowrap" }}>{STATUS_TEKST[r.status]}</span>
-              </div>
-            ))}
+        <textarea aria-label="Geplakte Excel-rijen" value={tekst} onChange={(e) => plak(e.target.value)} rows={7} spellCheck={false} disabled={bezig}
+          placeholder={"Casenummer\tCasenaam\tTO-status\tRonde\tWV"}
+          className="w-full font-mono" style={{ fontSize: 13, padding: 12, borderRadius: 12, border: `1px solid ${T.hairline}`, background: T.soft, whiteSpace: "pre", overflowX: "auto" }} />
+        <label style={{ fontSize: 13, color: T.subOnBg }}>Of kies een .xlsx-bestand: <input type="file" accept=".xlsx" disabled={bezig} onChange={(e) => void kiesBestand(e.target.files?.[0])} /></label>
+
+        {koppen.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }} aria-label="Kolommen">
+            {koppen.map((k, i) => {
+              const v = mapping[i];
+              if (v) return (
+                <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 4px 3px 10px", borderRadius: 999, fontSize: 13, fontWeight: 600, background: "#E3EFE0", color: T.green }}>
+                  {k || `Kolom ${i + 1}`} → {VELD_LABEL[v]}
+                  <button aria-label={`${k} ontkoppelen`} onClick={() => setMapping(zetMapping(mapping, i, null))} style={{ padding: "0 6px" }}>×</button>
+                </span>
+              );
+              return (
+                <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 6px 3px 10px", borderRadius: 999, fontSize: 13, fontWeight: 600, background: ORANJE_BG, color: ORANJE }}>
+                  {k || `Kolom ${i + 1}`}{isDubbelHerkend(koppen, mapping, i) ? " (dubbel)" : ""}
+                  <select aria-label={`Kolom ${k} koppelen`} value="" onChange={(e) => setMapping(zetMapping(mapping, i, (e.target.value || null) as ImportVeld | null))} style={{ background: "transparent", color: ORANJE, fontWeight: 600 }}>
+                    <option value="">kies kolom…</option>
+                    {VELDEN.map((f) => <option key={f} value={f}>{VELD_LABEL[f]}{mapping.includes(f) ? " (vervangt)" : ""}</option>)}
+                    <option value="">negeren</option>
+                  </select>
+                </span>
+              );
+            })}
+          </div>
+        )}
+        {dubbelKolom && <div style={{ fontSize: 13, color: ORANJE }}>Meerdere kolommen herkend voor hetzelfde veld: alleen de eerste is gekoppeld. Kies zelf welke je wilt gebruiken.</div>}
+        {grid.length === 1 && <div style={{ fontSize: 13, color: ORANJE }}>Alleen een kopregel gevonden — plak ook de rijen eronder.</div>}
+        {grid.length > 0 && mist.length > 0 && <div role="alert" style={{ fontSize: 13, color: T.danger }}>Geen kopregel herkend voor {mist.map((m) => VELD_LABEL[m]).join(" en ")}. Plak de rijen inclusief kopregel, of koppel de kolom hierboven.</div>}
+
+        {preview.length > 0 && (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead><tr><th style={th}>Controle</th><th style={th}>Casenr.</th><th style={th}>Casenaam</th><th style={th}>TO-status</th><th style={th}>Ronde</th><th style={th}>WV</th></tr></thead>
+              <tbody>
+                {preview.slice(0, 500).map((r) => {
+                  const k = kleurRij(r), s = TO_STATUS[r.status];
+                  return (
+                    <tr key={r.regel} style={{ opacity: r.klasse === "bestaat" && !res[r.regel] ? 0.6 : 1 }}>
+                      <td style={{ ...td, color: k.kleur, fontWeight: 600, maxWidth: 220 }}><span style={{ display: "inline-flex", gap: 4, alignItems: "flex-start" }}><span className="material-symbols-rounded" style={{ fontSize: 16 }}>{k.icoon}</span>{k.tekst}</span></td>
+                      <td style={{ ...td }} className="font-mono">{r.casenummer || "—"}</td>
+                      <td style={td}>{r.casenaam || "—"}</td>
+                      <td style={{ ...td, whiteSpace: "nowrap" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: 4, background: s.dot }} />{s.label}</span></td>
+                      <td style={td}>{r.ronde}</td>
+                      <td style={td}>{r.wv || "—"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {waarschuwingen.length > 0 && <div style={{ fontSize: 13, color: ORANJE, marginTop: 8 }}>{waarschuwingen.length} rij{waarschuwingen.length === 1 ? "" : "en"} met waarschuwing: onbekende status wordt TO open. Controleer dit vóór importeren.</div>}
           </div>
         )}
         {fout && <div role="alert" style={{ color: T.danger, fontSize: 14 }}>{fout}</div>}
-        <button onClick={importeer} disabled={bezig || !nieuw.length} className="w-full bg-primary text-primary-foreground font-bold py-3 rounded-xl disabled:opacity-50">
-          {bezig ? <span className="inline-flex items-center justify-center gap-2"><KnopLader />Importeren</span> : `${nieuw.length} case${nieuw.length === 1 ? "" : "s"} importeren`}
-        </button>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", borderTop: `1px solid ${T.hairline}`, paddingTop: 12 }}>
+          <span style={{ flex: "1 1 220px", fontSize: 14, fontWeight: 600 }}>{tel.nieuw} nieuw · {tel.bestaat} bestaat al · {tel.fout} fout</span>
+          <button onClick={() => { if (!bezig) { reset(); onOpenChange(false); } }} disabled={bezig} className="px-4 py-2.5 rounded-xl font-semibold" style={{ border: `1px solid ${T.hairline}` }}>Annuleren</button>
+          <button onClick={importeer} disabled={bezig || !teDoen.length} className="bg-primary text-primary-foreground font-bold px-4 py-2.5 rounded-xl disabled:opacity-50">
+            {bezig ? <span className="inline-flex items-center gap-2"><KnopLader />Importeren</span> : `${teDoen.length} case${teDoen.length === 1 ? "" : "s"} importeren`}
+          </button>
+        </div>
       </DialogContent>
     </Dialog>
   );

@@ -1,8 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { Uitvoerder } from "@/lib/to-rondes";
+import type { ToStatus, Uitvoerder } from "@/lib/to-rondes";
 
-export type NieuweCase = { casenummer: string; casenaam: string; uitvoerder: Uitvoerder; wv?: string; notitie?: string };
-export type CaseResultaat = { ok: true; id: string } | { ok: false; fout: string };
+export type NieuweCase = { casenummer: string; casenaam: string; uitvoerder: Uitvoerder; wv?: string; notitie?: string; ronde?: number; toStatus?: ToStatus; ingediendOp?: string | null };
+export type CaseResultaat = { ok: true; id: string } | { ok: false; fout: string; bestaat?: boolean };
 
 export const normaliseer = (v?: string | null) => (v ?? "").replace(/\s+/g, " ").trim();
 export const nrSleutel = (v?: string | null) => normaliseer(v).toLowerCase();
@@ -24,12 +24,25 @@ export async function maakCase(c: NieuweCase): Promise<CaseResultaat> {
     _uitvoerder: c.uitvoerder,
     _wv: normaliseer(c.wv) || undefined,
     _notitie: (c.notitie ?? "").trim() || undefined,
+    ...(c.ronde && c.ronde !== 1 ? { _ronde: c.ronde } : {}),
+    ...(c.toStatus && c.toStatus !== "open" ? { _to_status: c.toStatus } : {}),
+    ...(c.ingediendOp ? { _ingediend_op: c.ingediendOp } : {}),
   });
   if (error) {
-    if (error.code === "23505") return { ok: false, fout: `Casenummer ${normaliseer(c.casenummer)} bestaat al` };
+    if (error.code === "23505") return { ok: false, fout: `Casenummer ${normaliseer(c.casenummer)} bestaat al`, bestaat: true };
     if (error.code === "22023") return { ok: false, fout: error.message };
     return { ok: false, fout: "Case aanmaken mislukt — probeer opnieuw" };
   }
   if (typeof data !== "string") return { ok: false, fout: "Case aanmaken mislukt — probeer opnieuw" };
   return { ok: true, id: data };
+}
+
+/** Wijzigt uitvoerder/WV van een case; geeft een foutmelding terug of null. */
+export async function wijzigCase(id: string, patch: { uitvoerder?: Uitvoerder; wv?: string | null }): Promise<string | null> {
+  const p: { uitvoerder?: Uitvoerder; wv?: string | null } = {};
+  if (patch.uitvoerder) p.uitvoerder = patch.uitvoerder;
+  if (patch.wv !== undefined) { const w = normaliseer(patch.wv); if (w.length > 300) return "Naam te lang"; p.wv = w || null; }
+  const { data, error } = await supabase.from("stations").update(p).eq("id", id).select("id");
+  if (error || !data?.length) return "Opslaan mislukt — probeer opnieuw";
+  return null;
 }

@@ -8,8 +8,9 @@ import { internetVereist } from "@/lib/internet";
 import { Pressable, T } from "@/components/apple/Primitives";
 import {
   DOSSIER, PARTIJEN, PARTIJ_STIJL, Partij, REDENEN, REDEN_LABEL, TO_ORDER, TO_STATUS, ToRonde, ToStatus,
-  actieWie, dagenSinds, dagenTekst, db, fmtDatum, useCases, vandaag, caseNaam, caseNr, caseSub,
+  actieWie, dagenSinds, dagenTekst, db, fmtDatum, useCases, vandaag, caseNaam, caseNr, caseSub, indieningen,
 } from "@/lib/to-rondes";
+import { VgVelden } from "@/components/cases/VgVelden";
 
 const SUB = T.bodyOnBg;
 const card = { background: T.surface, borderRadius: 16, padding: "20px 22px" } as const;
@@ -77,7 +78,7 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
   const openN = acties.filter((a) => !a.afgehandeld_op).length;
   const balWie = bal.length ? [...new Set(bal.map((b) => b.wie))] : [];
   const facts = [
-    { k: "Aantal keer ingediend", v: String(rondes.filter((r) => r.ingediend_op).length), fg: T.titleOnBg },
+    { k: "Aantal keer ingediend", v: String(indieningen(rondes)), fg: T.titleOnBg },
     { k: "First time right", v: ftr, fg: ftr === "Ja" ? T.green : ftr === "Nee" ? T.danger : SUB },
     { k: "Eerste indiening", v: fmtDatum(first?.ingediend_op), fg: T.titleOnBg },
     { k: "Doorlooptijd", v: first?.ingediend_op ? dagenTekst(dagenSinds(first.ingediend_op, apprIdx >= 0 ? rondes[apprIdx].reactie_op : null)) : "—", fg: T.titleOnBg },
@@ -86,7 +87,8 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
   const dateLine = !cur?.ingediend_op ? "Nog niet ingediend"
     : `Ingediend ${fmtDatum(cur.ingediend_op)} bij ${cur.ingediend_bij ?? "Van Gelder"}` +
       (cur.reactie_op ? ` · reactie ${fmtDatum(cur.reactie_op)} (${dagenTekst(dagenSinds(cur.ingediend_op, cur.reactie_op))})` : ` · ${dagenTekst(dagenSinds(cur.ingediend_op))} in behandeling`);
-  const placeholder = { open: "Bijv. wacht op laatste foto's", controle: "Bijv. Van Gelder heeft doorgezet naar Liander", afgekeurd: "Toelichting van Van Gelder / Liander", goedgekeurd: "Bijv. goedgekeurd door Liander, kenmerk …" }[curStatus];
+  const vg = station.uitvoerder === "van_gelder";
+  const placeholder = { open: vg ? "Bijv. wacht op stukken van Van Gelder" : "Bijv. wacht op laatste foto's", controle: "Bijv. Van Gelder heeft doorgezet naar Liander", afgekeurd: "Toelichting van Van Gelder / Liander", goedgekeurd: "Bijv. goedgekeurd door Liander, kenmerk …" }[curStatus];
 
   const chip = (on: boolean, onBg = T.titleOnBg) => ({ minHeight: 38, padding: "0 12px", borderRadius: 9, display: "flex", alignItems: "center", gap: 6, fontSize: 14, fontWeight: 600, background: on ? onBg : T.soft, color: on ? T.surface : T.titleOnBg } as const);
 
@@ -105,7 +107,8 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
           <div style={{ minWidth: 0 }}>
             <div className="font-mono" style={{ fontSize: 15, fontWeight: 600, color: T.bodyOnBg }}>Case {caseNr(station)}</div>
             <h1 className="font-display" style={{ margin: "4px 0 0", fontWeight: 800, fontSize: 30, lineHeight: 1.15, color: T.titleOnBg }}>{caseNaam(station)}</h1>
-            <div style={{ fontSize: 14, color: SUB }}>{[caseSub(station), "opdrachtgever Van Gelder", "netbeheerder Liander"].filter(Boolean).join(" · ")}</div>
+            {vg ? <VgVelden id={station.id} uitvoerder="van_gelder" wv={(station.wv as string | null) ?? null} namen={[...new Set((cases ?? []).map((x) => (x.station.wv as string | null)?.trim()).filter((w): w is string => !!w))].sort((a, b) => a.localeCompare(b, "nl-NL"))} />
+              : <div style={{ fontSize: 14, color: SUB }}>{[caseSub(station), "opdrachtgever Van Gelder", "netbeheerder Liander"].filter(Boolean).join(" · ")}</div>}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <span style={{ fontSize: 14, color: SUB }}>Bal ligt bij</span>
@@ -164,7 +167,7 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     <div style={{ ...kop, color: T.danger }}>Afkeurredenen</div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                      {REDENEN.map((r) => {
+                      {REDENEN.filter((r) => !vg || !r.key.startsWith("foto_") || cur.redenen.includes(r.key)).map((r) => {
                         const on = cur.redenen.includes(r.key);
                         return <Pressable key={r.key} onClick={() => toggleReden(r.key)} scale={0.97} style={{ ...chip(false), background: on ? T.danger : T.dangerBg, color: on ? T.surface : T.danger }}><span className="material-symbols-rounded" style={{ fontSize: 17 }}>{on ? "check" : "add"}</span>{r.label}</Pressable>;
                       })}
@@ -191,7 +194,7 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
                       );
                     })}
                     <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 14, borderRadius: 12, boxShadow: "inset 0 0 0 1.5px #E1E8E0" }}>
-                      <input value={draft.txt} onChange={(e) => setDraft({ ...draft, txt: e.target.value })} placeholder="Nieuw actiepunt, bijv. aarding opnieuw fotograferen" style={{ ...veld, fontSize: 15, minHeight: 44 }} />
+                      <input value={draft.txt} onChange={(e) => setDraft({ ...draft, txt: e.target.value })} placeholder={vg ? "Nieuw actiepunt, bijv. meetrapport aanleveren" : "Nieuw actiepunt, bijv. aarding opnieuw fotograferen"} style={{ ...veld, fontSize: 15, minHeight: 44 }} />
                       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
                         <span style={{ fontSize: 13, fontWeight: 600, marginRight: 4 }}>Bij wie</span>
                         {PARTIJEN.map((p) => (
@@ -268,7 +271,7 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
                 {station.case_verborgen ? "Terugzetten in cases" : "Uit cases-overzicht halen"}
               </div>
               <div style={{ fontSize: 14, color: SUB }}>
-                Het station en de foto's blijven bestaan. Alleen verborgen in Cases &amp; TO.
+                {vg ? "De case blijft bestaan. Alleen verborgen in Cases & TO." : <>Het station en de foto's blijven bestaan. Alleen verborgen in Cases &amp; TO.</>}
               </div>
               <Pressable
                 onClick={async () => {

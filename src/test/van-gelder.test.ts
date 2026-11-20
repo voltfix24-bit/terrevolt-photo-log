@@ -7,7 +7,6 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc: (...a: unkno
 import { balVan, TO_STATUS, type CaseItem, type ToRonde } from "@/lib/to-rondes";
 import { filterCases, leesFilter, bewaarFilter, tellingen, FILTER_KEY } from "@/lib/cases-filter";
 import { maakCase, valideerCase } from "@/lib/case-service";
-import { leesImportRijen } from "@/lib/excel-cases";
 import { isVanGelder } from "@/lib/urls";
 import { nietSyncReden } from "@/components/SharePointStatus";
 import { beslis, type Run } from "../../supabase/functions/_shared/opleverketen";
@@ -107,19 +106,8 @@ describe("case aanmaken", () => {
   });
   it("dubbel casenummer en serverfout geven duidelijke melding", async () => {
     rpc.mockResolvedValueOnce({ data: null, error: { code: "23505", message: "x" } });
-    expect(await maakCase({ casenummer: "0308029", casenaam: "a", uitvoerder: "van_gelder" })).toEqual({ ok: false, fout: "Casenummer 0308029 bestaat al" });
+    expect(await maakCase({ casenummer: "0308029", casenaam: "a", uitvoerder: "van_gelder" })).toEqual({ ok: false, fout: "Casenummer 0308029 bestaat al", bestaat: true });
     rpc.mockResolvedValueOnce({ data: null, error: { code: "XX000", message: "intern" } });
     expect(await maakCase({ casenummer: "1", casenaam: "a", uitvoerder: "van_gelder" })).toEqual({ ok: false, fout: "Case aanmaken mislukt — probeer opnieuw" });
-  });
-});
-
-describe("Excel-basisimport", () => {
-  it("markeert bestaande (hoofdletter/spatie-ongevoelig), dubbele en onvolledige rijen", () => {
-    const r = leesImportRijen([["Casenummer", "Casenaam", "WV"], [" 0308029 ", "A", ""], ["X1", "B", "Jan"], ["x1", "C", ""], ["X2", "", ""]], ["0308029"]);
-    expect(r.map((x) => x.status)).toEqual(["bestaat", "nieuw", "dubbel", "onvolledig"]);
-    expect(r[1]).toMatchObject({ casenummer: "X1", wv: "Jan" });
-  });
-  it("geeft fout bij ontbrekende kolommen", () => {
-    expect(() => leesImportRijen([["Naam"]], [])).toThrow(/Casenummer/);
   });
 });

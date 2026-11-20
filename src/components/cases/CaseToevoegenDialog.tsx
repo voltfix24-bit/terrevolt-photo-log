@@ -54,7 +54,7 @@ export function CaseToevoegenDialog({ open, onOpenChange }: { open: boolean; onO
               ))}
             </div>
           </div>
-          <div><Label>WV (werkvoorbereider)</Label><input className={veld} value={f.wv} onChange={(e) => setF({ ...f, wv: e.target.value })} /></div>
+          <div><Label>WV (werkverantwoordelijke)</Label><input className={veld} value={f.wv} onChange={(e) => setF({ ...f, wv: e.target.value })} /></div>
           <div><Label>Notitie</Label><textarea className={veld} rows={3} value={f.notitie} onChange={(e) => setF({ ...f, notitie: e.target.value })} /></div>
           {fout && <div role="alert" style={{ color: T.danger, fontSize: 14 }}>{fout}</div>}
           <button onClick={opslaan} disabled={bezig} className="w-full bg-primary text-primary-foreground font-bold py-3 rounded-xl active:scale-[0.98] transition-all disabled:opacity-50">
