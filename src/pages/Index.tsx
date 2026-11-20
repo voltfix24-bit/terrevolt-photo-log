@@ -20,6 +20,7 @@ import { requirePin } from "@/lib/require-pin";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { M, Pressable, R, T, glass } from "@/components/apple/Primitives";
 import { toast } from "sonner";
+import { TO_STATUS, dagenSinds, netjes, type ToStatus } from "@/lib/to-rondes";
 
 type PendingCounts = Record<string, number>;
 type StationItem = {
@@ -43,9 +44,9 @@ const formatStationName = (name: string) => name
   .replace(/(^|[\s\-/])([\p{L}\p{N}]+)/gu, (_m, prefix: string, word: string) =>
     abbreviations.has(word) ? `${prefix}${word.toUpperCase()}` : `${prefix}${word.charAt(0).toLocaleUpperCase("nl-NL")}${word.slice(1)}`);
 
+const caseLabelOf = (station: any) => [station?.casenummer, station?.casenaam].filter(Boolean).join(" · ");
 const dateValue = (value?: string | null) => value ? new Date(value).getTime() : 0;
 
-const caseLabelOf = (station: any) => [station?.casenummer, station?.casenaam].filter(Boolean).join(" · ");
 
 function rijStatus(item: StationItem) {
   const open = item.total - item.done;
@@ -60,38 +61,77 @@ function rijStatus(item: StationItem) {
 }
 
 function Voortgangsring({ item, color }: { item: StationItem; color: string }) {
-  const open = item.total - item.done;
-  const pct = item.total ? (item.done / item.total) * 100 : 0;
+  const pct = item.total ? Math.round((item.done / item.total) * 100) : 0;
   return (
     <div aria-hidden="true" style={{ width: 48, height: 48, borderRadius: 24, flexShrink: 0, background: `conic-gradient(${color} ${pct}%, ${T.hairline} 0)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ width: 38, height: 38, borderRadius: 19, background: T.surface, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: T.titleOnBg }}>
-        {open === 0
-          ? <span className="material-symbols-rounded" style={{ fontSize: 20, color: T.green, fontVariationSettings: "'FILL' 1" }}>check</span>
-          : open}
+      <div style={{ width: 38, height: 38, borderRadius: 19, background: T.surface, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: T.titleOnBg }}>
+        {pct}%
       </div>
     </div>
   );
 }
 
-function StationKaart({ item, onOpen, onMeer }: { item: StationItem; onOpen: () => void; onMeer: () => void }) {
+type Soort = "actie" | "bezig" | "klaar" | "opgeleverd";
+const dagenTxt = (d: number) => (d <= 0 ? "vandaag" : d === 1 ? "1 dag" : `${d} dagen`);
+const fmtKort = (d?: string | null) => d ? new Date(d).toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" }) : "";
+export const klaarSinds = (item: StationItem) => item.station.updated_at ?? item.station.created_at;
+function huidigeRonde(station: any): { status: ToStatus; nummer: number } {
+  const r = [...(station.to_rondes ?? [])].sort((a: any, b: any) => a.nummer - b.nummer).pop();
+  return r ? { status: r.status as ToStatus, nummer: r.nummer } : { status: "open", nummer: 1 };
+}
+
+function StationKaart({ item, soort, onOpen, onMeer }: { item: StationItem; soort: Soort; onOpen: () => void; onMeer: () => void }) {
   const s = rijStatus(item);
-  const caseLabel = caseLabelOf(item.station);
+  const st = item.station;
+  const nr = st.casenummer || st.behuizingsnummer || "";
+  const naam = netjes(st.casenaam) || formatStationName(st.naam_msr);
+  const sub = st.casenaam ? formatStationName(st.naam_msr) : "";
+  const fotoAantal = (st.fotos ?? []).filter((f: any) => f.review_status !== "rejected").length;
+  let duur = ""; let duurLaat = false;
+  if (soort === "opgeleverd") duur = `Opgeleverd ${fmtKort(st.submitted_at ?? st.updated_at)}`;
+  else if (soort === "klaar") { const d = dagenSinds(klaarSinds(item)); duur = d <= 0 ? "klaar sinds vandaag" : `klaar sinds ${dagenTxt(d)}`; duurLaat = d > 7; }
+  else { const d = dagenSinds(st.created_at); duur = d <= 0 ? "gestart vandaag" : `gestart ${dagenTxt(d)}`; }
+  const ronde = huidigeRonde(st);
+  const archief = soort === "opgeleverd";
   return (
-    <div style={{ background: T.surface, borderRadius: R.group, display: "flex", alignItems: "center" }}>
-      <Pressable onClick={onOpen} scale={0.98} style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 14, padding: "14px 4px 14px 16px", textAlign: "left" }}>
-        <Voortgangsring item={item} color={s.ring} />
+    <div className={`group flex items-center transition-[background-color,border-color] duration-150 ${archief ? "bg-[#F4F9F2] hover:bg-white" : "bg-white"} border border-transparent hover:border-[#1F5C3A]`} style={{ borderRadius: R.group }}>
+      <Pressable onClick={onOpen} scale={0.98} style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 14, padding: "14px 4px 14px 16px", textAlign: "left", cursor: "pointer" }}>
+        {archief ? (
+          <div aria-hidden="true" style={{ width: 48, height: 48, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", color: T.subOnBg }}>
+            <span className="material-symbols-rounded" style={{ fontSize: 26 }}>inventory_2</span>
+          </div>
+        ) : soort === "klaar" ? (
+          <div aria-hidden="true" style={{ width: 48, height: 48, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 30, height: 30, borderRadius: 15, background: "#D9F2D3", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span className="material-symbols-rounded" style={{ fontSize: 20, color: T.green, fontVariationSettings: "'FILL' 1, 'wght' 600" }}>check</span>
+            </div>
+          </div>
+        ) : <Voortgangsring item={item} color={s.ring} />}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="font-display" style={{ color: T.titleOnBg, fontSize: caseLabel ? 16 : 17, fontWeight: 600, lineHeight: 1.25, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", whiteSpace: caseLabel ? "normal" : "nowrap", textOverflow: "ellipsis" }}>
-            {caseLabel || formatStationName(item.station.naam_msr)}
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+            <span style={{ flex: 1, minWidth: 0, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 12, color: SUB, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nr}</span>
+            <span style={{ flexShrink: 0, fontSize: 12, color: duurLaat ? "#C2610C" : SUB, fontWeight: duurLaat ? 600 : 400 }}>{duur}</span>
           </div>
-          <div style={{ marginTop: 3, color: s.fg, fontSize: 14, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {s.hint}
-          </div>
-          {caseLabel && (
-            <div style={{ marginTop: 2, color: T.subOnBg, fontSize: 14, fontWeight: 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {formatStationName(item.station.naam_msr)}
+          <div className="font-display" style={{ marginTop: 2, color: T.titleOnBg, fontSize: 18, fontWeight: 600, lineHeight: 1.25, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{naam}</div>
+          {(sub || soort === "klaar") && (
+            <div style={{ marginTop: 2, color: T.subOnBg, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {soort === "klaar" ? [sub, `${fotoAantal} foto's`].filter(Boolean).join(" · ") : sub}
             </div>
           )}
+          {soort === "klaar" ? (
+            <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: SUB }}>
+              <span style={{ width: 8, height: 8, borderRadius: 4, background: TO_STATUS[ronde.status].dot, flexShrink: 0 }} />
+              <span style={{ fontWeight: 600, color: T.titleOnBg }}>{TO_STATUS[ronde.status].label}</span>
+              <span>· ronde {ronde.nummer}</span>
+            </div>
+          ) : soort === "bezig" ? (
+            <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 4, fontSize: 13, color: s.fg, overflow: "hidden" }}>
+              <span className="material-symbols-rounded" style={{ fontSize: 16 }}>arrow_forward</span>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.nextTaskName ? `Volgende taak: ${item.nextTaskName}` : "Volgende taak"}</span>
+            </div>
+          ) : soort === "actie" ? (
+            <div style={{ marginTop: 4, color: s.fg, fontSize: 13, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.hint}</div>
+          ) : null}
         </div>
       </Pressable>
       <Pressable onClick={onMeer} aria-label="Meer acties" style={{ width: 48, alignSelf: "stretch", display: "flex", alignItems: "center", justifyContent: "center", color: T.subOnBg }}>
@@ -131,7 +171,7 @@ export default function Dashboard() {
   const { data: stations, isLoading } = useQuery({
     queryKey: ["stations"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("stations").select("*, fotos(categorie, review_status)").order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("stations").select("*, fotos(categorie, review_status), to_rondes(nummer, status)").order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
@@ -199,7 +239,7 @@ export default function Dashboard() {
   const actief = filtered.filter((i) => !isOpgeleverd(i));
   const actieNodig = actief.filter((i) => i.station.review_reden || i.pending > 0);
   const bezig = actief.filter((i) => !actieNodig.includes(i) && !i.complete);
-  const klaar = actief.filter((i) => !actieNodig.includes(i) && i.complete);
+  const klaar = actief.filter((i) => !actieNodig.includes(i) && i.complete).sort((a, b) => dateValue(klaarSinds(a)) - dateValue(klaarSinds(b)));
   const totalPending = Object.values(pendingCounts).reduce((s, n) => s + n, 0);
   const syncLabel = !isOnline ? "Offline" : totalPending > 0 ? `${totalPending} wachten` : "Gesynct";
 
@@ -233,10 +273,11 @@ export default function Dashboard() {
     toast.success("Station verwijderd");
   };
 
-  const kaart = (item: StationItem) => (
+  const kaart = (soort: Soort) => (item: StationItem) => (
     <StationKaart
       key={item.station.id}
       item={item}
+      soort={soort}
       onOpen={() => navigate(caseUrl(item.station))}
       onMeer={() => setActieTarget(item.station)}
     />
@@ -258,8 +299,9 @@ export default function Dashboard() {
             <div style={{ marginTop: 4, color: SUB, fontSize: 14 }}>{syncLabel}</div>
           </div>
           <div style={{ display: "flex", gap: 4 }}>
-          <Pressable aria-label="Cases & TO" onClick={async () => { if (await requirePin()) navigate("/cases"); }} style={{ width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", color: T.green }}>
-            <span className="material-symbols-rounded" style={{ fontSize: 26 }}>assignment</span>
+          <Pressable aria-label="Cases & TO" onClick={async () => { if (await requirePin()) navigate("/cases"); }} className="border border-transparent bg-white hover:border-[#1F5C3A] transition-colors duration-150" style={{ height: 40, padding: "0 14px 0 10px", borderRadius: 20, display: "flex", alignItems: "center", gap: 6, color: T.green, fontSize: 15, fontWeight: 600, alignSelf: "center" }}>
+            <span className="material-symbols-rounded" style={{ fontSize: 22 }}>assignment</span>
+            Cases
           </Pressable>
           <Pressable aria-label="Instellingen" onClick={async () => { if (await requirePin()) navigate("/instellingen"); }} style={{ width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", color: T.green }}>
             <span className="material-symbols-rounded" style={{ fontSize: 26 }}>settings</span>
@@ -273,9 +315,9 @@ export default function Dashboard() {
           <div style={{ padding: "52px 20px", textAlign: "center", color: SUB, fontSize: 15 }}>Geen stations gevonden</div>
         ) : (
           <>
-            <Groep titel="Actie nodig" kleur={T.danger} items={actieNodig} render={kaart} />
-            <Groep titel="Bezig" kleur={T.current} items={bezig} render={kaart} />
-            <Groep titel="Klaar voor oplevering" kleur={T.green} items={klaar} render={kaart} />
+            <Groep titel="Actie nodig" kleur={T.danger} items={actieNodig} render={kaart("actie")} />
+            <Groep titel="Bezig" kleur={T.current} items={bezig} render={kaart("bezig")} />
+            <Groep titel="Klaar voor oplevering" kleur={T.green} items={klaar} render={kaart("klaar")} />
             {opgeleverd.length > 0 && (
               <>
                 <Pressable onClick={() => setOpgeleverdOpen((o) => !o)} aria-expanded={opgeleverdOpen} scale={0.98} style={{ width: "100%", minHeight: 56, padding: "0 16px", borderRadius: R.group, background: "rgba(255,255,255,0.6)", display: "flex", alignItems: "center", gap: 10, color: SUB, fontSize: 16, textAlign: "left", marginBottom: 8 }}>
@@ -283,7 +325,7 @@ export default function Dashboard() {
                   <span style={{ flex: 1 }}>{opgeleverd.length} opgeleverd</span>
                   <span className="material-symbols-rounded" style={{ fontSize: 22, transform: opgeleverdOpen ? "rotate(180deg)" : "none", transition: `transform 0.3s ${M.spring}` }}>expand_more</span>
                 </Pressable>
-                {opgeleverdOpen && <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{opgeleverd.map(kaart)}</div>}
+                {opgeleverdOpen && <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{opgeleverd.map(kaart("opgeleverd"))}</div>}
               </>
             )}
           </>
