@@ -11,6 +11,7 @@ import {
   actieWie, dagenSinds, dagenTekst, db, fmtDatum, useCases, vandaag, caseNaam, caseNr, caseSub, indieningen,
 } from "@/lib/to-rondes";
 import { VgVelden } from "@/components/cases/VgVelden";
+import { UitvoeringLabel } from "@/components/cases/UitvoeringLabel";
 
 const SUB = T.bodyOnBg;
 const card = { background: T.surface, borderRadius: 16, padding: "20px 22px" } as const;
@@ -107,6 +108,9 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
           <div style={{ minWidth: 0 }}>
             <div className="font-mono" style={{ fontSize: 15, fontWeight: 600, color: T.bodyOnBg }}>Case {caseNr(station)}{station.is_nummer ? <span style={{ fontSize: 12, fontWeight: 500, color: SUB, marginLeft: 8 }}>{String(station.is_nummer)}</span> : null}</div>
             <h1 className="font-display" style={{ margin: "4px 0 0", fontWeight: 800, fontSize: 30, lineHeight: 1.15, color: T.titleOnBg }}>{caseNaam(station)}</h1>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+              <UitvoeringLabel uitvoerder={vg ? "van_gelder" : "terrevolt"} />
+            </div>
             {vg ? <VgVelden id={station.id} uitvoerder="van_gelder" wv={(station.wv as string | null) ?? null} namen={[...new Set((cases ?? []).map((x) => (x.station.wv as string | null)?.trim()).filter((w): w is string => !!w))].sort((a, b) => a.localeCompare(b, "nl-NL"))} />
               : <div style={{ fontSize: 14, color: SUB }}>{[caseSub(station), "opdrachtgever Van Gelder", "netbeheerder Liander"].filter(Boolean).join(" · ")}</div>}
           </div>

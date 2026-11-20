@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { FileUp, Plus } from "lucide-react";
 import { CaseToevoegenDialog } from "@/components/cases/CaseToevoegenDialog";
+import { UitvoeringLabel } from "@/components/cases/UitvoeringLabel";
 import { ExcelImportDialog } from "@/components/cases/ExcelImportDialog";
 import { FILTER_OPTIES, bewaarFilter, filterCases, leesFilter, tellingen, uitvoerderVan, type UitvoerderFilter } from "@/lib/cases-filter";
 import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
@@ -56,12 +57,14 @@ function Bal({ cases, open }: { cases: CaseItem[]; open: (s: UrlStation) => void
                   <StatusPil status={i.c.last?.status ?? "open"} prefix={`R${Math.max(1, i.c.rondes.length)} · `} />
                 </div>
                 <div className="font-display" style={{ fontSize: 17, fontWeight: 700, lineHeight: 1.25, color: T.titleOnBg, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{caseNaam(i.c.station)}</div>
-                {uitvoerderVan(i.c) === "van_gelder" ? (
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: "#5B4A1E", background: "#F3EBD6", borderRadius: 6, padding: "2px 6px", whiteSpace: "nowrap" }}>Uitvoering Van Gelder</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                  <UitvoeringLabel uitvoerder={uitvoerderVan(i.c)} />
+                  {uitvoerderVan(i.c) === "van_gelder" ? (
                     <span style={{ fontSize: 13, color: T.subOnBg, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>WV: {i.c.station.wv?.trim() || "—"}</span>
-                  </div>
-                ) : caseSub(i.c.station) && <div style={{ fontSize: 13, color: T.subOnBg, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{caseSub(i.c.station)}</div>}
+                  ) : caseSub(i.c.station) ? (
+                    <span style={{ fontSize: 13, color: T.subOnBg, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{caseSub(i.c.station)}</span>
+                  ) : null}
+                </div>
                 <div style={{ borderTop: `1px solid ${T.hairline}`, paddingTop: 8, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, width: "100%" }}>
                   <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, fontWeight: 600, color: PARTIJ_STIJL[lane.key].fg, minWidth: 0 }}>
                     <span className="material-symbols-rounded" style={{ fontSize: 18 }}>arrow_forward</span>
