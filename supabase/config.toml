@@ -4,3 +4,6 @@ verify_jwt = false
 
 [functions.sharepoint-sync]
 verify_jwt = true
+
+[functions.opleverketen]
+verify_jwt = false

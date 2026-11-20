@@ -99,7 +99,9 @@ export default function Opleveren({ stationId }: { stationId?: string } = {}) {
     }
     queryClient.invalidateQueries({ queryKey: ["stations"] });
     queryClient.invalidateQueries({ queryKey: ["station", id] });
-    toast.success(`Opgeleverd aan ${client}`, { description: (data as { rapport_url?: string })?.rapport_url ? "Het rapport is klaargezet." : undefined });
+    queryClient.invalidateQueries({ queryKey: ["opleverketen", id] });
+    // Niet "alles gelukt": rapport en SharePoint lopen nog; de stationspagina toont de voortgang
+    toast.success("Dossier ingediend", { description: "Rapport wordt gemaakt, SharePoint wordt bijgewerkt. Volg de voortgang op de stationspagina." });
     navigate("/", { replace: true });
     } catch { toast.error("Opleveren mislukt. Probeer het opnieuw."); }
     finally { setVersturen(false); }

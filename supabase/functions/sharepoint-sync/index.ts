@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";
 import { isBeheerder } from "../_shared/admin-auth.ts";
-import { context, controleerSleutel, nietSyncReden, syncStation, zetStatus } from "../_shared/sharepoint.ts";
+import { context, controleerSleutel, nietSyncReden, syncEnRegistreer, zetStatus } from "../_shared/sharepoint.ts";
 
 const Body = z.union([
   z.object({ station_id: z.string().uuid(), alleen_status: z.boolean().optional() }),
@@ -39,20 +39,10 @@ Deno.serve(async (req) => {
   }
   const reden = nietSyncReden(station);
   if (reden) return json({ ok: true, overgeslagen: reden });
-  const { data: vorig } = await db.from("sharepoint_sync").select("sharepoint_item_id").eq("station_id", stationId).maybeSingle();
-  const status = (v: Record<string, unknown>) =>
-    db.from("sharepoint_sync").upsert({ station_id: stationId, gesynct_op: new Date().toISOString(), ...v });
-  await status({ status: "bezig", fout: null });
-
   try {
-    const ctx = await context(db);
-    const res = await syncStation(ctx, db, station, vorig?.sharepoint_item_id ?? null);
-    await status({ status: "gelukt", aantal_bestanden: res.aantal_bestanden, sharepoint_url: res.sharepoint_url, sharepoint_item_id: res.item_id, fout: null });
-    return json({ ok: true, ...res });
+    return json({ ok: true, ...(await syncEnRegistreer(db, station)) });
   } catch (e) {
-    const fout = (e as Error).message;
-    console.error("sharepoint-sync mislukt:", fout);
-    await status({ status: "mislukt", fout: fout.slice(0, 1000) });
+    console.error("sharepoint-sync mislukt:", (e as Error).message);
     return json({ error: "Synchronisatie mislukt" }, 500);
   }
 });

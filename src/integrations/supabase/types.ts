@@ -293,6 +293,60 @@ export type Database = {
         }
         Relationships: []
       }
+      opleverruns: {
+        Row: {
+          aangevraagd_door: string | null
+          afgerond_op: string | null
+          bijgewerkt_op: string
+          fout: string | null
+          gestart_op: string
+          id: string
+          lease_id: string | null
+          lease_tot: string | null
+          pdf_run: string | null
+          poging: number
+          retry_stap: string | null
+          stap_fouten: Json
+          station_id: string
+          status: string
+          volgende_poging_op: string | null
+        }
+        Insert: {
+          aangevraagd_door?: string | null
+          afgerond_op?: string | null
+          bijgewerkt_op?: string
+          fout?: string | null
+          gestart_op?: string
+          id?: string
+          lease_id?: string | null
+          lease_tot?: string | null
+          pdf_run?: string | null
+          poging?: number
+          retry_stap?: string | null
+          stap_fouten?: Json
+          station_id: string
+          status?: string
+          volgende_poging_op?: string | null
+        }
+        Update: {
+          aangevraagd_door?: string | null
+          afgerond_op?: string | null
+          bijgewerkt_op?: string
+          fout?: string | null
+          gestart_op?: string
+          id?: string
+          lease_id?: string | null
+          lease_tot?: string | null
+          pdf_run?: string | null
+          poging?: number
+          retry_stap?: string | null
+          stap_fouten?: Json
+          station_id?: string
+          status?: string
+          volgende_poging_op?: string | null
+        }
+        Relationships: []
+      }
       pin_pogingen: {
         Row: {
           gelukt: boolean
@@ -636,6 +690,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      opleverrun_claim: {
+        Args: { _id: string; _seconden: number }
+        Returns: string
       }
     }
     Enums: {

@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.58.0";
 import { z } from "npm:zod@3";
+import { ketenKick } from "../_shared/keten-kick.ts";
 
 const Body = z.object({
   actie: z.enum(["submit", "rapport-url"]).optional(),
@@ -45,6 +46,18 @@ Deno.serve(async (req) => {
       const { data: signed, error } = await supabase.storage.from("rapporten").createSignedUrl(pad, 60 * 60);
       if (error) throw error;
       return new Response(JSON.stringify({ rapport_url: signed?.signedUrl, pdf_status: pdf?.status ?? null, type: pad.endsWith(".pdf") ? "pdf" : "html" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Idempotent: loopt er al een oplevering voor dit station, dan niets opnieuw indienen
+    const actieveRun = async () => (await supabase.from("opleverruns").select("id, status, gestart_op")
+      .eq("station_id", stationId).not("status", "in", "(afgerond,mislukt)").maybeSingle()).data;
+    const bestaand = await actieveRun();
+    if (bestaand) {
+      ketenKick(stationId);
+      const { data: signed } = await supabase.storage.from("rapporten").createSignedUrl(`${stationId}/rapport.html`, 60 * 60);
+      return new Response(JSON.stringify({ ok: true, al_ingediend: true, run: bestaand, rapport_url: signed?.signedUrl }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -99,30 +112,28 @@ ${(skips ?? []).length ? `<h2>Niet van toepassing</h2>${(skips ?? []).map((skip)
       .upload(pad, new Blob([html], { type: "text/html" }), { upsert: true, contentType: "text/html" });
     if (uploadError) throw uploadError;
 
-    await supabase.from("stations").update({
+    const { data: bijgewerkt, error: stationError } = await supabase.from("stations").update({
       status: "opgeleverd",
       submitted_at: submittedAt,
       submitted_by: submittedBy,
       opdrachtgever,
       review_reden: null,
-    }).eq("id", stationId);
+    }).eq("id", stationId).select("id");
+    if (stationError || !bijgewerkt?.length) throw new Error(`Station bijwerken mislukt: ${stationError?.message ?? "0 rijen"}`);
 
-    await supabase.from("fotos").update({ review_status: "pending", review_reden: null }).eq("station_id", stationId).neq("review_status", "approved");
+    const { error: fotoError } = await supabase.from("fotos").update({ review_status: "pending", review_reden: null }).eq("station_id", stationId).neq("review_status", "approved");
+    if (fotoError) throw new Error(`Foto's bijwerken mislukt: ${fotoError.message}`);
 
-    // PDF-rapport op de achtergrond; rapport-pdf start daarna de SharePoint-sync. Fouten laten het opleveren niet mislukken.
-    const pdfStart = fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/rapport-pdf`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
-      body: JSON.stringify({ station_id: stationId }),
-    })
-      .then(async (r) => { if (!r.ok) console.error(`rapport-pdf [${r.status}]: ${await r.text()}`); else await r.body?.cancel(); })
-      .catch((e) => console.error("rapport-pdf niet bereikbaar:", (e as Error).message));
-    // deno-lint-ignore no-explicit-any
-    (globalThis as any).EdgeRuntime?.waitUntil?.(pdfStart);
+    // Pas nu (HTML + station bevestigd) de keten starten. Unieke index = één actieve run per station.
+    let { data: run, error: runError } = await supabase.from("opleverruns")
+      .insert({ station_id: stationId, status: "aangevraagd", aangevraagd_door: submittedBy }).select("id, status, gestart_op").single();
+    if (runError?.code === "23505") { run = await actieveRun(); runError = null; }
+    if (runError || !run) throw new Error(`Opleverrun aanmaken mislukt: ${runError?.message ?? "onbekend"}`);
+    ketenKick(stationId);
 
     const { data: signed } = await supabase.storage.from("rapporten").createSignedUrl(pad, 60 * 60);
 
-    return new Response(JSON.stringify({ ok: true, rapport_url: signed?.signedUrl, submitted_at: submittedAt }), {
+    return new Response(JSON.stringify({ ok: true, run, rapport_url: signed?.signedUrl, submitted_at: submittedAt }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {

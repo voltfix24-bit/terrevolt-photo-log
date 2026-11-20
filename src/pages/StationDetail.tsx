@@ -5,6 +5,7 @@ import { nieuwPad, uploadEnRegistreer, verwijderFoto } from "@/lib/fotos-service
 import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { WizardView } from "@/components/WizardView";
 import { SharePointStatus } from "@/components/SharePointStatus";
+import { OpleverStatus } from "@/components/OpleverStatus";
 import { SharePointDocumenten } from "@/components/SharePointDocumenten";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -587,6 +588,7 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
           <p className="mb-5" style={{ fontSize: 14, color: T.subOnBg }}>
             {[station.datum, station.ingevuld_door].filter(Boolean).join(' · ')}
           </p>
+          <OpleverStatus stationId={station.id} />
           <SharePointStatus station={station} />
           <div ref={documentenRef} style={{ scrollMarginTop: 16 }}><SharePointDocumenten stationId={station.id} /></div>
 

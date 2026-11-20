@@ -515,3 +515,25 @@ export async function downloadUrl(ctx: Ctx, mapId: string, bestandId: string) {
   if (it.parentReference?.id !== mapId) throw new Error("Bestand hoort niet bij deze case");
   return it["@microsoft.graph.downloadUrl"] as string;
 }
+
+/** Eén station synchroniseren en de uitkomst in sharepoint_sync vastleggen (gedeeld door sharepoint-sync en opleverketen).
+ *  Gooit bij een fout, zodat de aanroeper zelf kan beslissen over opnieuw proberen. */
+export async function syncEnRegistreer(db: any, station: any) {
+  const stationId = station.id;
+  const { data: vorig } = await db.from("sharepoint_sync").select("sharepoint_item_id").eq("station_id", stationId).maybeSingle();
+  const status = async (v: Record<string, unknown>) => {
+    const { error } = await db.from("sharepoint_sync").upsert({ station_id: stationId, gesynct_op: new Date().toISOString(), ...v });
+    if (error) throw new Error(`sharepoint_sync opslaan mislukt: ${error.message}`);
+  };
+  await status({ status: "bezig", fout: null });
+  try {
+    const ctx = await context(db);
+    const res = await syncStation(ctx, db, station, vorig?.sharepoint_item_id ?? null);
+    await status({ status: "gelukt", aantal_bestanden: res.aantal_bestanden, sharepoint_url: res.sharepoint_url, sharepoint_item_id: res.item_id, fout: null });
+    return res;
+  } catch (e) {
+    const fout = (e as Error).message;
+    await status({ status: "mislukt", fout: fout.slice(0, 1000) }).catch(() => {});
+    throw e;
+  }
+}

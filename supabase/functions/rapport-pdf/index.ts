@@ -6,8 +6,9 @@ import { z } from "npm:zod@3";
 import { PDFDocument, PDFFont, PDFImage, PDFPage, PDFString, StandardFonts, rgb, RGB } from "npm:pdf-lib@1.17.1";
 import jpeg from "npm:jpeg-js@0.4.4";
 import { CATEGORIES, SECTIONS } from "../_shared/sharepoint-categories.ts";
+import { ketenKick } from "../_shared/keten-kick.ts";
 
-const Body = z.object({ station_id: z.string().uuid(), stap: z.number().int().min(0).optional(), run: z.string().optional() });
+const Body = z.object({ station_id: z.string().uuid(), stap: z.number().int().min(0).optional(), run: z.string().optional(), keten: z.boolean().optional() });
 const json = (d: unknown, s = 200) => new Response(JSON.stringify(d), { status: s, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 const db = () => createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const BUCKET = "rapporten";
@@ -91,10 +92,10 @@ function wrap(s: string, f: PDFFont, size: number, w: number): string[] {
 }
 const fmtDT = (d: string | null | undefined, tijd = true) => d ? new Date(d).toLocaleString("nl-NL", { timeZone: "Europe/Amsterdam", day: "numeric", month: "long", year: "numeric", ...(tijd ? { hour: "2-digit", minute: "2-digit" } : {}) }) : "—";
 
-async function volgende(stationId: string, run: string, stap: number) {
+async function volgende(stationId: string, run: string, stap: number, keten: boolean) {
   // De runtime begrenst hoe snel een functie zichzelf aanroept: wacht dan de opgegeven tijd en probeer opnieuw
   for (let p = 0; p < 6; p++) {
-    try { return await volgendeEens(stationId, run, stap); }
+    try { return await volgendeEens(stationId, run, stap, keten); }
     catch (e) {
       const ms = Number((e as Error).message.match(/Retry after (\d+)ms/)?.[1] ?? 0);
       if (!ms || p === 5) throw e;
@@ -102,10 +103,10 @@ async function volgende(stationId: string, run: string, stap: number) {
     }
   }
 }
-async function volgendeEens(stationId: string, run: string, stap: number) {
+async function volgendeEens(stationId: string, run: string, stap: number, keten: boolean) {
   const r = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/rapport-pdf`, {
     method: "POST", headers: { Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ station_id: stationId, run, stap }),
+    body: JSON.stringify({ station_id: stationId, run, stap, keten }),
   });
   await r.body?.cancel();
 }
@@ -142,7 +143,7 @@ async function download(sb: any, bucket: string, pad: string): Promise<Uint8Arra
 const cachePad = (sid: string, fid: string) => `${sid}/pdf-cache/${fid}.jpg`;
 
 // ---------- Stap 1: één foto voorbereiden ----------
-async function voorbereiden(sid: string, run: string, stap: number) {
+async function voorbereiden(sid: string, run: string, stap: number, keten = false) {
   const sb = db();
   const { data: st } = await sb.from("rapport_pdf").select("gestart_op").eq("station_id", sid).maybeSingle();
   if (st?.gestart_op !== run) return; // nieuwere run gestart
@@ -163,13 +164,15 @@ async function voorbereiden(sid: string, run: string, stap: number) {
           await sb.storage.from(BUCKET).upload(cachePad(sid, f.id), uit, { upsert: true, contentType: "image/jpeg" });
         }
       }
-      return await volgende(sid, run, i + 1);
+      return await volgende(sid, run, i + 1, keten);
     }
     await bouwPdf(sb, sid, fotos);
+    // Keten: opleverketen beslist zelf over SharePoint; zonder keten het oude gedrag
+    if (keten) await ketenKick(sid); else await sharepoint(sid);
   } catch (e) {
     console.error("rapport-pdf mislukt:", (e as Error).message);
-    await sb.from("rapport_pdf").update({ status: "mislukt", fout: (e as Error).message.slice(0, 1000), klaar_op: new Date().toISOString() }).eq("station_id", sid);
-    await sharepoint(sid);
+    await sb.from("rapport_pdf").update({ status: "mislukt", fout: (e as Error).message.slice(0, 1000), klaar_op: new Date().toISOString() }).eq("station_id", sid).eq("gestart_op", run);
+    if (keten) await ketenKick(sid); else await sharepoint(sid);
   }
 }
 
@@ -404,8 +407,8 @@ async function bouwPdf(sb: any, sid: string, fotos: any[]) {
   const bytes = await doc.save();
   const { error } = await sb.storage.from(BUCKET).upload(`${sid}/rapport.pdf`, bytes, { upsert: true, contentType: "application/pdf" });
   if (error) throw new Error(`PDF opslaan mislukt: ${error.message}`);
-  await sb.from("rapport_pdf").update({ status: "klaar", fout: null, bytes: bytes.byteLength, paginas: pages.length, fotos: fotoBron.length, klaar_op: new Date().toISOString() }).eq("station_id", sid);
-  await sharepoint(sid);
+  const { error: stErr } = await sb.from("rapport_pdf").update({ status: "klaar", fout: null, bytes: bytes.byteLength, paginas: pages.length, fotos: fotoBron.length, klaar_op: new Date().toISOString() }).eq("station_id", sid);
+  if (stErr) throw new Error(`PDF-status opslaan mislukt: ${stErr.message}`);
 }
 
 Deno.serve(async (req) => {
@@ -413,7 +416,7 @@ Deno.serve(async (req) => {
   if (!req.headers.get("Authorization")?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
   const parsed = Body.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return json({ error: parsed.error.flatten().fieldErrors }, 400);
-  const { station_id, stap, run } = parsed.data;
+  const { station_id, stap, run, keten } = parsed.data;
   let r = run;
   if (stap === undefined) {
     const gestart = new Date().toISOString();
@@ -422,6 +425,6 @@ Deno.serve(async (req) => {
     r = data.gestart_op;
   }
   // @ts-ignore EdgeRuntime bestaat in Supabase Edge Functions
-  EdgeRuntime.waitUntil(voorbereiden(station_id, r!, stap ?? 0));
-  return json({ ok: true, status: "bezig" }, 202);
+  EdgeRuntime.waitUntil(voorbereiden(station_id, r!, stap ?? 0, keten ?? false));
+  return json({ ok: true, status: "bezig", run: r }, 202);
 });
