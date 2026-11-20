@@ -39,6 +39,9 @@ Deno.serve(async (req) => {
   }
   const reden = nietSyncReden(station);
   if (reden) return json({ ok: true, overgeslagen: reden });
+  // Lopende opleverketen werkt SharePoint zelf bij: geen parallelle sync (voorkomt dubbele mappen)
+  const { data: actief } = await db.from("opleverruns").select("id").eq("station_id", stationId).not("status", "in", "(afgerond,mislukt)").limit(1).maybeSingle();
+  if (actief) return json({ error: "Oplevering loopt nog" }, 409);
   try {
     return json({ ok: true, ...(await syncEnRegistreer(db, station)) });
   } catch (e) {

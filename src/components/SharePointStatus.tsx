@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Pressable, T } from "@/components/apple/Primitives";
 import { toast } from "sonner";
 import { internetVereist } from "@/lib/internet";
+import { handmatigeSyncToegestaan, syncUitkomst, type KetenRun } from "@/lib/opleverketen";
 
 // Klein statuslabel voor de SharePoint-koppeling + handmatig opnieuw synchroniseren
 type StationInfo = { id: string; status: string | null; casenummer: string | null; casenaam: string | null };
@@ -29,6 +30,17 @@ export function SharePointStatus({ station }: { station: StationInfo }) {
     },
     refetchInterval: (q) => (q.state.data?.status === "bezig" ? 3000 : false),
   });
+  // Lopende opleverketen: die werkt SharePoint zelf bij, dus geen parallelle handmatige sync
+  const { data: run } = useQuery({
+    queryKey: ["opleverrun-actief", stationId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("opleverruns").select("status").eq("station_id", stationId).order("gestart_op", { ascending: false }).limit(1).maybeSingle();
+      if (error) throw error;
+      return data as Pick<KetenRun, "status"> | null;
+    },
+    refetchInterval: (q) => (handmatigeSyncToegestaan(q.state.data) ? false : 5000),
+  });
+  const ketenActief = !handmatigeSyncToegestaan(run);
 
   if (reden) {
     return (
@@ -40,12 +52,17 @@ export function SharePointStatus({ station }: { station: StationInfo }) {
 
   const opnieuw = async () => {
     if (!internetVereist()) return;
+    if (ketenActief) { toast.info("Oplevering loopt nog — SharePoint wordt automatisch bijgewerkt"); return; }
     setBezig(true);
-    const { error } = await supabase.functions.invoke("sharepoint-sync", { body: { station_id: stationId } });
+    const { data, error } = await supabase.functions.invoke("sharepoint-sync", { body: { station_id: stationId } });
     setBezig(false);
     qc.invalidateQueries({ queryKey: ["sharepoint-sync", stationId] });
-    if (error) toast.error("Naar SharePoint sturen is mislukt");
-    else toast.success("Bijgewerkt in SharePoint");
+    qc.invalidateQueries({ queryKey: ["opleverrun-actief", stationId] });
+    const uitkomst = syncUitkomst(data, error);
+    if (uitkomst === "gelukt") toast.success("Bijgewerkt in SharePoint");
+    else if (uitkomst === "bezig") toast.info("Oplevering loopt nog — SharePoint wordt automatisch bijgewerkt");
+    else if (uitkomst === "overgeslagen") toast.info("Niet naar SharePoint gestuurd");
+    else toast.error("Naar SharePoint sturen is mislukt");
   };
 
   const loopt = bezig || sync?.status === "bezig";
@@ -68,7 +85,10 @@ export function SharePointStatus({ station }: { station: StationInfo }) {
           <span className="material-symbols-rounded" style={{ fontSize: 20 }}>{label.icon}</span>{label.tekst}
         </span>
       )}
-      {!loopt && (
+      {!loopt && ketenActief && (
+        <span style={{ minHeight: 44, display: "flex", alignItems: "center", color: T.subOnBg, fontSize: 14 }}>Wordt bijgewerkt door de oplevering</span>
+      )}
+      {!loopt && !ketenActief && (
         <Pressable onClick={opnieuw} style={{ minHeight: 44, color: T.green, fontSize: 15, padding: "0 4px" }}>
           {sync?.status === "mislukt" ? "Opnieuw proberen" : "Opnieuw naar SharePoint"}
         </Pressable>

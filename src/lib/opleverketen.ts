@@ -31,3 +31,19 @@ export function ketenWeergave(run: KetenRun | null | undefined): KetenWeergave |
   }
   return { titel: "Onbekende status", tekst: run.status, toon: "wacht", retry: false, actief: false };
 }
+
+/** Handmatige SharePoint-sync mag alleen als er geen opleverrun actief is (anders kan hij parallel lopen met de keten). */
+export function handmatigeSyncToegestaan(run: Pick<KetenRun, "status"> | null | undefined): boolean {
+  return !run || run.status === "afgerond" || run.status === "mislukt";
+}
+
+/** Uitkomst van sharepoint-sync vertalen: alleen een bevestigde sync is succes. */
+export function syncUitkomst(data: unknown, error: unknown): "gelukt" | "overgeslagen" | "bezig" | "mislukt" {
+  if (error) {
+    const status = (error as { context?: { status?: number } })?.context?.status;
+    return status === 409 ? "bezig" : "mislukt";
+  }
+  const d = data as { ok?: boolean; overgeslagen?: string } | null;
+  if (d?.ok !== true) return "mislukt";
+  return d.overgeslagen ? "overgeslagen" : "gelukt";
+}

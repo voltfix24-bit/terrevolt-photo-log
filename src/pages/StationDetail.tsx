@@ -1,8 +1,7 @@
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { categorieKlaar } from "@/lib/foto-regels";
 import { internetVereist } from "@/lib/internet";
-import { nieuwPad, uploadEnRegistreer, verwijderFoto } from "@/lib/fotos-service";
-import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
+import { PaginaLader } from "@/components/Laden";
 import { WizardView } from "@/components/WizardView";
 import { SharePointStatus } from "@/components/SharePointStatus";
 import { OpleverStatus } from "@/components/OpleverStatus";
@@ -10,20 +9,10 @@ import { SharePointDocumenten } from "@/components/SharePointDocumenten";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { requirePin } from "@/lib/require-pin";
-import { CATEGORIES, SECTIONS, getCategoriesBySection, getApplicableCategories, slugify, type Category, type Section } from "@/lib/categories";
+import { SECTIONS, type Category } from "@/lib/categories";
 import { useMergedCategories, type MergedCategory } from "@/hooks/use-categories";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useRef, useState, useCallback, useMemo, useEffect } from "react";
-import imageCompression from "browser-image-compression";
-import { useOnline } from "@/hooks/use-online";
-import { queuePhoto } from "@/lib/offline-queue";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { generatePdfHtml } from "@/lib/pdf-generator";
@@ -32,205 +21,16 @@ import { useVoorbeelden } from "@/components/CategorieSettings";
 import { useInstellingen } from "@/hooks/use-theme";
 import { Kruimelpad, deelLink } from "@/components/url/Kruimelpad";
 import { categorieUrl, caseUrl, korteUrl, opleverUrl, sectieUrl, type Sub } from "@/lib/urls";
-import { GlassBar, Hairline, Kaart, Pressable, T, R, M, ROW_MIN, ROW_PAD_X, ICON, ICON_GAP, INSET_HEAD, INSET_ROW } from "@/components/apple/Primitives";
-import { Check, CheckCircle2, ChevronDown } from "lucide-react";
-
-const MAX_SIZE = 10 * 1024 * 1024;
-const ACCEPTED = ["image/jpeg", "image/png", "image/heic", "image/webp"];
-
-type FotoRow = { id: string; url: string; storage_path: string; categorie: string; uploaded_at?: string };
-
-/* ==================== DROP ZONE COMPONENT ==================== */
-function DropZone({ onFiles, disabled, onClick, children }: {
-  onFiles: (files: FileList) => void;
-  disabled?: boolean;
-  onClick?: (e: React.MouseEvent) => void;
-  children: React.ReactNode;
-}) {
-  const [dragging, setDragging] = useState(false);
-  const dragCounter = useRef(0);
-
-  const handleDrag = useCallback((e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); }, []);
-  const handleDragEnter = useCallback((e: React.DragEvent) => {
-    e.preventDefault(); e.stopPropagation();
-    dragCounter.current++;
-    if (e.dataTransfer.items?.length) setDragging(true);
-  }, []);
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault(); e.stopPropagation();
-    dragCounter.current--;
-    if (dragCounter.current === 0) setDragging(false);
-  }, []);
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault(); e.stopPropagation();
-    setDragging(false);
-    dragCounter.current = 0;
-    if (disabled) return;
-    if (e.dataTransfer.files?.length) onFiles(e.dataTransfer.files);
-  }, [disabled, onFiles]);
-
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      onDragOver={handleDrag}
-      onDragEnter={handleDragEnter}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      className="mb-2 w-full cursor-pointer px-6 py-10 text-center active:scale-[0.99]"
-      style={{
-        minHeight: 190,
-        border: "none",
-        borderRadius: R.group,
-        background: T.surface,
-        transform: dragging ? "scale(1.01)" : undefined,
-        transition: `transform 0.2s ${M.spring}`,
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
-/* ==================== SKIP TRACKING ==================== */
-function useSkippedCategories(stationId: string | undefined) {
-  const key = `skipped-${stationId}`;
-  const reasonsKey = `skip-reasons-${stationId}`;
-  const queryClient = useQueryClient();
-  const [skipped, setSkippedRaw] = useState<string[]>(() => {
-    try {
-      const raw = localStorage.getItem(key);
-      return raw ? JSON.parse(raw) : [];
-    } catch { return []; }
-  });
-  const [skippedReasons, setSkippedReasons] = useState<Record<string, string>>(() => {
-    try {
-      const raw = localStorage.getItem(reasonsKey);
-      return raw ? JSON.parse(raw) : {};
-    } catch { return {}; }
-  });
-  const { data: storedSkips } = useQuery({
-    queryKey: ['categorie-skips', stationId],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('categorie_skips').select('categorie, reden').eq('station_id', stationId ?? '');
-      if (error) throw error;
-      return data ?? [];
-    },
-    enabled: !!stationId,
-  });
-
-  useEffect(() => {
-    if (!storedSkips) return;
-    const names = storedSkips.map(item => item.categorie);
-    const reasons = Object.fromEntries(storedSkips.map(item => [item.categorie, item.reden]));
-    setSkippedRaw(names);
-    setSkippedReasons(reasons);
-    try {
-      localStorage.setItem(key, JSON.stringify(names));
-      localStorage.setItem(reasonsKey, JSON.stringify(reasons));
-    } catch { /* */ }
-  }, [key, reasonsKey, storedSkips]);
-
-  const setSkipped = useCallback((fn: (prev: string[]) => string[]) => {
-    setSkippedRaw(prev => {
-      const next = fn(prev);
-      try { localStorage.setItem(key, JSON.stringify(next)); } catch { /* */ }
-      return next;
-    });
-  }, [key]);
-
-  const addSkip = useCallback((catName: string, reason?: string) => {
-    if (!internetVereist()) return;
-    setSkipped(prev => prev.includes(catName) ? prev : [...prev, catName]);
-    if (reason) {
-      setSkippedReasons(prev => {
-        const next = { ...prev, [catName]: reason };
-        try { localStorage.setItem(reasonsKey, JSON.stringify(next)); } catch { /* */ }
-        return next;
-      });
-      if (stationId) {
-        void supabase.from('categorie_skips').upsert({ station_id: stationId, categorie: catName, reden: reason, updated_at: new Date().toISOString() }, { onConflict: 'station_id,categorie' }).then(() => {
-          queryClient.invalidateQueries({ queryKey: ['categorie-skips', stationId] });
-        });
-      }
-    }
-  }, [queryClient, reasonsKey, setSkipped, stationId]);
-
-  const removeSkip = useCallback((catName: string) => {
-    if (!internetVereist()) return;
-    setSkipped(prev => prev.filter(n => n !== catName));
-    setSkippedReasons(prev => {
-      const next = { ...prev };
-      delete next[catName];
-      try { localStorage.setItem(reasonsKey, JSON.stringify(next)); } catch { /* */ }
-      return next;
-    });
-    if (stationId) {
-      void supabase.from('categorie_skips').delete().eq('station_id', stationId).eq('categorie', catName).then(() => {
-        queryClient.invalidateQueries({ queryKey: ['categorie-skips', stationId] });
-      });
-    }
-  }, [queryClient, reasonsKey, setSkipped, stationId]);
-
-  const toggleSkip = useCallback((catName: string) => {
-    if (!internetVereist()) return;
-    setSkipped(prev =>
-      prev.includes(catName)
-        ? prev.filter(n => n !== catName)
-        : [...prev, catName]
-    );
-  }, [setSkipped]);
-
-  const isSkipped = useCallback((catName: string) => skipped.includes(catName), [skipped]);
-
-  return { skipped, skippedReasons, addSkip, removeSkip, toggleSkip, isSkipped };
-}
-
-/* ==================== CATEGORY ROW ==================== */
-function VoltooidVink() {
-  return (
-    <span aria-hidden="true" style={{ position: "relative", display: "inline-flex", width: 16, height: 16, color: T.green, flexShrink: 0 }}>
-      <CheckCircle2 size={16} strokeWidth={1.4} fill="currentColor" stroke="currentColor" />
-      <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", transform: "translateY(0.7px)" }}>
-        <Check size={11} strokeWidth={3.2} color={T.surface} />
-      </span>
-    </span>
-  );
-}
-
-function CategoryRow({ cat, fotos, isSkipped, skipReason, opmerking, onOpen }: {
-  cat: MergedCategory; fotos: FotoRow[]; isSkipped?: boolean; skipReason?: string; opmerking?: string; onOpen: () => void;
-}) {
-  const hasPhotos = fotos.length > 0;
-
-  const nvt = Boolean(isSkipped && !hasPhotos);
-  const icon = nvt ? "block" : hasPhotos ? "check_circle" : "photo_camera";
-  const iconColor = nvt ? T.bodyOnBg : T.green;
-  return (
-    <Pressable
-      data-cat-id={cat.id}
-      onClick={onOpen}
-      scale={0.985}
-      style={{ width: "100%", minHeight: ROW_MIN, display: "flex", alignItems: "center", gap: ICON_GAP, padding: `15px ${ROW_PAD_X}px`, textAlign: "left" }}
-    >
-      <span className="material-symbols-rounded shrink-0" style={{ fontSize: ICON, color: iconColor, fontVariationSettings: hasPhotos ? "'FILL' 1" : undefined }}>{icon}</span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 17, color: T.titleOnBg, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{cat.effectiveName}</div>
-        {nvt && <div style={{ fontSize: 14, color: T.subOnBg, marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}><span style={{ fontWeight: 600 }}>N.v.t.</span> · {skipReason || "Geen reden opgegeven"}</div>}
-        {opmerking && (
-          <div style={{ fontSize: 14, color: "#8A6A00", marginTop: 2, display: "flex", alignItems: "center", gap: 4, minWidth: 0 }}>
-            <span className="material-symbols-rounded" style={{ fontSize: 16, flexShrink: 0 }}>sticky_note_2</span>
-            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{opmerking.split("\n")[0]}</span>
-          </div>
-        )}
-      </div>
-      {hasPhotos && <span style={{ fontSize: 15, color: T.bodyOnBg, fontFamily: "ui-monospace, monospace" }}>{fotos.length}</span>}
-      <span className="material-symbols-rounded shrink-0" style={{ fontSize: 19, color: T.chevron }}>chevron_right</span>
-    </Pressable>
-  );
-}
+import { GlassBar, Pressable, T, R, ROW_MIN } from "@/components/apple/Primitives";
+import { useSkippedCategories } from "@/hooks/use-skipped-categories";
+import { useStationUpload } from "@/hooks/use-station-upload";
+import { EditStationDialog } from "@/components/station/EditStationDialog";
+import { SectieKaart } from "@/components/station/SectieKaart";
+import { ShareSheet } from "@/components/station/ShareSheet";
+import type { FotoRow } from "@/components/station/types";
 
 /* ==================== MAIN COMPONENT ==================== */
+
 export default function StationDetail({ stationId, sub }: { stationId?: string; sub?: Sub } = {}) {
   const params = useParams<{ id: string }>();
   const id = stationId ?? params.id;
@@ -239,8 +39,6 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
-  const [uploadingCat, setUploadingCat] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxSlides, setLightboxSlides] = useState<{ src: string }[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
@@ -255,7 +53,6 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
   const { data: voorbeelden } = useVoorbeelden();
   const { data: instellingenData } = useInstellingen();
   const { skipped, skippedReasons, addSkip, removeSkip, isSkipped } = useSkippedCategories(id);
-  const isOnline = useOnline();
   const { data: opmerkingen } = useQuery({
     queryKey: ['opmerkingen', id],
     queryFn: async () => {
@@ -329,77 +126,7 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
 
   const filledCount = applicableCategories.filter(catDone).length;
 
-  const compressImage = async (file: File): Promise<File> => {
-    if (file.type === "image/heic") return file;
-    try {
-      return await imageCompression(file, { maxSizeMB: 2, maxWidthOrHeight: 1920, useWebWorker: true, fileType: "image/jpeg", initialQuality: 0.85 });
-    } catch { return file; }
-  };
-
-  // Geeft de bestandsnamen terug die NIET zijn opgeslagen (te groot, ongeldig type of mislukte upload),
-  // zodat de wizard de bijbehorende lokale previews kan verwijderen.
-  const uploadBezig = useRef<Set<string>>(new Set());
-  const handleUpload = async (categorie: string, files: FileList): Promise<string[]> => {
-    const mislukt: string[] = [];
-    if (!id) return Array.from(files).map(f => f.name);
-    if (!navigator.onLine) {
-      let queued = 0;
-      for (const file of Array.from(files)) {
-        if (file.size > MAX_SIZE) { toast.error(`${file.name} is groter dan 10MB`); mislukt.push(file.name); continue; }
-        if (!ACCEPTED.includes(file.type) && !file.name.toLowerCase().endsWith(".heic")) { toast.error(`${file.name}: ongeldig bestandstype`); mislukt.push(file.name); continue; }
-        try { await queuePhoto(id, categorie, file); queued++; }
-        catch { toast.error(`${file.name} niet lokaal bewaard — mogelijk is de opslag vol. Bewaar de originele foto en probeer opnieuw.`); mislukt.push(file.name); }
-      }
-      if (queued > 0) {
-        toast.success(`${queued} foto${queued > 1 ? "'s" : ""} opgeslagen — wordt geüpload zodra je online bent`, {
-          duration: 4000,
-        });
-      }
-      return mislukt;
-    }
-
-    if (uploadBezig.current.has(categorie)) { toast.info("Upload loopt al voor deze categorie"); return Array.from(files).map((f) => f.name); }
-    uploadBezig.current.add(categorie);
-    setUploadingCat(categorie);
-    const total = files.length;
-    let done = 0;
-    try {
-      for (const file of Array.from(files)) {
-        if (file.size > MAX_SIZE) { toast.error(`${file.name} is groter dan 10MB`); mislukt.push(file.name); continue; }
-        if (!ACCEPTED.includes(file.type) && !file.name.toLowerCase().endsWith(".heic")) { toast.error(`${file.name}: ongeldig bestandstype`); mislukt.push(file.name); continue; }
-        try {
-          const compressed = await compressImage(file);
-          const r = await uploadEnRegistreer(nieuwPad(id, categorie, file.name), compressed, { stationId: id, categorie, volgorde: fotosByCategorie(categorie).length + done });
-          if ("stap" in r) {
-            toast.error(r.stap === "opslag" ? `Upload mislukt: ${file.name}` : `${file.name} is niet opgeslagen in de app — probeer opnieuw`);
-            mislukt.push(file.name); continue;
-          }
-          done++;
-          setUploadProgress((p) => ({ ...p, [categorie]: Math.round((done / total) * 100) }));
-        } catch (e) {
-          console.error("upload mislukt", e);
-          toast.error(`Upload mislukt: ${file.name}`); mislukt.push(file.name);
-        }
-      }
-    } finally {
-      uploadBezig.current.delete(categorie);
-      queryClient.invalidateQueries({ queryKey: ["fotos", id] });
-      queryClient.invalidateQueries({ queryKey: ["stations"] });
-      setUploadingCat(null);
-      setUploadProgress((p) => { const next = { ...p }; delete next[categorie]; return next; });
-    }
-    if (done > 0) toast.success(done === total ? "Foto's geüpload ✓" : `${done} van ${total} foto's geüpload`);
-    if (done > 0 && isSkipped(categorie)) { removeSkip(categorie); toast.info("N.v.t. opgeheven: er is toch een foto"); }
-    return mislukt;
-  };
-
-  const handleDelete = async (fotoId: string, storagePath: string) => {
-    const r = await verwijderFoto(fotoId, storagePath);
-    queryClient.invalidateQueries({ queryKey: ["fotos", id] });
-    queryClient.invalidateQueries({ queryKey: ["stations"] });
-    if (!r.ok) { toast.error("Foto verwijderen mislukt — probeer opnieuw"); return; }
-    toast.success("Foto verwijderd");
-  };
+  const { uploadingCat, uploadProgress, handleUpload, handleDelete } = useStationUpload(id, { fotosByCategorie, isSkipped, removeSkip });
 
   const openLightbox = (cat: string, index: number) => {
     const catFotos = fotosByCategorie(cat);
@@ -610,56 +337,22 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
 
         {/* ── 2. SECTION ACCORDION ── */}
         <div className="mb-8">
-          {sectionGroups.map(({ section, categories: cats }) => {
-            const doneCats = cats.filter(c => catDone(c) && !isSkipped(c.name));
-            const openCats = cats.filter(c => !catDone(c) && !isSkipped(c.name));
-            const skippedCats = cats.filter(c => fotosByCategorie(c.name).length === 0 && isSkipped(c.name));
-            const isComplete = openCats.length === 0;
-            const isSectionOpen = openSections.includes(section.id);
-            const sectieFotos = cats.reduce((n, c) => n + fotosByCategorie(c.name).length, 0);
-            const lijn = isComplete ? "rgba(31,92,58,0.16)" : T.hairline;
-
-            // Sort: open first, then in-progress (has photos), then skipped
-            const sortedCats = [...openCats, ...doneCats, ...skippedCats];
-
-            return (
-              <Kaart ref={el => { sectionRefs.current[section.id] = el; }} key={section.id} done={isComplete}>
-                {/* Section header */}
-                <Pressable
-                  onClick={() => toggleSection(section.id)}
-                  scale={0.99}
-                  aria-expanded={isSectionOpen}
-                  style={{ display: "flex", minHeight: ROW_MIN, alignItems: "center", justifyContent: "space-between", padding: `15px ${ROW_PAD_X}px`, width: "100%", textAlign: "left" }}
-                >
-                  <div style={{ minWidth: 0 }}>
-                      <h2 className="font-display" style={{ fontSize: 17, fontWeight: 600, color: T.titleOnBg }}>
-                        {section.label}
-                      </h2>
-                      {isComplete ? (
-                        <p style={{ fontSize: 13, fontWeight: 600, marginTop: 3, color: T.green, display: "flex", alignItems: "center", gap: 5 }}>
-                          <VoltooidVink />
-                          <span>Voltooid · {sectieFotos} foto&apos;s</span>
-                        </p>
-                      ) : (
-                        <p style={{ fontSize: 13, marginTop: 3, color: T.bodyOnBg }}>{doneCats.length} van {cats.length} gedaan</p>
-                      )}
-                  </div>
-                  <ChevronDown size={22} color={T.titleOnBg} style={{ flexShrink: 0, transform: isSectionOpen ? "rotate(180deg)" : "rotate(0deg)", transition: `transform 0.3s ${M.spring}` }} />
-                </Pressable>
-
-                {/* Expanded content */}
-                {isSectionOpen && (
-                  <div>
-                    <Hairline inset={INSET_HEAD} color={lijn} />
-                    {sortedCats.map((cat, index) => <div key={cat.id}>
-                      {index > 0 && <Hairline color={lijn} />}
-                      <CategoryRow cat={cat} fotos={fotosByCategorie(cat.name)} isSkipped={isSkipped(cat.name)} skipReason={skippedReasons[cat.name]} opmerking={opmerkingen?.find(o => o.categorie === cat.name)?.opmerking?.trim() || undefined} onOpen={() => openCategorie(cat)} />
-                    </div>)}
-                  </div>
-                )}
-              </Kaart>
-            );
-          })}
+          {sectionGroups.map(({ section, categories: cats }) => (
+            <SectieKaart
+              key={section.id}
+              ref={el => { sectionRefs.current[section.id] = el; }}
+              section={section}
+              cats={cats}
+              isSectionOpen={openSections.includes(section.id)}
+              onToggle={() => toggleSection(section.id)}
+              catDone={catDone}
+              isSkipped={isSkipped}
+              fotosByCategorie={fotosByCategorie}
+              skippedReasons={skippedReasons}
+              opmerkingVan={(naam) => opmerkingen?.find(o => o.categorie === naam)?.opmerking?.trim() || undefined}
+              onOpen={openCategorie}
+            />
+          ))}
         </div>
       </main>
 
@@ -727,136 +420,7 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
         </GlassBar>
       )}
       {/* Share bottom sheet */}
-      {shareOpen && (
-        <div className="fixed inset-0 z-[80] flex items-end">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShareOpen(false)} />
-          <div className="relative w-full bg-card rounded-t-3xl p-6 pb-[max(24px,env(safe-area-inset-bottom))] animate-slide-up shadow-2xl">
-            <div className="w-10 h-1 rounded-full bg-outline-variant/40 mx-auto mb-6" />
-            <h3 className="font-display font-extrabold text-lg text-on-surface mb-1">Rapport delen</h3>
-            <p className="text-sm text-muted-foreground mb-6">{shareStation} · TO Fotorapport</p>
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              <button
-                onClick={() => {
-                  const msg = encodeURIComponent(`TO Fotorapport: ${shareStation}\n\nHet rapport is gegenereerd via TerreVolt TO Foto's app.\n\nOpgeslagen als PDF via de browser.`);
-                  window.open(`https://wa.me/?text=${msg}`, '_blank');
-                  setShareOpen(false);
-                }}
-                className="flex items-center gap-3 p-4 rounded-2xl bg-[#25D366]/10 border border-[#25D366]/20 hover:bg-[#25D366]/15 transition-all active:scale-[0.97]"
-              >
-                <div className="w-10 h-10 rounded-xl bg-[#25D366] flex items-center justify-center flex-shrink-0">
-                  <svg viewBox="0 0 24 24" fill="white" width="20" height="20">
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                  </svg>
-                </div>
-                <div className="text-left">
-                  <div className="font-bold text-sm text-on-surface">WhatsApp</div>
-                  <div className="text-xs text-muted-foreground">Stuur bericht</div>
-                </div>
-              </button>
-              <button
-                onClick={() => {
-                  const subject = encodeURIComponent(`TO Fotorapport: ${shareStation}`);
-                  const body = encodeURIComponent(`Beste,\n\nHierbij het TO Fotorapport voor ${shareStation}.\n\nHet rapport is aangemaakt via de TerreVolt TO Foto's app en opgeslagen als PDF.\n\nMet vriendelijke groet,\nTerreVolt B.V.`);
-                  window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
-                  setShareOpen(false);
-                }}
-                className="flex items-center gap-3 p-4 rounded-2xl bg-primary/5 border border-primary/15 hover:bg-primary/[0.08] transition-all active:scale-[0.97]"
-              >
-                <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center flex-shrink-0">
-                  <span className="material-symbols-rounded text-primary-foreground text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>mail</span>
-                </div>
-                <div className="text-left">
-                  <div className="font-bold text-sm text-on-surface">Email</div>
-                  <div className="text-xs text-muted-foreground">Stuur email</div>
-                </div>
-              </button>
-            </div>
-            <button
-              onClick={async () => {
-                if (!station || !fotos || fotos.length === 0) {
-                  toast.error("Geen foto's om te downloaden");
-                  return;
-                }
-                const toastId = toast.loading("ZIP wordt voorbereid...");
-                try {
-                  const r = await downloadStationZip(station.naam_msr, fotos, (pct) => toast.loading(`ZIP wordt voorbereid... ${pct}%`, { id: toastId }));
-                  if (r.mislukt > 0) toast.warning(`ZIP gedownload, maar ${r.mislukt} van ${r.totaal} foto's ontbreken`, { id: toastId, duration: 8000 });
-                  else toast.success("ZIP gedownload", { id: toastId });
-                } catch {
-                  toast.error("ZIP download mislukt", { id: toastId });
-                }
-                setShareOpen(false);
-              }}
-              className="w-full flex items-center gap-3 p-4 rounded-2xl bg-primary/5 border border-primary/15 hover:bg-primary/[0.08] transition-all active:scale-[0.97] mb-3"
-            >
-              <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center flex-shrink-0">
-                <span className="material-symbols-rounded text-primary-foreground text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>folder_zip</span>
-              </div>
-              <div className="text-left">
-                <div className="font-bold text-sm text-on-surface">Foto's als ZIP</div>
-                <div className="text-xs text-muted-foreground">Alle foto's van dit station</div>
-              </div>
-            </button>
-            {typeof navigator !== 'undefined' && navigator.share && (
-              <button
-                onClick={async () => {
-                  try {
-                    await navigator.share({ title: `TO Fotorapport: ${shareStation}`, text: `Technische Oplevering Fotorapport voor ${shareStation} - TerreVolt B.V.` });
-                  } catch { /* cancelled */ }
-                  setShareOpen(false);
-                }}
-                className="w-full flex items-center justify-center gap-2.5 p-4 rounded-2xl bg-surface-container border border-outline-variant/20 hover:bg-surface-high transition-all active:scale-[0.97] mb-3"
-              >
-                <span className="material-symbols-rounded text-muted-foreground text-xl">ios_share</span>
-                <span className="font-bold text-sm text-on-surface">Meer opties...</span>
-              </button>
-            )}
-            <button onClick={() => setShareOpen(false)} className="w-full py-3.5 rounded-2xl bg-surface-low text-sm font-semibold text-muted-foreground active:scale-[0.98] transition-all">
-              Sluiten
-            </button>
-          </div>
-        </div>
-      )}
+      {shareOpen && <ShareSheet stationNaam={shareStation} onClose={() => setShareOpen(false)} onZip={downloadZip} />}
     </div>
-  );
-}
-
-/* ==================== EDIT STATION DIALOG ==================== */
-
-interface EditStationDialogProps {
-  station: { id: string; naam_msr: string; behuizingsnummer: string | null; casenummer: string | null; casenaam: string | null; type_ruimte: string | null; ingevuld_door: string | null; datum: string | null };
-  open: boolean; onOpenChange: (open: boolean) => void; onSaved: () => void;
-}
-
-function EditStationDialog({ station, open, onOpenChange, onSaved }: EditStationDialogProps) {
-  const [form, setForm] = useState({ naam_msr: station.naam_msr, behuizingsnummer: station.behuizingsnummer || "", casenummer: station.casenummer || "", casenaam: station.casenaam || "", type_ruimte: station.type_ruimte || "", ingevuld_door: station.ingevuld_door || "", datum: station.datum || "" });
-  const [saving, setSaving] = useState(false);
-
-  const handleSave = async () => {
-    if (!internetVereist()) return;
-    setSaving(true);
-    const { error } = await supabase.from("stations").update({ naam_msr: form.naam_msr, behuizingsnummer: form.behuizingsnummer || null, casenummer: form.casenummer || null, casenaam: form.casenaam || null, type_ruimte: form.type_ruimte, ingevuld_door: form.ingevuld_door || null, datum: form.datum || null }).eq("id", station.id);
-    setSaving(false);
-    if (error) { toast.error("Fout bij opslaan"); } else { toast.success("Station bijgewerkt"); onSaved(); onOpenChange(false); }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader><DialogTitle>Station bewerken</DialogTitle></DialogHeader>
-        <div className="space-y-3">
-          <div><Label>Naam MSR</Label><input value={form.naam_msr} onChange={(e) => setForm({ ...form, naam_msr: e.target.value })} className="w-full px-4 py-3 bg-surface-low border border-outline-variant/30 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/25 transition" /></div>
-          <div><Label>Behuizingsnummer</Label><input value={form.behuizingsnummer} onChange={(e) => setForm({ ...form, behuizingsnummer: e.target.value })} className="w-full px-4 py-3 bg-surface-low border border-outline-variant/30 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/25 transition" /></div>
-          <div><Label>Casenummer</Label><input value={form.casenummer} onChange={(e) => setForm({ ...form, casenummer: e.target.value })} className="w-full px-4 py-3 bg-surface-low border border-outline-variant/30 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/25 transition" /></div>
-          <div><Label>Casenaam</Label><input value={form.casenaam} onChange={(e) => setForm({ ...form, casenaam: e.target.value })} className="w-full px-4 py-3 bg-surface-low border border-outline-variant/30 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/25 transition" /></div>
-          <div><Label>Type ruimte</Label><Select value={form.type_ruimte} onValueChange={(v) => setForm({ ...form, type_ruimte: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Compact Station">Compact Station</SelectItem><SelectItem value="Betreedbaar station">Betreedbaar station</SelectItem></SelectContent></Select></div>
-          <div><Label>Ingevuld door</Label><input value={form.ingevuld_door} onChange={(e) => setForm({ ...form, ingevuld_door: e.target.value })} className="w-full px-4 py-3 bg-surface-low border border-outline-variant/30 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/25 transition" /></div>
-          <div><Label>Datum</Label><input type="date" value={form.datum} onChange={(e) => setForm({ ...form, datum: e.target.value })} className="w-full px-4 py-3 bg-surface-low border border-outline-variant/30 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/25 transition" /></div>
-          <button onClick={handleSave} disabled={saving} className="w-full bg-primary hover:bg-primary-hover text-primary-foreground font-bold py-3 rounded-xl shadow-lg shadow-primary/25 active:scale-[0.98] transition-all disabled:opacity-50">
-            {saving ? <span className="inline-flex items-center justify-center gap-2"><KnopLader />Opslaan</span> : "Opslaan"}
-          </button>
-        </div>
-      </DialogContent>
-    </Dialog>
   );
 }
