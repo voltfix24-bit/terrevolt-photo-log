@@ -12,12 +12,12 @@
 - Notes (categorie_opmerkingen) are edited only in `NotitieSheet` (visualViewport-positioned bottom sheet, autosave) and saved via `src/lib/notities.ts` with a localStorage offline queue flushed when back online. Why: iOS keyboard covered inline fields.
 - A photo upload for a skipped category removes the skip; SharePoint gets `{nr}_{cat}_NIET GEMAAKT.txt` per skipped category without photos (sync-managed, deleted when no longer wanted) and an `Opmerking` column on files. Why: no contradictory status.
 - `src/components/TerreVoltLoader.tsx` is the user's file, kept verbatim; the only loading indicator is via `src/components/Laden.tsx` (PaginaLader 80, BlokLader 48, KnopLader 20, LaadAfbeelding 40) — no skeletons/spinners. Why: one brand loader everywhere.
-- No app-shell service worker: manifest-only install; `public/sw.js` is a kill-switch that clears old vite-plugin-pwa caches. Why: stale precache caused blank screens on iPhone Safari.
+- No app-shell SW: manifest-only; `public/sw.js` is a kill-switch for old caches. Why: iPhone blank screens.
 - Edge functions: zod input, Bearer required, generic errors (details in logs). Why: no leaks.
-- Storage `branding`: anon may insert/read only, never update/delete. Why: logos can't be overwritten from outside; uploads use new filenames.
+- Storage `branding`: anon insert/read only (new filenames). Why: no overwrites.
 - Photo writes go through `src/lib/fotos-service.ts` (upload + DB insert, idempotent by storage_path; row deleted before file); station delete/SharePoint status via `src/lib/station-service.ts`. Why: no false success, retry-safe.
-- Offline queue items are removed only after storage+DB succeed; failed items get status 'error' and retry with a stable path `q_{queueId}`. Why: no lost or duplicate photos.
-- Required photos per category live only in `src/lib/foto-regels.ts` (default 1, no overrides until the user confirms). Why: one rule, no regressions.
+- Offline queue: remove only after storage+DB ok; failures stay 'error', retry with stable path `q_{queueId}`. Why: no loss/dupes.
+- Required photos per category: only `src/lib/foto-regels.ts` (default 1; overrides need user OK). Why: one rule.
 - `generatePdfHtml` escapes text, validates urls/HSL. Why: no injection.
 - PIN is verified server-side by `pin-sessie` (PBKDF2 hash in secret ADMIN_PIN_HASH, rate-limited via `pin_pogingen`); success returns a real session for the admin account (`user_roles` role admin, password in ADMIN_SESSION_PASSWORD). No PIN in frontend code. Why: RLS can trust admin actions.
 - RLS: deleting stations, fotos and to-fotos files requires `has_role(auth.uid(),'admin')`; deletes return rows (`.select`) so 0 rows = no success. Sign-ups are disabled. Why: destructive actions only behind the PIN, no lock-out of normal use.
