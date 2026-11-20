@@ -4,3 +4,4 @@
 - [x] Overig beheer offline weigeren zonder nieuwe schermen.
 - [x] Categorie 31 centraal op één foto houden en expliciet testen.
 - [x] Besluiten vastleggen; unit-tests en preview controleren.
+- Fase 2 Van Gelder: uitgebreide Excel-import (meer kolommen, rondes/status), aparte TO-score per uitvoerder naast totaal bij filter "Alle", aanvullende casedetails

@@ -10,12 +10,14 @@ export type DossierStatus = "ingediend" | "volledig" | "afgerond";
 export type ToActie = { id: string; ronde_id: string; station_id: string; omschrijving: string; bij: Partij; derde_naam: string | null; notitie: string | null; afgehandeld_op: string | null; created_at: string };
 export type ToRonde = { id: string; station_id: string; nummer: number; status: ToStatus; ingediend_op: string | null; ingediend_bij: "Van Gelder" | "Liander" | null; reactie_op: string | null; redenen: string[]; notitie: string | null; to_acties: ToActie[] };
 export type BalItem = { wie: Partij; label: string; txt: string; dagen: number };
-export type CaseItem = { station: any; rondes: ToRonde[]; last: ToRonde | null; bal: BalItem[] };
+export type Uitvoerder = "terrevolt" | "van_gelder";
+export type CaseStation = { id: string; naam_msr: string; casenummer: string | null; casenaam: string | null; behuizingsnummer: string | null; status: string | null; dossier_status: string | null; dossier_notitie: string | null; case_verborgen: boolean; created_at: string | null; uitvoerder: Uitvoerder; wv: string | null };
+export type CaseItem = { station: Partial<CaseStation> & { id: string } & Record<string, unknown>; rondes: ToRonde[]; last: ToRonde | null; bal: BalItem[] };
 
 export const TO_STATUS: Record<ToStatus, { label: string; dot: string; bg: string; fg: string }> = {
-  open: { label: "TO open", dot: "#8FA893", bg: "#EEF2ED", fg: "#3D4F42" },
-  controle: { label: "Ter controle", dot: "#1A4E8A", bg: "#E7EEF7", fg: "#1A4E8A" },
-  afgekeurd: { label: "Afgekeurd", dot: "#B3352C", bg: "#FBEDEC", fg: "#B3352C" },
+  open: { label: "TO open", dot: "#8FA88F", bg: "#EEF2ED", fg: "#3D4F42" },
+  controle: { label: "Ter controle", dot: "#1F4E8C", bg: "#E7EEF7", fg: "#1F4E8C" },
+  afgekeurd: { label: "Afgekeurd", dot: "#B33A3A", bg: "#FBEDEC", fg: "#B33A3A" },
   goedgekeurd: { label: "Goedgekeurd", dot: "#1F5C3A", bg: "#1F5C3A", fg: "#FFFFFF" },
 };
 export const TO_ORDER: ToStatus[] = ["open", "controle", "afgekeurd", "goedgekeurd"];
@@ -95,7 +97,7 @@ export function useCases(opts?: { inclVerborgen?: boolean }) {
     queryFn: async (): Promise<CaseItem[]> => {
       const { data, error } = await db
         .from("stations")
-        .select("id, naam_msr, casenummer, casenaam, behuizingsnummer, status, dossier_status, dossier_notitie, case_verborgen, created_at, to_rondes(*, to_acties(*))")
+        .select("id, naam_msr, casenummer, casenaam, behuizingsnummer, status, dossier_status, dossier_notitie, case_verborgen, created_at, uitvoerder, wv, to_rondes(*, to_acties(*))")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? [])

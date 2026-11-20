@@ -39,8 +39,9 @@ Deno.serve(async (req) => {
     const stationId = body.station_id;
 
     if (actie === "rapport-url") {
-      const { data: station } = await supabase.from("stations").select("id").eq("id", stationId).single();
+      const { data: station } = await supabase.from("stations").select("id, uitvoerder").eq("id", stationId).single();
       if (!station) throw new Error("Station niet gevonden");
+      if (station.uitvoerder === "van_gelder") return fout(409, "Geen rapport voor uitvoering Van Gelder");
       const { data: pdf } = await supabase.from("rapport_pdf").select("status").eq("station_id", stationId).maybeSingle();
       const pad = pdf?.status === "klaar" ? `${stationId}/rapport.pdf` : `${stationId}/rapport.html`;
       const { data: signed, error } = await supabase.storage.from("rapporten").createSignedUrl(pad, 60 * 60);
@@ -49,6 +50,11 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Van Gelder-cases: geen oplevering, geen rapport, geen SharePoint
+    const { data: soort } = await supabase.from("stations").select("uitvoerder").eq("id", stationId).maybeSingle();
+    if (!soort) throw new Error("Station niet gevonden");
+    if (soort.uitvoerder === "van_gelder") return fout(409, "Opleveren kan niet voor uitvoering Van Gelder");
 
     // Idempotent: loopt er al een oplevering voor dit station, dan niets opnieuw indienen
     const actieveRun = async () => (await supabase.from("opleverruns").select("id, status, gestart_op")

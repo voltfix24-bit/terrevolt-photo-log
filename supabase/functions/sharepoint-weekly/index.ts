@@ -42,7 +42,7 @@ async function batch(runId: string, offset: number) {
   try {
     if (offset === 0) await controleerSleutel(sb);
     const ctx = await context(sb);
-    const { data: stations } = await sb.from("stations").select("*").order("created_at").range(offset, offset + BATCH - 1);
+    const { data: stations } = await sb.from("stations").select("*").neq("uitvoerder", "van_gelder").order("created_at").range(offset, offset + BATCH - 1); // Van Gelder: volledig overslaan
     for (const st of stations ?? []) {
       const { data: vorig } = await sb.from("sharepoint_sync").select("sharepoint_item_id").eq("station_id", st.id).maybeSingle();
       if (nietSyncReden(st)) {
@@ -129,6 +129,7 @@ Deno.serve(async (req) => {
     ? await sb.from("stations").select("*").eq("id", b.station_id)
     : await sb.from("stations").select("*").order("created_at");
   for (const st of stations ?? []) {
+    if (st.uitvoerder === "van_gelder") continue;
     const reden = nietSyncReden(st);
     if (reden) { uit.push({ station: st.naam_msr, overgeslagen: reden }); continue; }
     const { data: vorig } = await sb.from("sharepoint_sync").select("sharepoint_item_id").eq("station_id", st.id).maybeSingle();

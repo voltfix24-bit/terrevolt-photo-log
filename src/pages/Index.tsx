@@ -172,7 +172,7 @@ export default function Dashboard() {
   const { data: stations, isLoading } = useQuery({
     queryKey: ["stations"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("stations").select("*, fotos(categorie, review_status), to_rondes(nummer, status)").order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("stations").select("*, fotos(categorie, review_status), to_rondes(nummer, status)").eq("uitvoerder", "terrevolt").order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },

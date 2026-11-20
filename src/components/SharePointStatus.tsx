@@ -7,10 +7,11 @@ import { internetVereist } from "@/lib/internet";
 import { handmatigeSyncToegestaan, syncUitkomst, type KetenRun } from "@/lib/opleverketen";
 
 // Klein statuslabel voor de SharePoint-koppeling + handmatig opnieuw synchroniseren
-type StationInfo = { id: string; status: string | null; casenummer: string | null; casenaam: string | null };
+type StationInfo = { id: string; uitvoerder?: string | null; status: string | null; casenummer: string | null; casenaam: string | null };
 
 // Zelfde regel als de koppeling: alleen opgeleverd + casenummer én casenaam
 export function nietSyncReden(s: StationInfo): string | null {
+  if (s.uitvoerder === "van_gelder") return "uitvoering Van Gelder";
   if (!s.casenummer?.trim() || !s.casenaam?.trim()) return "case ontbreekt";
   if (s.status !== "opgeleverd" && s.status !== "goedgekeurd") return "nog niet opgeleverd";
   return null;

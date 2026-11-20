@@ -32,7 +32,7 @@ async function observeer(sb: any, run: Run) {
   return {
     station,
     obs: {
-      station: station ? { status: station.status } : null,
+      station: station ? { status: station.status, uitvoerder: station.uitvoerder } : null,
       htmlAanwezig: namen.has("rapport.html"),
       syncReden: station ? nietSyncReden(station) : null,
       pdf: pdf ? { ...pdf, gestart_op: new Date(pdf.gestart_op).toISOString(), bestaat: namen.has("rapport.pdf") } : null,

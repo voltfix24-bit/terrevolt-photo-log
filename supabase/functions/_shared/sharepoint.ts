@@ -257,6 +257,7 @@ const tr = (v: unknown) => String(v ?? "").trim();
 
 /** Alleen opgeleverde stations met casenummer én casenaam gaan naar SharePoint. Geeft de reden terug als het niet mag. */
 export function nietSyncReden(station: any): string | null {
+  if (station.uitvoerder === "van_gelder") return "uitvoering Van Gelder";
   if (!tr(station.casenummer) || !tr(station.casenaam)) return "case ontbreekt";
   if (!["opgeleverd", "goedgekeurd"].includes(station.status)) return "nog niet opgeleverd";
   return null;

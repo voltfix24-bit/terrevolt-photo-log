@@ -65,6 +65,7 @@ var list_stations_default = defineTool({
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ search, status, limit }) => {
     let q = supabaseAnon().from("stations").select("id, naam_msr, behuizingsnummer, type_ruimte, ingevuld_door, datum, status, opdrachtgever, submitted_at").order("datum", { ascending: false }).limit(limit ?? 50);
+    q = q.eq("uitvoerder", "terrevolt");
     if (search) q = q.ilike("naam_msr", `%${search}%`);
     if (status) q = q.eq("status", status);
     const { data, error } = await q;

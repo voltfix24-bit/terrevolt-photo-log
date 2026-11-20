@@ -6,7 +6,7 @@ import { internetVereist } from "@/lib/internet";
 import { supabase } from "@/integrations/supabase/client";
 import { useUrlIndex } from "@/hooks/use-url-index";
 import {
-  UUID_RE, beoordeelUrl, caseNrSlug, caseUrl, casesUrl, heeftCase, jaarVan, leesSub, opdrachtgeverSlug,
+  UUID_RE, isVanGelder, beoordeelUrl, caseNrSlug, caseUrl, casesUrl, heeftCase, jaarVan, leesSub, opdrachtgeverSlug,
   slug, stationSlug, subUrl, zoekOpCaseSlug, zoekOpStationSlug, type Sub, type UrlStation,
 } from "@/lib/urls";
 import StationDetail from "./StationDetail";
@@ -28,6 +28,7 @@ function Canoniek({ naar, children }: { naar: string; children: ReactNode }) {
 }
 
 function Weergave({ station, sub }: { station: UrlStation; sub: Sub }) {
+  if (isVanGelder(station)) return <Navigate to={casesUrl(station)} replace />;
   if (sub.soort === "opleveren") return <Opleveren stationId={station.id} />;
   if (sub.soort === "rapport") return <RapportOpener station={station} />;
   return <StationDetail stationId={station.id} sub={sub} />;
@@ -57,7 +58,7 @@ export function KorteLink() {
   const { data } = useUrlIndex();
   if (!data) return <Leeg />;
   const s = data.stations.find((x) => caseNrSlug(x) === slug(nr)) ?? zoekOpCaseSlug(data.stations, nr)[0];
-  return s ? <Navigate to={caseUrl(s)} replace /> : <NotFound />;
+  return s ? <Navigate to={isVanGelder(s) ? casesUrl(s) : caseUrl(s)} replace /> : <NotFound />;
 }
 
 /* /stations/:key/* — uuid (oud) of behuizingsnummer-naam */
@@ -83,12 +84,14 @@ export function OpdrachtgeverRoute() {
 
   if (!caseKey) {
     if (jaar && !/^\d{4}$/.test(jaar)) return <NotFound />;
-    const lijst = data.stations.filter((s) => heeftCase(s) && opdrachtgeverSlug(s) === slug(og) && (!jaar || jaarVan(s) === jaar));
+    const lijst = data.stations.filter((s) => !isVanGelder(s) && heeftCase(s) && opdrachtgeverSlug(s) === slug(og) && (!jaar || jaarVan(s) === jaar));
     return <CaseLijst titel={jaar ? `${ogNaam ?? og} · ${jaar}` : ogNaam ?? og} og={ogNaam ?? og} jaar={jaar} stations={lijst} />;
   }
 
-  const matches = zoekOpCaseSlug(data.stations, caseKey);
-  if (matches.length === 0) return isFetching ? <Leeg /> : <NotFound />;
+  const alle = zoekOpCaseSlug(data.stations, caseKey);
+  if (alle.length === 0) return isFetching ? <Leeg /> : <NotFound />;
+  if (alle.every(isVanGelder)) return <Navigate to={casesUrl(alle[0])} replace />;
+  const matches = alle.filter((m) => !isVanGelder(m));
   let s = matches[0];
   if (matches.length > 1) {
     const kies = sp.get("station");
@@ -109,6 +112,7 @@ function eigenScherm(soort: "cases" | "beoordelen") {
     if (!data) return <Leeg />;
     const s = UUID_RE.test(key) ? data.stations.find((x) => x.id === key) : (zoekOpCaseSlug(data.stations, key)[0] ?? zoekOpStationSlug(data.stations, key));
     if (!s) return isFetching ? <Leeg /> : <NotFound />;
+    if (soort === "beoordelen" && isVanGelder(s)) return <Navigate to={casesUrl(s)} replace />;
     const doel = soort === "cases" ? casesUrl(s) : beoordeelUrl(s);
     return <Canoniek naar={doel}>{soort === "cases" ? <CaseDetail stationId={s.id} /> : <BeoordeelDossier stationId={s.id} />}</Canoniek>;
   };

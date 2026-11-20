@@ -30,6 +30,7 @@ export default function Beoordelen() {
         .from("stations")
         .select("id, naam_msr, casenummer, casenaam, behuizingsnummer, submitted_at, submitted_by, status, opdrachtgever")
         .eq("opdrachtgever", wie!)
+        .eq("uitvoerder", "terrevolt")
         .in("status", ["opgeleverd", "goedgekeurd"])
         .order("submitted_at", { ascending: false });
       return data ?? [];

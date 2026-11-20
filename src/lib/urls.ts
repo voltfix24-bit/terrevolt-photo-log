@@ -5,8 +5,12 @@ import { CATEGORIES, SECTIONS, slugify } from "@/lib/categories";
 
 export const PUBLISHED_ORIGIN = "https://to-foto.lovable.app";
 
+/** Van Gelder-cases hebben geen fotowerk/rapport/oplevering: alleen Cases & TO. */
+export const isVanGelder = (s: { uitvoerder?: string | null } | null | undefined) => s?.uitvoerder === "van_gelder";
+
 export type UrlStation = {
   id: string;
+  uitvoerder?: "terrevolt" | "van_gelder" | null;
   casenummer?: string | null;
   casenaam?: string | null;
   opdrachtgever?: string | null;

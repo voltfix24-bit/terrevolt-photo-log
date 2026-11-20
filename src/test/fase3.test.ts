@@ -25,7 +25,7 @@ describe("TO-rondes", () => {
     expect(balVan({ dossier_status: "afgerond" }, [ronde({ status: "goedgekeurd" })])).toEqual([]);
   });
   it("first-time-right en gemiddeld aantal rondes", () => {
-    const c = (rs: ToRonde[]): CaseItem => ({ station: {}, rondes: rs, last: rs[rs.length - 1], bal: [] });
+    const c = (rs: ToRonde[]): CaseItem => ({ station: { id: "s" }, rondes: rs, last: rs[rs.length - 1], bal: [] });
     const s = scoreVan([c([ronde({ status: "goedgekeurd" })]), c([ronde({ status: "afgekeurd", redenen: ["foto"] }), ronde({ nummer: 2, status: "goedgekeurd" })])]);
     expect(s.ftrPct).toBe(50); expect(s.gemRondes).toBe(1.5);
   });

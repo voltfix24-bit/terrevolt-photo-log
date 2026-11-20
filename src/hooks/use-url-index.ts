@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { UrlStation } from "@/lib/urls";
 
-const KEY = "url-index-v1";
+const KEY = "url-index-v2"; // v2: met uitvoerder
 type Index = { stations: UrlStation[]; opdrachtgevers: string[] };
 
 function cached(): Index | undefined {
@@ -16,7 +16,7 @@ export function useUrlIndex() {
     queryFn: async (): Promise<Index> => {
       try {
         const [st, og] = await Promise.all([
-          supabase.from("stations").select("id, casenummer, casenaam, opdrachtgever, behuizingsnummer, naam_msr, datum, submitted_at, created_at, status"),
+          supabase.from("stations").select("id, casenummer, casenaam, opdrachtgever, behuizingsnummer, naam_msr, datum, submitted_at, created_at, status, uitvoerder"),
           supabase.from("opdrachtgevers").select("naam"),
         ]);
         if (st.error || og.error) throw st.error ?? og.error;

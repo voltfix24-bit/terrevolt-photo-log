@@ -26,7 +26,7 @@ export interface Run {
   stap_fouten: Record<string, string>;
 }
 export interface Observatie {
-  station: { status: string | null } | null;
+  station: { status: string | null; uitvoerder?: string | null } | null;
   htmlAanwezig: boolean;
   /** Uitkomst van nietSyncReden(station) uit _shared/sharepoint.ts */
   syncReden: string | null;
@@ -65,6 +65,7 @@ export function beslis(run: Run, obs: Observatie, nu: Date, rnd?: number): Beslu
     case "aangevraagd":
     case "voorbereiden":
       if (!obs.station) return { actie: "update", patch: foutPatch(run, "voorbereiden", "Station niet gevonden", nu, rnd, true) };
+      if (obs.station.uitvoerder === "van_gelder") return { actie: "update", patch: foutPatch(run, "voorbereiden", "Uitvoering Van Gelder: geen oplevering", nu, rnd, true) };
       if (obs.station.status !== "opgeleverd" && obs.station.status !== "goedgekeurd")
         return { actie: "update", patch: foutPatch(run, "voorbereiden", "Station staat niet (meer) op opgeleverd", nu, rnd, true) };
       if (!obs.htmlAanwezig) return { actie: "update", patch: foutPatch(run, "voorbereiden", "Rapport (HTML) ontbreekt", nu, rnd, true) };

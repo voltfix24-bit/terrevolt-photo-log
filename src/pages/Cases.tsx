@@ -1,5 +1,9 @@
 // Kantoor: "Wie moet wat doen" (9b) + "TO-score" (9c)
 import { useState } from "react";
+import { FileUp, Plus } from "lucide-react";
+import { CaseToevoegenDialog } from "@/components/cases/CaseToevoegenDialog";
+import { ExcelImportDialog } from "@/components/cases/ExcelImportDialog";
+import { FILTER_OPTIES, bewaarFilter, filterCases, leesFilter, tellingen, uitvoerderVan, type UitvoerderFilter } from "@/lib/cases-filter";
 import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { casesUrl, type UrlStation } from "@/lib/urls";
 import { useNavigate } from "react-router-dom";
@@ -49,7 +53,12 @@ function Bal({ cases, open }: { cases: CaseItem[]; open: (s: UrlStation) => void
                   <StatusPil status={i.c.last?.status ?? "open"} prefix={`R${Math.max(1, i.c.rondes.length)} · `} />
                 </div>
                 <div className="font-display" style={{ fontSize: 17, fontWeight: 700, lineHeight: 1.25, color: T.titleOnBg, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{caseNaam(i.c.station)}</div>
-                {caseSub(i.c.station) && <div style={{ fontSize: 13, color: T.subOnBg, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{caseSub(i.c.station)}</div>}
+                {uitvoerderVan(i.c) === "van_gelder" ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "#5B4A1E", background: "#F3EBD6", borderRadius: 6, padding: "2px 6px", whiteSpace: "nowrap" }}>Uitvoering Van Gelder</span>
+                    <span style={{ fontSize: 13, color: T.subOnBg, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>WV: {i.c.station.wv?.trim() || "—"}</span>
+                  </div>
+                ) : caseSub(i.c.station) && <div style={{ fontSize: 13, color: T.subOnBg, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{caseSub(i.c.station)}</div>}
                 <div style={{ borderTop: `1px solid ${T.hairline}`, paddingTop: 8, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, width: "100%" }}>
                   <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, fontWeight: 600, color: PARTIJ_STIJL[lane.key].fg, minWidth: 0 }}>
                     <span className="material-symbols-rounded" style={{ fontSize: 18 }}>arrow_forward</span>
@@ -125,7 +134,13 @@ function Score({ cases, open }: { cases: CaseItem[]; open: (s: UrlStation) => vo
 export default function Cases() {
   const navigate = useNavigate();
   const [toonVerborgen, setToonVerborgen] = useState(false);
-  const { data: cases, isLoading } = useCases({ inclVerborgen: toonVerborgen });
+  const { data: alleCases, isLoading } = useCases({ inclVerborgen: toonVerborgen });
+  const [filter, setFilterState] = useState<UitvoerderFilter>(() => leesFilter());
+  const setFilter = (f: UitvoerderFilter) => { setFilterState(f); bewaarFilter(f); };
+  const [nieuwOpen, setNieuwOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const telling = tellingen(alleCases ?? []);
+  const cases = filterCases(alleCases ?? [], filter);
   const [tab, setTab] = useState<"bal" | "score">("bal");
   const open = (s: UrlStation) => navigate(casesUrl(s));
   return (
@@ -140,14 +155,34 @@ export default function Cases() {
             <Pressable key={k} onClick={() => setTab(k)} scale={0.97} style={{ minHeight: 40, padding: "0 14px", borderRadius: 9, fontSize: 15, fontWeight: 600, background: tab === k ? T.green : "transparent", color: tab === k ? T.surface : T.titleOnBg }}>{l}</Pressable>
           ))}
         </div>
+        {tab === "bal" && (
+          <div style={{ display: "flex", gap: 8 }}>
+            <Pressable onClick={() => setImportOpen(true)} scale={0.97} className="hover:border-[#1F5C3A]" style={{ minHeight: 40, padding: "0 14px", borderRadius: 20, fontSize: 15, fontWeight: 600, background: T.surface, color: T.titleOnBg, border: `1px solid ${T.hairline}`, display: "flex", alignItems: "center", gap: 6 }}>
+              <FileUp size={17} />Importeren uit Excel
+            </Pressable>
+            <Pressable onClick={() => setNieuwOpen(true)} scale={0.97} style={{ minHeight: 40, padding: "0 14px", borderRadius: 20, fontSize: 15, fontWeight: 600, background: T.green, color: T.surface, display: "flex", alignItems: "center", gap: 6 }}>
+              <Plus size={17} />Case toevoegen
+            </Pressable>
+          </div>
+        )}
         <Pressable onClick={() => setToonVerborgen((v) => !v)} scale={0.97} style={{ minHeight: 40, padding: "0 10px", fontSize: 14, fontWeight: 600, color: T.green }}>
           {toonVerborgen ? "Verborgen verbergen" : "Verborgen tonen"}
         </Pressable>
       </div>
+      <CaseToevoegenDialog open={nieuwOpen} onOpenChange={setNieuwOpen} />
+      <ExcelImportDialog open={importOpen} onOpenChange={setImportOpen} bestaand={(alleCases ?? []).map((c) => c.station.casenummer ?? "").filter(Boolean)} />
       <main style={{ padding: "20px 24px 60px", maxWidth: 1400, margin: "0 auto" }}>
+        <div role="group" aria-label="Uitvoering" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+          <span style={{ fontSize: 14, color: SUB, fontWeight: 600 }}>Uitvoering:</span>
+          {FILTER_OPTIES.map((o) => (
+            <Pressable key={o.key} aria-pressed={filter === o.key} onClick={() => setFilter(o.key)} scale={0.97} style={{ minHeight: 36, padding: "0 12px", borderRadius: 18, fontSize: 14, fontWeight: 600, background: filter === o.key ? T.green : T.surface, color: filter === o.key ? T.surface : T.titleOnBg, border: `1px solid ${filter === o.key ? T.green : T.hairline}` }}>
+              {o.label} <span style={{ opacity: 0.75 }}>{telling[o.key]}</span>
+            </Pressable>
+          ))}
+        </div>
         {isLoading ? (
           <PaginaLader label="Cases laden…" />
-        ) : !cases?.length ? (
+        ) : !cases.length ? (
           <div style={{ padding: "52px 20px", textAlign: "center", color: SUB, fontSize: 15 }}>Geen cases</div>
         ) : tab === "bal" ? <Bal cases={cases} open={open} /> : <Score cases={cases} open={open} />}
       </main>

@@ -417,6 +417,11 @@ Deno.serve(async (req) => {
   const parsed = Body.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return json({ error: parsed.error.flatten().fieldErrors }, 400);
   const { station_id, stap, run, keten } = parsed.data;
+  if (stap === undefined) {
+    const { data: st } = await db().from("stations").select("uitvoerder").eq("id", station_id).maybeSingle();
+    if (!st) return json({ error: "Station niet gevonden" }, 404);
+    if (st.uitvoerder === "van_gelder") return json({ error: "Geen rapport voor uitvoering Van Gelder" }, 409);
+  }
   let r = run;
   if (stap === undefined) {
     const gestart = new Date().toISOString();
