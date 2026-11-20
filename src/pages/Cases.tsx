@@ -30,7 +30,10 @@ function StatusPil({ status, prefix }: { status: keyof typeof TO_STATUS; prefix?
 }
 
 function Bal({ cases, open }: { cases: CaseItem[]; open: (s: UrlStation) => void }) {
-  const items = cases.flatMap((c) => c.bal.map((b) => ({ ...b, c })));
+  // Van Gelder-cases staan altijd in de kolom Van Gelder, ongeacht bij wie de TO-bal ligt
+  const items = cases.flatMap((c) => uitvoerderVan(c) === "van_gelder"
+    ? [{ ...(c.bal[0] ?? { label: "Van Gelder", txt: "TO afgerond", dagen: 0 }), wie: "Van Gelder" as Partij, c }]
+    : c.bal.map((b) => ({ ...b, c })));
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14 }}>
       {LANES.map((lane) => {
