@@ -9,7 +9,7 @@ export type Partij = "TerreVolt" | "Van Gelder" | "Liander" | "Derden";
 export type DossierStatus = "ingediend" | "volledig" | "afgerond";
 export type ToActie = { id: string; ronde_id: string; station_id: string; omschrijving: string; bij: Partij; derde_naam: string | null; notitie: string | null; afgehandeld_op: string | null; created_at: string };
 export type ToRonde = { id: string; station_id: string; nummer: number; status: ToStatus; ingediend_op: string | null; ingediend_bij: "Van Gelder" | "Liander" | null; reactie_op: string | null; redenen: string[]; notitie: string | null; to_acties: ToActie[] };
-export type BalItem = { wie: Partij; label: string; txt: string; dagen: number };
+export type BalItem = { wie: Partij; label: string; txt: string; dagen: number; geenDatum?: boolean };
 export type Uitvoerder = "terrevolt" | "van_gelder";
 export type CaseStation = { id: string; naam_msr: string; casenummer: string | null; casenaam: string | null; behuizingsnummer: string | null; status: string | null; dossier_status: string | null; dossier_notitie: string | null; case_verborgen: boolean; created_at: string | null; uitvoerder: Uitvoerder; wv: string | null; is_nummer: string | null; tg: boolean };
 export type CaseItem = { station: Partial<CaseStation> & { id: string } & Record<string, unknown>; rondes: ToRonde[]; last: ToRonde | null; bal: BalItem[] };
@@ -69,24 +69,27 @@ export const caseNaam = (s: CaseStationLike) => netjes(s?.casenaam) || netjes(s?
 export const caseSub = (s: CaseStationLike) => (s?.casenaam && s?.naam_msr ? netjes(s.naam_msr) : "");
 export const dagenTekst = (d: number) => (d <= 0 ? "vandaag" : d === 1 ? "1 dag" : `${d} dagen`);
 
+// Alleen gezet als er geen datum is, zodat het bord die kaarten onderaan zet
+const nd = (d?: string | null) => (d ? {} : { geenDatum: true as const });
+
 export function balVan(station: { dossier_status?: string | null }, rondes: ToRonde[]): BalItem[] {
   const n = rondes.length;
   const r = rondes[n - 1];
   if (!r || r.status === "open") {
     const prev = rondes[n - 2];
-    return [{ wie: "TerreVolt", label: "TerreVolt", txt: "TO klaarzetten en indienen", dagen: dagenSinds(prev?.reactie_op) }];
+    return [{ wie: "TerreVolt", label: "TerreVolt", txt: "TO klaarzetten en indienen", dagen: dagenSinds(prev?.reactie_op), ...nd(prev?.reactie_op) }];
   }
   if (r.status === "controle") {
     const wie = (r.ingediend_bij ?? "Van Gelder") as Partij;
-    return [{ wie, label: wie, txt: "TO beoordelen", dagen: dagenSinds(r.ingediend_op) }];
+    return [{ wie, label: wie, txt: "TO beoordelen", dagen: dagenSinds(r.ingediend_op), ...nd(r.ingediend_op) }];
   }
   if (r.status === "afgekeurd") {
     const open = r.to_acties.filter((a) => !a.afgehandeld_op);
-    if (open.length) return open.map((a) => ({ wie: a.bij, label: actieWie(a), txt: a.omschrijving, dagen: dagenSinds(r.reactie_op ?? a.created_at) }));
-    return [{ wie: "TerreVolt", label: "TerreVolt", txt: `Opnieuw indienen (ronde ${n + 1})`, dagen: dagenSinds(r.reactie_op) }];
+    if (open.length) return open.map((a) => ({ wie: a.bij, label: actieWie(a), txt: a.omschrijving, dagen: dagenSinds(r.reactie_op ?? a.created_at), ...nd(r.reactie_op ?? a.created_at) }));
+    return [{ wie: "TerreVolt", label: "TerreVolt", txt: `Opnieuw indienen (ronde ${n + 1})`, dagen: dagenSinds(r.reactie_op), ...nd(r.reactie_op) }];
   }
   return station.dossier_status !== "afgerond"
-    ? [{ wie: "Liander", label: "Liander", txt: "TO goedgekeurd", dagen: dagenSinds(r.reactie_op) }]
+    ? [{ wie: "Liander", label: "Liander", txt: "TO goedgekeurd", dagen: dagenSinds(r.reactie_op), ...nd(r.reactie_op) }]
     : [];
 }
 

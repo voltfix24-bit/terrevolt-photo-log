@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { FileUp, Plus } from "lucide-react";
 import { CaseToevoegenDialog } from "@/components/cases/CaseToevoegenDialog";
-import { UitvoeringLabel } from "@/components/cases/UitvoeringLabel";
+import { Bord } from "@/components/cases/Bord";
 import { ExcelImportDialog } from "@/components/cases/ExcelImportDialog";
 import { FILTER_OPTIES, bewaarFilter, filterCases, leesFilter, tellingen, uitvoerderVan, type UitvoerderFilter } from "@/lib/cases-filter";
 import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
@@ -14,71 +14,12 @@ import { CaseItem, PARTIJ_STIJL, Partij, TO_STATUS, caseNaam, caseNr, caseSub, d
 const SUB = T.bodyOnBg;
 const card = { background: T.surface, borderRadius: 14 } as const;
 
-const LANES: { key: Partij | "Derden"; titel: string; sub: string }[] = [
-  { key: "TerreVolt", titel: "TerreVolt", sub: "Indienen, nafotograferen, afronden" },
-  { key: "Van Gelder", titel: "Van Gelder", sub: "Ter controle of actie bij opdrachtgever" },
-  { key: "Liander", titel: "Liander", sub: "Ter controle bij netbeheerder" },
-  { key: "Derden", titel: "Derden", sub: "Aannemers en leveranciers" },
-];
-
 function StatusPil({ status, prefix }: { status: keyof typeof TO_STATUS; prefix?: string }) {
   const s = TO_STATUS[status];
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 8px", borderRadius: 7, fontSize: 13, fontWeight: 600, background: s.bg, color: s.fg, whiteSpace: "nowrap" }}>
       <span style={{ width: 7, height: 7, borderRadius: 4, background: s.dot }} />{prefix}{s.label}
     </span>
-  );
-}
-
-function Bal({ cases, open }: { cases: CaseItem[]; open: (s: UrlStation) => void }) {
-  // Van Gelder-cases staan in de kolom Van Gelder, behalve goedgekeurde
-  // Goedgekeurde TO's staan altijd bij Liander: alleen Liander keurt goed
-  const items = cases.flatMap((c) => uitvoerderVan(c) === "van_gelder" && c.last?.status !== "goedgekeurd"
-    ? [{ ...(c.bal[0] ?? { label: "Van Gelder", txt: "TO afgerond", dagen: 0 }), wie: "Van Gelder" as Partij, c }]
-    : c.bal.map((b) => ({ ...b, c })));
-  return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14 }}>
-      {LANES.map((lane) => {
-        const st = PARTIJ_STIJL[lane.key];
-        const list = items.filter((i) => i.wie === lane.key).sort((a, b) => b.dagen - a.dagen);
-        return (
-          <section key={lane.key} style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}>
-            <div style={{ padding: "0 4px" }}>
-              <div className="font-display" style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, fontSize: 19, color: T.titleOnBg }}>
-                <span className="material-symbols-rounded" style={{ fontSize: 22, color: st.fg }}>{st.icon}</span>
-                {lane.titel}<span style={{ fontFamily: "Inter, sans-serif", fontWeight: 500, fontSize: 15, color: SUB }}>{list.length} case{list.length === 1 ? "" : "s"}</span>
-              </div>
-              <div style={{ fontSize: 13, color: SUB }}>{lane.sub}</div>
-            </div>
-            {list.length === 0 && <div style={{ ...card, padding: 14, fontSize: 14, color: SUB, background: "rgba(255,255,255,0.6)" }}>Niets open</div>}
-            {list.map((i, k) => (
-              <Pressable key={i.c.station.id + k} onClick={() => open(i.c.station)} scale={0.98} style={{ ...card, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 8, textAlign: "left" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, width: "100%" }}>
-                  <span className="font-mono" style={{ fontSize: 14, fontWeight: 600, color: T.bodyOnBg }}>{caseNr(i.c.station)}</span>
-                  <StatusPil status={i.c.last?.status ?? "open"} prefix={`R${Math.max(1, i.c.rondes.length)} · `} />
-                </div>
-                <div className="font-display" style={{ fontSize: 17, fontWeight: 700, lineHeight: 1.25, color: T.titleOnBg, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{caseNaam(i.c.station)}</div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                  <UitvoeringLabel uitvoerder={uitvoerderVan(i.c)} />
-                  {uitvoerderVan(i.c) === "van_gelder" ? (
-                    <span style={{ fontSize: 13, color: T.subOnBg, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>WV: {i.c.station.wv?.trim() || "—"}</span>
-                  ) : caseSub(i.c.station) ? (
-                    <span style={{ fontSize: 13, color: T.subOnBg, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{caseSub(i.c.station)}</span>
-                  ) : null}
-                </div>
-                <div style={{ borderTop: `1px solid ${T.hairline}`, paddingTop: 8, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, width: "100%" }}>
-                  <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, fontWeight: 600, color: PARTIJ_STIJL[lane.key].fg, minWidth: 0 }}>
-                    <span className="material-symbols-rounded" style={{ fontSize: 18 }}>arrow_forward</span>
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{i.txt}{lane.key === "Derden" ? ` · ${i.label}` : ""}</span>
-                  </span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: i.dagen >= 10 ? T.danger : T.bodyOnBg, whiteSpace: "nowrap" }}>{dagenTekst(i.dagen)}</span>
-                </div>
-              </Pressable>
-            ))}
-          </section>
-        );
-      })}
-    </div>
   );
 }
 
@@ -197,7 +138,7 @@ export default function Cases() {
       </div>
       <CaseToevoegenDialog open={nieuwOpen} onOpenChange={setNieuwOpen} />
       <ExcelImportDialog open={importOpen} onOpenChange={setImportOpen} bestaand={(alleCases ?? []).map((c) => c.station.casenummer ?? "").filter(Boolean)} />
-      <main style={{ padding: "20px 24px 60px", maxWidth: 1400, margin: "0 auto" }}>
+      <main style={{ padding: 24, paddingBottom: 60 }}>
         <div role="group" aria-label="Uitvoering" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
           <span style={{ fontSize: 14, color: SUB, fontWeight: 600 }}>Uitvoering:</span>
           {FILTER_OPTIES.map((o) => (
@@ -210,7 +151,7 @@ export default function Cases() {
           <PaginaLader label="Cases laden…" />
         ) : !cases.length ? (
           <div style={{ padding: "52px 20px", textAlign: "center", color: SUB, fontSize: 15 }}>Geen cases</div>
-        ) : tab === "bal" ? <Bal cases={cases} open={open} /> : <Score cases={cases} open={open} perUitvoerder={filter === "alle"} />}
+        ) : tab === "bal" ? <Bord cases={cases} open={open} /> : <Score cases={cases} open={open} perUitvoerder={filter === "alle"} />}
       </main>
     </div>
   );
