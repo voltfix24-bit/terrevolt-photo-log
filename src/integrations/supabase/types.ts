@@ -507,12 +507,14 @@ export type Database = {
           dossier_status: string
           id: string
           ingevuld_door: string | null
+          is_nummer: string | null
           naam_msr: string
           opdrachtgever: string | null
           review_reden: string | null
           status: string | null
           submitted_at: string | null
           submitted_by: string | null
+          tg: boolean
           type_ruimte: string | null
           uitvoerder: Database["public"]["Enums"]["case_uitvoerder"]
           updated_at: string | null
@@ -531,12 +533,14 @@ export type Database = {
           dossier_status?: string
           id?: string
           ingevuld_door?: string | null
+          is_nummer?: string | null
           naam_msr: string
           opdrachtgever?: string | null
           review_reden?: string | null
           status?: string | null
           submitted_at?: string | null
           submitted_by?: string | null
+          tg?: boolean
           type_ruimte?: string | null
           uitvoerder?: Database["public"]["Enums"]["case_uitvoerder"]
           updated_at?: string | null
@@ -555,12 +559,14 @@ export type Database = {
           dossier_status?: string
           id?: string
           ingevuld_door?: string | null
+          is_nummer?: string | null
           naam_msr?: string
           opdrachtgever?: string | null
           review_reden?: string | null
           status?: string | null
           submitted_at?: string | null
           submitted_by?: string | null
+          tg?: boolean
           type_ruimte?: string | null
           uitvoerder?: Database["public"]["Enums"]["case_uitvoerder"]
           updated_at?: string | null

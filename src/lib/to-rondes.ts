@@ -11,7 +11,7 @@ export type ToActie = { id: string; ronde_id: string; station_id: string; omschr
 export type ToRonde = { id: string; station_id: string; nummer: number; status: ToStatus; ingediend_op: string | null; ingediend_bij: "Van Gelder" | "Liander" | null; reactie_op: string | null; redenen: string[]; notitie: string | null; to_acties: ToActie[] };
 export type BalItem = { wie: Partij; label: string; txt: string; dagen: number };
 export type Uitvoerder = "terrevolt" | "van_gelder";
-export type CaseStation = { id: string; naam_msr: string; casenummer: string | null; casenaam: string | null; behuizingsnummer: string | null; status: string | null; dossier_status: string | null; dossier_notitie: string | null; case_verborgen: boolean; created_at: string | null; uitvoerder: Uitvoerder; wv: string | null };
+export type CaseStation = { id: string; naam_msr: string; casenummer: string | null; casenaam: string | null; behuizingsnummer: string | null; status: string | null; dossier_status: string | null; dossier_notitie: string | null; case_verborgen: boolean; created_at: string | null; uitvoerder: Uitvoerder; wv: string | null; is_nummer: string | null; tg: boolean };
 export type CaseItem = { station: Partial<CaseStation> & { id: string } & Record<string, unknown>; rondes: ToRonde[]; last: ToRonde | null; bal: BalItem[] };
 
 export const TO_STATUS: Record<ToStatus, { label: string; dot: string; bg: string; fg: string }> = {
@@ -97,7 +97,7 @@ export function useCases(opts?: { inclVerborgen?: boolean }) {
     queryFn: async (): Promise<CaseItem[]> => {
       const { data, error } = await db
         .from("stations")
-        .select("id, naam_msr, casenummer, casenaam, behuizingsnummer, status, dossier_status, dossier_notitie, case_verborgen, created_at, uitvoerder, wv, to_rondes(*, to_acties(*))")
+        .select("id, naam_msr, casenummer, casenaam, behuizingsnummer, status, dossier_status, dossier_notitie, case_verborgen, created_at, uitvoerder, wv, is_nummer, tg, to_rondes(*, to_acties(*))")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? [])

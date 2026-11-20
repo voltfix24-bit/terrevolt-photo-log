@@ -105,7 +105,7 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
       <main style={{ padding: "24px 24px 60px", maxWidth: 1400, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
           <div style={{ minWidth: 0 }}>
-            <div className="font-mono" style={{ fontSize: 15, fontWeight: 600, color: T.bodyOnBg }}>Case {caseNr(station)}</div>
+            <div className="font-mono" style={{ fontSize: 15, fontWeight: 600, color: T.bodyOnBg }}>Case {caseNr(station)}{station.is_nummer ? <span style={{ fontSize: 12, fontWeight: 500, color: SUB, marginLeft: 8 }}>{String(station.is_nummer)}</span> : null}</div>
             <h1 className="font-display" style={{ margin: "4px 0 0", fontWeight: 800, fontSize: 30, lineHeight: 1.15, color: T.titleOnBg }}>{caseNaam(station)}</h1>
             {vg ? <VgVelden id={station.id} uitvoerder="van_gelder" wv={(station.wv as string | null) ?? null} namen={[...new Set((cases ?? []).map((x) => (x.station.wv as string | null)?.trim()).filter((w): w is string => !!w))].sort((a, b) => a.localeCompare(b, "nl-NL"))} />
               : <div style={{ fontSize: 14, color: SUB }}>{[caseSub(station), "opdrachtgever Van Gelder", "netbeheerder Liander"].filter(Boolean).join(" · ")}</div>}
@@ -157,6 +157,12 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
                   })}
                 </div>
               )}
+              {curStatus !== "afgekeurd" && cur && cur.redenen.some((k) => !REDEN_LABEL[k]) && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>Wat moet er gebeuren</div>
+                  {cur.redenen.filter((k) => !REDEN_LABEL[k]).map((k) => <div key={k} style={{ fontSize: 14, color: T.bodyOnBg }}>• {k}</div>)}
+                </div>
+              )}
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <div style={{ fontSize: 13, fontWeight: 600 }}>Notitie bij {st.label}</div>
                 <Notitie value={cur?.notitie ?? null} placeholder={placeholder} onSave={(v) => updRonde({ notitie: v || null })} />
@@ -166,6 +172,7 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
                 <div style={{ display: "flex", flexDirection: "column", gap: 16, borderTop: "1px solid #EEF2ED", paddingTop: 16 }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     <div style={{ ...kop, color: T.danger }}>Afkeurredenen</div>
+                    {cur.redenen.filter((k) => !REDEN_LABEL[k]).map((k) => <div key={k} style={{ fontSize: 14, color: T.danger }}>• {k}</div>)}
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                       {REDENEN.filter((r) => !vg || !r.key.startsWith("foto_") || cur.redenen.includes(r.key)).map((r) => {
                         const on = cur.redenen.includes(r.key);
