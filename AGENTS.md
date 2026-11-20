@@ -1,6 +1,6 @@
 - SharePoint logic is shared in `supabase/functions/_shared/sharepoint.ts` (used by `sharepoint-sync` and `sharepoint-weekly`); `supabase/functions/_shared/sharepoint-categories.ts` is a copy of SECTIONS/CATEGORIES (id, section, name) and must be regenerated when categories change. Why: edge functions can't import src/.
 - Delivery chain: `opleverketen`+`opleverruns` (1 active run/station, lease, pure machine `_shared/opleverketen.ts`), 10-min cron. Why: durable delivery.
-- `stations.uitvoerder` van_gelder = Cases & TO only: filtered from Index/Beoordelen/lists, routes redirect to /cases, no PDF/oplevering/SharePoint; created only via RPC `maak_case` (station+ronde 1 atomic). Why: hard separation.
+- `stations.uitvoerder` van_gelder = Cases & TO only: hidden from station lists/routes/PDF/SharePoint; created via RPC `maak_case`. Why: hard separation.
 - `sharepoint-weekly` mirrors all stations; cron fires Sat/Sun 23:00+00:00 UTC and the function only runs when Amsterdam is Sunday 01:xx, chaining batches of 2 via the cron secret. Why: DST-safe and avoids edge time limits.
 - `sharepoint_sync` has no FK to stations so deleted stations' folders can be moved to `_Verwijderd`. Why: item id must survive station deletion.
 - SharePoint only syncs stations with status opgeleverd/goedgekeurd and trimmed casenummer+casenaam (`nietSyncReden`, mirrored in SharePointStatus.tsx); target is the case folder, a station subfolder only when a case has several stations; old {case}/{station} folders are flattened automatically on next sync. Why: one station per case, no half-finished data in SharePoint.
@@ -23,7 +23,7 @@
 - PIN is verified server-side by `pin-sessie` (PBKDF2 hash in secret ADMIN_PIN_HASH, rate-limited via `pin_pogingen`); success returns a real session for the admin account (`user_roles` role admin, password in ADMIN_SESSION_PASSWORD). No PIN in frontend code. Why: RLS can trust admin actions.
 - RLS: deleting stations, fotos and to-fotos files requires `has_role(auth.uid(),'admin')`; deletes return rows (`.select`) so 0 rows = no success. Sign-ups are disabled. Why: destructive actions only behind the PIN, no lock-out of normal use.
 - `sharepoint-sync {controle}` and `sharepoint-weekly` (manual/dry-run) require an admin session (`_shared/admin-auth.ts`); station sync paths stay anon-callable for rapport-pdf. Why: background chain must keep working.
-- Index loads only `fotos(categorie, review_status)`; pdf/zip use `fotosVan`. Why: payload.
+- Index loads only `fotos(categorie, review_status)`. Why: payload.
 - Station section cards use `Kaart` (Primitives): done = `doneBg`/`doneBorder`, open = white/`cardBorder`; never opacity or muted status colors. Why: finished sections must still look clickable.
 
 ## BESLUITEN
