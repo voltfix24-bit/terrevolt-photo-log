@@ -62,10 +62,11 @@ function rijStatus(item: StationItem) {
 
 function Voortgangsring({ item, color }: { item: StationItem; color: string }) {
   const pct = item.total ? Math.round((item.done / item.total) * 100) : 0;
+  const open = Math.max(0, item.total - item.done);
   return (
     <div aria-hidden="true" style={{ width: 48, height: 48, borderRadius: 24, flexShrink: 0, background: `conic-gradient(${color} ${pct}%, ${T.hairline} 0)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ width: 38, height: 38, borderRadius: 19, background: T.surface, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: T.titleOnBg }}>
-        {pct}%
+        {open}
       </div>
     </div>
   );
