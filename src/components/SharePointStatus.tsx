@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Pressable, T } from "@/components/apple/Primitives";
 import { toast } from "sonner";
+import { internetVereist } from "@/lib/internet";
 
 // Klein statuslabel voor de SharePoint-koppeling + handmatig opnieuw synchroniseren
 type StationInfo = { id: string; status: string | null; casenummer: string | null; casenaam: string | null };
@@ -38,6 +39,7 @@ export function SharePointStatus({ station }: { station: StationInfo }) {
   }
 
   const opnieuw = async () => {
+    if (!internetVereist()) return;
     setBezig(true);
     const { error } = await supabase.functions.invoke("sharepoint-sync", { body: { station_id: stationId } });
     setBezig(false);

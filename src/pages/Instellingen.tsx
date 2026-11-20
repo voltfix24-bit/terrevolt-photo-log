@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { controleerPin } from "@/lib/require-pin";
+import { internetVereist } from "@/lib/internet";
 import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -61,6 +62,7 @@ export default function Instellingen() {
   const current = { ...instellingen, ...form } as AppInstellingen;
 
   const handlePinSubmit = async () => {
+    if (!internetVereist()) return;
     const r = await controleerPin(pinInput);
     if (r.ok) {
       setUnlocked(true);
@@ -128,6 +130,7 @@ export default function Instellingen() {
   };
 
   const handleSave = async () => {
+    if (!internetVereist()) return;
     if (!instellingen?.id) return;
     setSaving(true);
     const { error } = await supabase
@@ -142,6 +145,7 @@ export default function Instellingen() {
   };
 
   const handleReset = async () => {
+    if (!internetVereist()) return;
     if (!instellingen?.id) return;
     const resetData = {
       primary_color: DEFAULT_THEME.primary_color,
@@ -163,6 +167,7 @@ export default function Instellingen() {
   };
 
   const handleLogoUpload = async (file: File) => {
+    if (!internetVereist()) return;
     if (!instellingen?.id) return;
     setUploadingLogo(true);
     const path = `branding/logo_${Date.now()}.${file.name.split('.').pop()}`;
@@ -179,6 +184,7 @@ export default function Instellingen() {
   };
 
   const handleProfielUpload = async (file: File) => {
+    if (!internetVereist()) return;
     if (!instellingen?.id) return;
     setUploadingProfiel(true);
     const path = `branding/profiel_${Date.now()}.${file.name.split('.').pop()}`;

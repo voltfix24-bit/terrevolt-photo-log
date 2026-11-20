@@ -143,7 +143,7 @@ describe("pdf escaping", () => {
 });
 
 describe("foto-regels", () => {
-  it("standaard 1 foto, ook categorie 31 (nog niet bevestigd)", () => {
+  it("standaard 1 foto, ook categorie 31 (definitief)", () => {
     expect(minFotos(31)).toBe(1); expect(categorieKlaar(31, 1)).toBe(true); expect(categorieKlaar(5, 0)).toBe(false);
   });
 });

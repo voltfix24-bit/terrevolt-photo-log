@@ -2,6 +2,7 @@
 // Drop-in vervanging voor src/pages/Index.tsx. Data, routes, queries en acties blijven gelijk.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { categorieKlaar } from "@/lib/foto-regels";
+import { internetVereist } from "@/lib/internet";
 import { fotosVan } from "@/lib/fotos-service";
 import { verwijderStation } from "@/lib/station-service";
 import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
@@ -203,6 +204,7 @@ export default function Dashboard() {
   const syncLabel = !isOnline ? "Offline" : totalPending > 0 ? `${totalPending} wachten` : "Gesynct";
 
   const openPdf = async (station: any) => {
+    if (!internetVereist()) return;
     const { data: opmerkingen } = await supabase.from("categorie_opmerkingen").select("categorie, opmerking").eq("station_id", station.id);
     const html = generatePdfHtml(station, await fotosVan(station.id), instellingenData ?? undefined, opmerkingen ?? undefined);
     const w = window.open("", "_blank");

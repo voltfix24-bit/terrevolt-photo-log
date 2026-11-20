@@ -2,6 +2,7 @@ import { useEffect, type ReactNode } from "react";
 import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
+import { internetVereist } from "@/lib/internet";
 import { supabase } from "@/integrations/supabase/client";
 import { useUrlIndex } from "@/hooks/use-url-index";
 import {
@@ -37,6 +38,7 @@ function RapportOpener({ station }: { station: UrlStation }) {
   useEffect(() => {
     let weg = false;
     (async () => {
+      if (!internetVereist()) { navigate(caseUrl(station), { replace: true }); return; }
       const { data, error } = await supabase.functions.invoke("oplever-rapport", { body: { station_id: station.id, actie: "rapport-url" } });
       const url = (data as { rapport_url?: string })?.rapport_url;
       if (weg) return;

@@ -108,7 +108,7 @@ export const CATEGORIES: Category[] = [
 
   // ── METING ─────────────────────────────────────────────
   { id: 30, section: "meting", name: "TMA", instruction: "Fotografeer de TMA (Tijdelijk Meet Aansluitpunt).", tip: "Fotografeer het complete TMA inclusief aansluitingen." },
-  { id: 31, section: "meting", name: "Stroomtransformatoren", instruction: "Fotografeer de stroomtransformatoren in de LS-installatie — meestal 3 foto's (één per fase: L1, L2 en L3); met het +-vakje voeg je extra foto's toe.", tip: "Maak een duidelijke close-up per fase zodat het typeplaatje en de fase-aanduiding (L1 / L2 / L3) goed leesbaar zijn." },
+  { id: 31, section: "meting", name: "Stroomtransformatoren", instruction: "Fotografeer de stroomtransformatoren in de LS-installatie. Eén foto is voldoende; extra foto's per fase zijn optioneel.", tip: "Zorg dat het typeplaatje en de fase-aanduiding goed leesbaar zijn." },
 
   // ── OVL-DEEL ───────────────────────────────────────────
   { id: 32, section: "ovl-deel", name: "Overzicht OVL gedeelte", instruction: "Fotografeer een overzicht van het OVL (OVerige Lading) gedeelte.", tip: "Alle componenten in het OVL-gedeelte moeten zichtbaar zijn." },

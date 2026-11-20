@@ -4,6 +4,7 @@ import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/
 import { useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { internetVereist } from "@/lib/internet";
 import { Pressable, T } from "@/components/apple/Primitives";
 import {
   DOSSIER, PARTIJEN, PARTIJ_STIJL, Partij, REDENEN, REDEN_LABEL, TO_ORDER, TO_STATUS, ToRonde, ToStatus,
@@ -37,7 +38,11 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
   const curStatus: ToStatus = cur?.status ?? "open";
   const st = TO_STATUS[curStatus];
   const refresh = () => qc.invalidateQueries({ queryKey: ["cases"] });
-  const run = async (p: Promise<{ error: any }>) => { const { error } = await p; if (error) toast.error("Opslaan mislukt"); refresh(); };
+  const run = async (p: PromiseLike<{ error: unknown }>) => {
+    if (!internetVereist()) return false;
+    try { const { error } = await p; if (error) { toast.error("Opslaan mislukt"); return false; } refresh(); return true; }
+    catch { toast.error("Opslaan mislukt"); return false; }
+  };
 
   const updRonde = (patch: Partial<ToRonde>) =>
     cur ? run(db.from("to_rondes").update(patch).eq("id", cur.id))
@@ -55,11 +60,11 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
   };
   const addActie = async () => {
     if (!draft.txt.trim() || !cur) return;
-    await run(db.from("to_acties").insert({
+    const ok = await run(db.from("to_acties").insert({
       ronde_id: cur.id, station_id: station.id, omschrijving: draft.txt.trim(), bij: draft.bij,
       derde_naam: draft.bij === "Derden" ? draft.derde.trim() || null : null, notitie: draft.notitie.trim() || null,
     }));
-    setDraft((d) => ({ ...d, txt: "", notitie: "" }));
+    if (ok) setDraft((d) => ({ ...d, txt: "", notitie: "" }));
   };
   const toggleActie = (aid: string, af: string | null) => run(db.from("to_acties").update({ afgehandeld_op: af ? null : vandaag() }).eq("id", aid));
   const herindienen = () => run(db.from("to_rondes").insert({ station_id: station.id, nummer: rondes.length + 1, status: "controle", ingediend_op: vandaag(), ingediend_bij: "Van Gelder" }));

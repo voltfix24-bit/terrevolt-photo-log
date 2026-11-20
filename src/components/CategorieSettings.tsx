@@ -6,6 +6,7 @@ import { CATEGORIES } from "@/lib/categories";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import imageCompression from "browser-image-compression";
+import { internetVereist } from "@/lib/internet";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -48,6 +49,7 @@ export function CategorieSettingsDialog({ open, onOpenChange }: { open: boolean;
   );
 
   const handleUpload = async (categorie: string, files: FileList) => {
+    if (!internetVereist()) return;
     setUploading(categorie);
     let gelukt = 0, mislukt = 0;
     try {
@@ -90,6 +92,7 @@ export function CategorieSettingsDialog({ open, onOpenChange }: { open: boolean;
   };
 
   const handleDelete = async (v: VoorbeeldFoto) => {
+    if (!internetVereist()) return;
     const { error } = await supabase.from("categorie_voorbeelden").delete().eq("id", v.id);
     queryClient.invalidateQueries({ queryKey: ["categorie_voorbeelden"] });
     if (error) { toast.error("Verwijderen mislukt"); return; }

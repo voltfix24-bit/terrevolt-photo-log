@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { caseUrl } from "@/lib/urls";
+import { internetVereist } from "@/lib/internet";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -70,6 +71,7 @@ export default function NewStation() {
   const kiesMonteur = (naam: string) => { setSelectedMonteur(naam); setMonteurOpen(false); setMonteurZoek(""); };
 
   const voegMonteurToe = async () => {
+    if (!internetVereist()) return;
     const naam = monteurZoek.trim();
     if (!naam) return;
     const { error } = await supabase.from("monteurs").insert({ naam });
@@ -80,6 +82,7 @@ export default function NewStation() {
   };
 
   const handleSubmit = async () => {
+    if (!internetVereist()) return;
     if (!form.naam_msr || !form.type_ruimte) { toast.error("Vul minimaal de naam MSR en type ruimte in"); return; }
     if (!selectedMonteur) { toast.error("Selecteer of voeg een monteur toe"); return; }
     setLoading(true);

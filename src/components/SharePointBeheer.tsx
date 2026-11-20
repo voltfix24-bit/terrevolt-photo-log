@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useInstellingen } from "@/hooks/use-theme";
 import { zorgVoorBeheer } from "@/lib/require-pin";
 import { dagenTotVerlopen } from "@/components/SharePointSleutelBanner";
+import { internetVereist } from "@/lib/internet";
 
 // Exacte namen zoals ze in Microsoft Entra (API-machtigingen → Microsoft Graph → Toepassingsmachtigingen) staan
 const MACHTIGING_UITLEG: Record<string, string> = {
@@ -45,6 +46,7 @@ export function SharePointBeheer() {
   const dagen = dagenTotVerlopen(inst?.sp_sleutel_verloopt_op);
 
   const controleer = async () => {
+    if (!internetVereist()) return;
     if (!(await zorgVoorBeheer())) return;
     setControle(true);
     const { error } = await supabase.functions.invoke("sharepoint-sync", { body: { controle: true } });
@@ -53,6 +55,7 @@ export function SharePointBeheer() {
     if (error) toast.error("Controleren is mislukt"); else toast.success("SharePoint gecontroleerd");
   };
   const zetDatum = async (v: string) => {
+    if (!internetVereist()) return;
     if (!inst?.id) return;
     const { error } = await supabase.from("instellingen").update({ sp_sleutel_verloopt_op: v || null } as any).eq("id", inst.id);
     if (error) toast.error("Opslaan mislukt"); else qc.invalidateQueries({ queryKey: ["instellingen"] });
@@ -62,6 +65,7 @@ export function SharePointBeheer() {
   const fouten = Array.isArray(run?.fouten) ? run!.fouten.length : 0;
 
   const nu = async () => {
+    if (!internetVereist()) return;
     if (!(await zorgVoorBeheer())) return;
     setStart(true);
     const { error } = await supabase.functions.invoke("sharepoint-weekly", { body: { handmatig: true } });

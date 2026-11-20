@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { sharepointStatusBijwerken } from "@/lib/station-service";
+import { internetVereist } from "@/lib/internet";
 import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -177,6 +178,7 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
   };
 
   const keurGoed = useCallback(async () => {
+    if (!internetVereist()) return;
     if (!selected) return;
     const { error } = await supabase.from("fotos").update({ review_status: "approved", review_reden: null, reviewed_at: new Date().toISOString() }).eq("id", selected.id);
     if (error) { toast.error("Goedkeuren mislukt — probeer opnieuw"); return; }
@@ -185,6 +187,7 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
   }, [selected, volgende]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const bevestigAfkeuren = async () => {
+    if (!internetVereist()) return;
     if (!rejectFor || !id) return;
     const tekst = reden === "Anders" ? (toelichting.trim() || "Anders") : `${reden}${toelichting.trim() ? ` — ${toelichting.trim()}` : ""}`;
     const { error: fErr } = await supabase.from("fotos").update({ review_status: "rejected", review_reden: tekst, reviewed_at: new Date().toISOString() }).eq("id", rejectFor);
@@ -201,6 +204,7 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
   };
 
   const afronden = async () => {
+    if (!internetVereist()) return;
     if (!id || tellingen.pending > 0) return;
     const { error } = await supabase.from("stations").update({ status: "goedgekeurd", review_reden: null }).eq("id", id);
     if (error) { toast.error("Goedkeuren van het dossier mislukt — probeer opnieuw"); return; }
@@ -211,6 +215,7 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
   };
 
   const openRapport = async () => {
+    if (!internetVereist()) return;
     const { data, error } = await supabase.functions.invoke("oplever-rapport", { body: { station_id: id, actie: "rapport-url" } });
     const url = (data as { rapport_url?: string })?.rapport_url;
     if (error || !url) { toast.error("Rapport nog niet beschikbaar"); return; }

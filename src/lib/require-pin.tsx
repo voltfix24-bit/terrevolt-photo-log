@@ -1,12 +1,14 @@
 import { createRoot } from "react-dom/client";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { internetVereist, INTERNET_NODIG } from "@/lib/internet";
 
 /**
  * De pincode wordt op de server gecontroleerd (edge function `pin-sessie`). Bij een juiste code
  * krijgt dit apparaat een beheerderssessie; de database staat verwijderen alleen dan toe.
  */
 export async function controleerPin(pin: string, invoke = supabase.functions.invoke.bind(supabase.functions), zetSessie = supabase.auth.setSession.bind(supabase.auth)): Promise<{ ok: boolean; fout?: string }> {
+  if (!internetVereist()) return { ok: false, fout: INTERNET_NODIG };
   try {
     const { data, error } = await invoke("pin-sessie", { body: { pin, apparaat: apparaatId() } });
     const d = data as { ok?: boolean; access_token?: string; refresh_token?: string; error?: string } | null;
@@ -42,6 +44,7 @@ export async function heeftBeheerSessie(): Promise<boolean> {
 
 /** Vraagt de pincode alleen als er nog geen beheerderssessie is. */
 export async function zorgVoorBeheer(title?: string, description?: string): Promise<boolean> {
+  if (!internetVereist()) return false;
   if (await heeftBeheerSessie()) return true;
   return requirePin(title, description);
 }
@@ -160,6 +163,7 @@ export function requirePin(
   title = "Bevestig met toegangscode",
   description?: string,
 ): Promise<boolean> {
+  if (!internetVereist()) return Promise.resolve(false);
   ensureMounted();
   return new Promise((resolve) => {
     const tryOpen = () => {

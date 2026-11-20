@@ -14,6 +14,7 @@ import type { MergedCategory } from "@/hooks/use-categories";
 import { Pressable, R, T } from "@/components/apple/Primitives";
 import { NotitieKaart, NotitieSheet } from "@/components/NotitieSheet";
 import { bewaarNotitie, lokaleNotitie } from "@/lib/notities";
+import { internetVereist } from "@/lib/internet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 type FotoRow = { id: string; url: string; storage_path: string; categorie: string; uploaded_at?: string };
@@ -216,6 +217,7 @@ export function WizardView({
   };
 
   const confirmSkip = (reason: string) => {
+    if (!internetVereist()) throw new Error("Internet vereist om N.v.t. op te slaan");
     if (!cat || !reason.trim()) return;
     onSkip(cat.name, reason.trim());
     setSheet(null);

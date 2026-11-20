@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { R, T } from "@/components/apple/Primitives";
+import { toast } from "sonner";
 
 export const NOTITIE_CHIPS = ["Niet bereikbaar", "Niet aanwezig", "Defect", "Volgt later", "Zie foto"];
 export const SKIP_CHIPS = ["Niet aanwezig in dit station", "Niet bereikbaar", "Geen toegang", "Volgt bij TO-ronde"];
@@ -30,7 +31,7 @@ type Props = {
 
 export function NotitieSheet({ soort, titel, begin, onClose, onSave }: Props) {
   const [tekst, setTekst] = useState(begin);
-  const [status, setStatus] = useState<"" | "bezig" | "online" | "wachtrij">("");
+  const [status, setStatus] = useState<"" | "bezig" | "online" | "wachtrij" | "fout">("");
   const ref = useRef<HTMLTextAreaElement>(null);
   const laatst = useRef(begin);
   const { bottom, hoogte } = useZichtbaar();
@@ -51,9 +52,14 @@ export function NotitieSheet({ soort, titel, begin, onClose, onSave }: Props) {
     if (soort !== "notitie" || tekst === laatst.current) return;
     const t = setTimeout(async () => {
       setStatus("bezig");
-      laatst.current = tekst;
-      const r = await onSave(tekst);
-      setStatus(r === "wachtrij" ? "wachtrij" : "online");
+      try {
+        const r = await onSave(tekst);
+        laatst.current = tekst;
+        setStatus(r === "wachtrij" ? "wachtrij" : "online");
+      } catch (e) {
+        setStatus("fout");
+        toast.error(e instanceof Error ? e.message : "Notitie niet bewaard — probeer opnieuw");
+      }
     }, 700);
     return () => clearTimeout(t);
   }, [tekst, soort, onSave]);
@@ -65,13 +71,24 @@ export function NotitieSheet({ soort, titel, begin, onClose, onSave }: Props) {
 
   const opslaan = async () => {
     if (verplicht && !tekst.trim()) return;
-    if (soort === "skip" || tekst !== laatst.current) { laatst.current = tekst; await onSave(tekst); }
-    onClose();
+    try {
+      await onSave(tekst);
+      laatst.current = tekst;
+      onClose();
+    } catch (e) {
+      setStatus("fout");
+      toast.error(e instanceof Error ? e.message : "Niet bewaard — probeer opnieuw");
+    }
   };
   const annuleren = async () => {
     // Notitie: terugzetten naar de begintekst als er al tussentijds is opgeslagen
-    if (soort === "notitie" && laatst.current !== begin) await onSave(begin);
-    onClose();
+    try {
+      if (soort === "notitie" && (laatst.current !== begin || status === "bezig")) await onSave(begin);
+      onClose();
+    } catch (e) {
+      setStatus("fout");
+      toast.error(e instanceof Error ? e.message : "Niet bewaard — probeer opnieuw");
+    }
   };
 
   return (
@@ -103,7 +120,7 @@ export function NotitieSheet({ soort, titel, begin, onClose, onSave }: Props) {
             style={{ width: "100%", resize: "none", border: "none", outline: "none", borderRadius: R.small, background: "#F2F5F1", padding: "12px 14px", fontSize: 17, lineHeight: 1.4, color: T.rowText, overflowY: "auto" }}
           />
           <div style={{ minHeight: 20, fontSize: 13, color: T.subOnBg, padding: "4px 2px 0" }} aria-live="polite">
-            {status === "bezig" ? <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><KnopLader />Opslaan</span> : status === "online" ? "Opgeslagen ✓" : status === "wachtrij" ? "Offline opgeslagen ✓ — wordt verstuurd zodra je online bent" : ""}
+            {status === "bezig" ? <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><KnopLader />Opslaan</span> : status === "online" ? "Opgeslagen ✓" : status === "wachtrij" ? "Lokaal opgeslagen ✓ — wordt verstuurd zodra er verbinding is" : status === "fout" ? "Niet bewaard — houd dit venster open en probeer opnieuw" : ""}
           </div>
         </div>
       </div>

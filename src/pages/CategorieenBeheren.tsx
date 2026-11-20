@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { CATEGORIES, SECTIONS } from "@/lib/categories";
 import { toast } from "sonner";
 import imageCompression from "browser-image-compression";
+import { internetVereist } from "@/lib/internet";
 import { useVoorbeelden } from "@/components/CategorieSettings";
 import { useMergedCategories, useSaveCategoryOverride, MergedCategory } from "@/hooks/use-categories";
 import {
@@ -148,6 +149,7 @@ export default function CategorieenBeheren() {
   };
 
   const handleUpload = async (categorie: string, files: FileList) => {
+    if (!internetVereist()) return;
     setUploading(categorie);
     for (const file of Array.from(files)) {
       if (file.size > MAX_SIZE) { toast.error(`${file.name} is groter dan 10MB`); continue; }
@@ -169,6 +171,7 @@ export default function CategorieenBeheren() {
   };
 
   const handleDelete = async (v: VoorbeeldFoto) => {
+    if (!internetVereist()) return;
     await supabase.storage.from("to-fotos").remove([v.storage_path]);
     await supabase.from("categorie_voorbeelden").delete().eq("id", v.id);
     queryClient.invalidateQueries({ queryKey: ["categorie_voorbeelden"] });

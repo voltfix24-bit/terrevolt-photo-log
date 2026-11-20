@@ -1,5 +1,6 @@
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { categorieKlaar } from "@/lib/foto-regels";
+import { internetVereist } from "@/lib/internet";
 import { nieuwPad, uploadEnRegistreer, verwijderFoto } from "@/lib/fotos-service";
 import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { WizardView } from "@/components/WizardView";
@@ -137,6 +138,7 @@ function useSkippedCategories(stationId: string | undefined) {
   }, [key]);
 
   const addSkip = useCallback((catName: string, reason?: string) => {
+    if (!internetVereist()) return;
     setSkipped(prev => prev.includes(catName) ? prev : [...prev, catName]);
     if (reason) {
       setSkippedReasons(prev => {
@@ -153,6 +155,7 @@ function useSkippedCategories(stationId: string | undefined) {
   }, [queryClient, reasonsKey, setSkipped, stationId]);
 
   const removeSkip = useCallback((catName: string) => {
+    if (!internetVereist()) return;
     setSkipped(prev => prev.filter(n => n !== catName));
     setSkippedReasons(prev => {
       const next = { ...prev };
@@ -168,6 +171,7 @@ function useSkippedCategories(stationId: string | undefined) {
   }, [queryClient, reasonsKey, setSkipped, stationId]);
 
   const toggleSkip = useCallback((catName: string) => {
+    if (!internetVereist()) return;
     setSkipped(prev =>
       prev.includes(catName)
         ? prev.filter(n => n !== catName)
@@ -324,14 +328,15 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
   const uploadBezig = useRef<Set<string>>(new Set());
   const handleUpload = async (categorie: string, files: FileList): Promise<string[]> => {
     const mislukt: string[] = [];
-    if (!isOnline) {
+    if (!id) return Array.from(files).map(f => f.name);
+    if (!navigator.onLine) {
       let queued = 0;
       for (const file of Array.from(files)) {
         if (file.size > MAX_SIZE) { toast.error(`${file.name} is groter dan 10MB`); mislukt.push(file.name); continue; }
-        await queuePhoto(id!, categorie, file);
-        queued++;
+        if (!ACCEPTED.includes(file.type) && !file.name.toLowerCase().endsWith(".heic")) { toast.error(`${file.name}: ongeldig bestandstype`); mislukt.push(file.name); continue; }
+        try { await queuePhoto(id, categorie, file); queued++; }
+        catch { toast.error(`${file.name} niet lokaal bewaard — mogelijk is de opslag vol. Bewaar de originele foto en probeer opnieuw.`); mislukt.push(file.name); }
       }
-      if (queued > 0 && isSkipped(categorie)) { removeSkip(categorie); toast.info("N.v.t. opgeheven: er is toch een foto"); }
       if (queued > 0) {
         toast.success(`${queued} foto${queued > 1 ? "'s" : ""} opgeslagen — wordt geüpload zodra je online bent`, {
           duration: 4000,
@@ -351,7 +356,7 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
         if (!ACCEPTED.includes(file.type) && !file.name.toLowerCase().endsWith(".heic")) { toast.error(`${file.name}: ongeldig bestandstype`); mislukt.push(file.name); continue; }
         try {
           const compressed = await compressImage(file);
-          const r = await uploadEnRegistreer(nieuwPad(id!, categorie, file.name), compressed, { stationId: id!, categorie, volgorde: fotosByCategorie(categorie).length + done });
+          const r = await uploadEnRegistreer(nieuwPad(id, categorie, file.name), compressed, { stationId: id, categorie, volgorde: fotosByCategorie(categorie).length + done });
           if ("stap" in r) {
             toast.error(r.stap === "opslag" ? `Upload mislukt: ${file.name}` : `${file.name} is niet opgeslagen in de app — probeer opnieuw`);
             mislukt.push(file.name); continue;
@@ -406,6 +411,7 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
   };
 
   const openPdf = () => {
+    if (!internetVereist()) return;
     if (!station || !fotos) return;
     const html = generatePdfHtml(station, fotos, instellingenData ?? undefined, opmerkingen ?? undefined, skipped.map(categorie => ({ categorie, reden: skippedReasons[categorie] || 'Geen reden opgegeven' })));
     const w = window.open("", "_blank");
@@ -806,6 +812,7 @@ function EditStationDialog({ station, open, onOpenChange, onSaved }: EditStation
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
+    if (!internetVereist()) return;
     setSaving(true);
     const { error } = await supabase.from("stations").update({ naam_msr: form.naam_msr, behuizingsnummer: form.behuizingsnummer || null, casenummer: form.casenummer || null, casenaam: form.casenaam || null, type_ruimte: form.type_ruimte, ingevuld_door: form.ingevuld_door || null, datum: form.datum || null }).eq("id", station.id);
     setSaving(false);

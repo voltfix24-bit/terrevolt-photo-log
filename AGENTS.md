@@ -23,3 +23,9 @@
 - RLS: deleting stations, fotos and to-fotos files requires `has_role(auth.uid(),'admin')`; deletes return rows (`.select`) so 0 rows = no success. Sign-ups are disabled. Why: destructive actions only behind the PIN, no lock-out of normal use.
 - `sharepoint-sync {controle}` and `sharepoint-weekly` (manual/dry-run) require an admin session (`_shared/admin-auth.ts`); station sync paths stay anon-callable for rapport-pdf. Why: background chain must keep working.
 - Index loads only `fotos(categorie, review_status)`; pdf/zip use `fotosVan`. Why: payload.
+
+## BESLUITEN
+- Preserve open employee read/create/update access and the existing server-verified PIN for admin deletion; no login wall or frontend PIN. Why: approved access model.
+- Keep `to-fotos` public and existing direct URLs; do not broaden permissions or backfill signed URLs. Why: preserve shared links.
+- Queue only photos and notes offline; reject all other mutations without internet, and surface local persistence failures. Why: prevent false success and data loss.
+- All progress/completion uses the central photo rule, including category 31. Why: one consistent requirement.

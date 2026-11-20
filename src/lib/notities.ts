@@ -3,8 +3,16 @@ import { supabase } from "@/integrations/supabase/client";
 
 const KEY = "notitie-wachtrij-v1";
 type Item = { stationId: string; categorie: string; tekst: string };
-const lees = (): Record<string, Item> => { try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch { return {}; } };
-const schrijf = (q: Record<string, Item>) => { try { localStorage.setItem(KEY, JSON.stringify(q)); } catch { /* */ } };
+type Bewaard = Item & { versie?: string };
+const BEWAAR_FOUT = "Notitie niet bewaard op dit apparaat. Houd dit venster open en probeer opnieuw; mogelijk is de opslag vol.";
+const lees = (): Record<string, Bewaard> => {
+  try { return JSON.parse(localStorage.getItem(KEY) || "{}"); }
+  catch { throw new Error(BEWAAR_FOUT); }
+};
+const schrijf = (q: Record<string, Bewaard>) => {
+  try { localStorage.setItem(KEY, JSON.stringify(q)); }
+  catch { throw new Error(BEWAAR_FOUT); }
+};
 
 async function bewaarOnline({ stationId, categorie, tekst }: Item) {
   const t = tekst.trim();
@@ -17,23 +25,43 @@ async function bewaarOnline({ stationId, categorie, tekst }: Item) {
 /** Slaat op; offline of bij een fout gaat hij in de wachtrij. Geeft "online" | "wachtrij". */
 export async function bewaarNotitie(item: Item): Promise<"online" | "wachtrij"> {
   const k = `${item.stationId}|${item.categorie}`;
-  if (navigator.onLine) {
-    try { await bewaarOnline(item); const q = lees(); delete q[k]; schrijf(q); return "online"; } catch { /* naar wachtrij */ }
-  }
-  const q = lees(); q[k] = item; schrijf(q);
-  return "wachtrij";
+  // Eerst duurzaam vastleggen: ook een herstart tijdens het verzoek mag geen tekst verliezen.
+  const versie = crypto.randomUUID();
+  const q = lees(); q[k] = { ...item, versie }; schrijf(q);
+  if (navigator.onLine) await verstuurNotities();
+  return lees()[k] ? "wachtrij" : "online";
 }
 
 /** Lokale (nog niet verstuurde) notitie, zodat offline-tekst niet verdwijnt. */
 export function lokaleNotitie(stationId: string, categorie: string): string | undefined {
-  return lees()[`${stationId}|${categorie}`]?.tekst;
+  try { return lees()[`${stationId}|${categorie}`]?.tekst; } catch { return undefined; }
 }
 
-export async function verstuurNotities(): Promise<number> {
-  const q = lees(); let n = 0;
-  for (const [k, item] of Object.entries(q)) {
-    try { await bewaarOnline(item); delete q[k]; n++; } catch { /* blijft staan */ }
+export function aantalLokaleNotities(stationId: string): number {
+  return Object.values(lees()).filter(item => item.stationId === stationId).length;
+}
+
+let versturen: Promise<number> | undefined;
+export function verstuurNotities(): Promise<number> {
+  if (!navigator.onLine) return Promise.resolve(0);
+  if (versturen) return versturen;
+  versturen = flush().finally(() => { versturen = undefined; });
+  return versturen;
+}
+
+async function flush(): Promise<number> {
+  let n = 0;
+  const geprobeerd = new Set<string>();
+  while (navigator.onLine) {
+    const entry = Object.entries(lees()).find(([k, i]) => !geprobeerd.has(`${k}|${i.versie ?? i.tekst}`));
+    if (!entry) break;
+    const [k, item] = entry;
+    geprobeerd.add(`${k}|${item.versie ?? item.tekst}`);
+    try { await bewaarOnline(item); } catch { continue; } // netwerkfout: lokaal behouden
+    // Lees opnieuw na await: nooit een intussen getypte notitie of andere categorie wissen.
+    const nu = lees();
+    if (JSON.stringify(nu[k]) === JSON.stringify(item)) { delete nu[k]; schrijf(nu); }
+    n++;
   }
-  schrijf(q);
   return n;
 }

@@ -7,6 +7,8 @@ import { getPendingPhotos } from "@/lib/offline-queue";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { GlassBar, Group, Hairline, NavText, PrimaryButton, Row, T, INSET_ROW, ROW_PAD_X } from "@/components/apple/Primitives";
 import { toast } from "sonner";
+import { internetVereist } from "@/lib/internet";
+import { aantalLokaleNotities, verstuurNotities } from "@/lib/notities";
 
 export default function Opleveren({ stationId }: { stationId?: string } = {}) {
   const params = useParams<{ id: string }>();
@@ -78,8 +80,15 @@ export default function Opleveren({ stationId }: { stationId?: string } = {}) {
   const gereed = queued === 0;
 
   const versturenClick = async () => {
+    if (!internetVereist()) return;
     if (!gereed || !id || versturen) return;
     setVersturen(true);
+    try {
+    await verstuurNotities();
+    if ((await getPendingPhotos(id)).length > 0 || aantalLokaleNotities(id) > 0) {
+      toast.error("Nog niet alles verstuurd — wacht tot foto's en notities zijn gesynchroniseerd.");
+      return;
+    }
     const { data, error } = await supabase.functions.invoke("oplever-rapport", {
       body: { station_id: id, opdrachtgever: client, submitted_by: monteur },
     });
@@ -92,6 +101,8 @@ export default function Opleveren({ stationId }: { stationId?: string } = {}) {
     queryClient.invalidateQueries({ queryKey: ["station", id] });
     toast.success(`Opgeleverd aan ${client}`, { description: (data as { rapport_url?: string })?.rapport_url ? "Het rapport is klaargezet." : undefined });
     navigate("/", { replace: true });
+    } catch { toast.error("Opleveren mislukt. Probeer het opnieuw."); }
+    finally { setVersturen(false); }
   };
 
   if (!station) {

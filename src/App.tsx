@@ -28,7 +28,12 @@ function AppContent() {
 
   useEffect(() => {
     if (isOnline) {
-      verstuurNotities().then(n => { if (n > 0) queryClient.invalidateQueries({ queryKey: ["opmerkingen"] }); });
+      verstuurNotities().then(n => {
+        if (n > 0) {
+          queryClient.invalidateQueries({ queryKey: ["opmerkingen"] });
+          queryClient.invalidateQueries({ queryKey: ["opmerking"] });
+        }
+      }).catch(e => toast.error(e instanceof Error ? e.message : "Notities nog niet verstuurd — probeer opnieuw"));
       getQueueCount().then(count => {
         if (count > 0) {
           toast.loading(`Verbinding hersteld — ${count} foto's uploaden...`, { id: 'sync-toast' });
@@ -38,6 +43,7 @@ function AppContent() {
             if (gelukt > 0) {
               queryClient.invalidateQueries({ queryKey: ["fotos"] });
               queryClient.invalidateQueries({ queryKey: ["stations"] });
+              queryClient.invalidateQueries({ queryKey: ["categorie-skips"] });
             }
             if (mislukt > 0) {
               toast.error(`${mislukt} foto${mislukt > 1 ? "'s" : ""} nog niet geüpload${gelukt ? ` (${gelukt} wel)` : ""} — blijft bewaard en wordt later opnieuw geprobeerd`, { id: 'sync-toast', duration: 8000 });
@@ -46,9 +52,9 @@ function AppContent() {
             } else {
               toast.dismiss('sync-toast');
             }
-          });
+          }).catch(() => toast.error("Foto's nog niet verstuurd — lokaal bewaarde foto's blijven in de wachtrij", { id: 'sync-toast' }));
         }
-      });
+      }).catch(() => toast.error("Fotowachtrij kan niet worden gelezen — controleer de opslag van dit apparaat"));
     }
   }, [isOnline]);
 

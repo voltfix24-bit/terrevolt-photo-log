@@ -1,6 +1,7 @@
 import { getPendingPhotos, markDone, markError, clearDone } from './offline-queue';
 import imageCompression from 'browser-image-compression';
 import { uploadEnRegistreer, wachtrijPad } from './fotos-service';
+import { supabase } from '@/integrations/supabase/client';
 
 export type SyncResultaat = { gelukt: number; mislukt: number; fouten: string[] };
 
@@ -12,6 +13,7 @@ export type SyncDeps = {
   opruimen: () => Promise<void>;
   comprimeer: (f: File) => Promise<Blob>;
   upload: typeof uploadEnRegistreer;
+  ophefSkip?: (stationId: string, categorie: string) => Promise<void>;
 };
 
 const standaard: SyncDeps = {
@@ -22,6 +24,10 @@ const standaard: SyncDeps = {
     catch { return f; }
   },
   upload: uploadEnRegistreer,
+  ophefSkip: async (stationId, categorie) => {
+    const { error } = await supabase.from('categorie_skips').delete().eq('station_id', stationId).eq('categorie', categorie);
+    if (error) throw error;
+  },
 };
 
 let isSyncing = false;
@@ -33,16 +39,18 @@ let isSyncing = false;
  */
 export async function syncPendingPhotos(onProgress?: (done: number, total: number) => void, deps: SyncDeps = standaard): Promise<SyncResultaat> {
   const res: SyncResultaat = { gelukt: 0, mislukt: 0, fouten: [] };
-  if (isSyncing) return res;
+  if (isSyncing || !navigator.onLine) return res;
   isSyncing = true;
   try {
     const pending = await deps.pending();
     for (const item of pending) {
+      if (!navigator.onLine) break; // niets verwijderen wanneer het netwerk onderweg wegvalt
       try {
         const blob = await deps.comprimeer(new File([item.file], item.fileName, { type: item.file.type }));
         const pad = wachtrijPad(item.stationId, item.categorie, item.id, blob, item.fileName);
         const r = await deps.upload(pad, blob, { stationId: item.stationId, categorie: item.categorie, volgorde: 0 });
         if ("fout" in r) throw new Error(r.fout);
+        await deps.ophefSkip?.(item.stationId, item.categorie);
         await deps.klaar(item.id);
         res.gelukt++;
       } catch (e) {

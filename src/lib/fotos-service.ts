@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { internetVereist, INTERNET_NODIG } from "@/lib/internet";
 
 export const FOTO_BUCKET = "to-fotos";
 // Minimale vorm van de client, zodat de service ook met een nep-client te testen is.
@@ -66,6 +67,7 @@ export async function fotosVan(stationId: string, db: Db = supabase): Promise<{ 
 
 /** Verwijdert eerst de rij (bron van waarheid), daarna het bestand. */
 export async function verwijderFoto(fotoId: string, pad: string, db: Db = supabase): Promise<{ ok: boolean; fout?: string; bestandBlijft?: boolean }> {
+  if (!internetVereist()) return { ok: false, fout: INTERNET_NODIG };
   const { data, error } = await db.from("fotos").delete().eq("id", fotoId).select("id");
   if (error) return { ok: false, fout: error.message };
   // Geen rij verwijderd = geen rechten (geen beheerderssessie) of al weg: geen succes melden

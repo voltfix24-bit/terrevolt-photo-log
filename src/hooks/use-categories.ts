@@ -2,6 +2,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { CATEGORIES, Category } from "@/lib/categories";
 import { toast } from "sonner";
+import { internetVereist, INTERNET_NODIG } from "@/lib/internet";
 
 export interface CategoryOverride {
   id: string;
@@ -72,6 +73,7 @@ export function useSaveCategoryOverride() {
       tip?: string;
       volgorde?: number;
     }) => {
+      if (!internetVereist()) throw new Error(INTERNET_NODIG);
       // Upsert based on categorie_id
       const { data: existing } = await supabase
         .from("categorie_instellingen")
@@ -117,6 +119,7 @@ export function useBulkUpdateOrder() {
 
   return useMutation({
     mutationFn: async (updates: { categorie_id: number; volgorde: number }[]) => {
+      if (!internetVereist()) throw new Error(INTERNET_NODIG);
       for (const u of updates) {
         const { data: existing } = await supabase
           .from("categorie_instellingen")

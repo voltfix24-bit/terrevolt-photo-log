@@ -1,6 +1,5 @@
 // Centrale regel: hoeveel foto's een categorie nodig heeft om "klaar" te zijn.
-// Standaard 1 per categorie. Een hogere eis per categorie (bijv. 31 Stroomtransformatoren = 3)
-// zet je hier pas aan als de gebruiker dat bevestigt; nu bewust leeg om bestaand gedrag te behouden.
+// Definitief: standaard één foto, ook voor categorie 31 (Stroomtransformatoren).
 export const STANDAARD_MIN_FOTOS = 1;
 export const MIN_FOTOS_PER_CATEGORIE: Readonly<Record<number, number>> = {};
 
