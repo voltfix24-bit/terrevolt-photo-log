@@ -38,6 +38,7 @@ export function aandachtItems(cases: CaseItem[], nu = amsterdamDatum()): Aandach
       }
       continue; // on hold: geen andere opvolging tonen, de pauze is leidend
     }
+    if (s.dossier_status === "afgerond") continue; // afgerond dossier: geen opvolging meer (zoals casePresentatie)
     const r = c.last;
     if (r?.status === "afgekeurd") {
       const open = r.to_acties.filter((a) => !a.afgehandeld_op);

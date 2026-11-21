@@ -140,7 +140,7 @@ export function ExcelImportDialog({ open, onOpenChange, bestaand }: { open: bool
                 {previewPagina(preview,pagina).map((r) => {
                   const k = kleurRij(r), s = TO_STATUS[r.status];
                   return (
-                    <tr key={r.regel} style={{ opacity: r.klasse === "bestaat" && !res[r.regel] ? 0.6 : 1 }}>
+                    <tr key={r.regel}>
                       <td style={{ ...td, color: k.kleur, fontWeight: 600, maxWidth: 220 }}><span style={{ display: "inline-flex", gap: 4, alignItems: "flex-start" }}><span className="material-symbols-rounded" style={{ fontSize: 16 }}>{k.icoon}</span>{k.tekst}</span></td>
                       <td style={{ ...td }} className="font-mono">{r.casenummer || "—"}</td>
                       <td style={td}>{r.casenaam || "—"}</td>

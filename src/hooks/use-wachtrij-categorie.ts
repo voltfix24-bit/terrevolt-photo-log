@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getCategorieItems, QUEUE_EVENT, type QueueStatus } from "@/lib/offline-queue";
+import { getCategorieItems, QUEUE_EVENT, verwijderVerstuurd, type QueueStatus } from "@/lib/offline-queue";
 
 export type WachtrijFoto = { id: string; pad?: string; url: string; status: QueueStatus; fout?: string; beheer: boolean; fileName: string; timestamp?: string };
 
@@ -42,8 +42,14 @@ export function useWachtrijCategorie(stationId: string | undefined, categorie: s
     const gen = ++generatie.current;
     if (!stationId || !categorie) { setStaat({ sleutel: "", items: [] }); return; }
     try {
-      const rijen = await getCategorieItems(stationId, categorie);
+      const alle = await getCategorieItems(stationId, categorie);
       if (gen !== generatie.current) return; // verouderd: niets overnemen
+      // Verstuurde items blijven duurzaam in de wachtrij tot de serverlijst hetzelfde pad bevat;
+      // pas dan worden ze (atomair, alleen als nog 'done' met dit pad) opgeruimd.
+      const rijen = alle.filter((r) => {
+        if (r.status === "done" && r.pad && serverRef.current?.has(r.pad)) { void verwijderVerstuurd(r.id, r.pad).catch(() => {}); return false; }
+        return true;
+      });
       rijen.sort((a, b) => a.timestamp.localeCompare(b.timestamp) || a.id.localeCompare(b.id));
       const nu = new Set(rijen.map((r) => r.id));
       for (const r of rijen) if (!vast.current.has(r.id)) { pak(r.id, r.file); vast.current.add(r.id); }
@@ -78,7 +84,7 @@ export function useWachtrijCategorie(stationId: string | undefined, categorie: s
   useEffect(() => {
     if (!serverPaden) return;
     let weg = false;
-    for (const [id, w] of bewaardVerstuurd.current) if (w.pad && serverPaden.has(w.pad)) { bewaardVerstuurd.current.delete(id); if (vast.current.has(id)) { laat(id); vast.current.delete(id); } weg = true; }
+    for (const [id, w] of bewaardVerstuurd.current) if (w.pad && serverPaden.has(w.pad)) { void verwijderVerstuurd(id, w.pad).catch(() => {}); bewaardVerstuurd.current.delete(id); if (vast.current.has(id)) { laat(id); vast.current.delete(id); } weg = true; }
     if (weg) setStaat((s) => ({ ...s, items: s.items.filter((w) => !(w.pad && serverPaden.has(w.pad) && w.status === "done" && !bewaardVerstuurd.current.has(w.id) && !vast.current.has(w.id))) }));
   }, [serverSleutel]); // eslint-disable-line react-hooks/exhaustive-deps
 

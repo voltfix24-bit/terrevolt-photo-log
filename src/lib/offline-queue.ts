@@ -20,6 +20,8 @@ export type QueueItem = {
   voorbereid?: boolean;
   leaseTot?: number;
   leaseEigenaar?: string;
+  /** Tijdstip (ms) waarop storage+DB bevestigd zijn; het item blijft tot de serverlijst het pad toont. */
+  klaarOp?: number;
 };
 
 interface OfflineDB extends DBSchema {
@@ -152,7 +154,7 @@ async function finaliseer(id: string, eigenaar: string | undefined, f: (i: Queue
 }
 
 export const markDone = (id: string, eigenaar?: string) =>
-  finaliseer(id, eigenaar, (item) => ({ ...item, status: 'done', leaseTot: undefined, leaseEigenaar: undefined }));
+  finaliseer(id, eigenaar, (item) => ({ ...item, status: 'done', klaarOp: Date.now(), leaseTot: undefined, leaseEigenaar: undefined }));
 
 export const markError = (id: string, fout: string, soort: 'beheer' | 'overig' = 'overig', eigenaar?: string) =>
   finaliseer(id, eigenaar, (item) => ({ ...item, status: 'error', foutSoort: soort, pogingen: (item.pogingen ?? 0) + 1, laatsteFout: fout.slice(0, 300), leaseTot: undefined, leaseEigenaar: undefined }));
@@ -164,6 +166,38 @@ export async function opnieuwKlaarzetten(id: string) {
   if (item && item.status === 'error') { await d.put('photo-queue', { ...item, status: 'pending', foutSoort: undefined }); changed(); }
 }
 
+/** Bewaartermijn van verstuurde items die nooit door een zichtbare serverlijst zijn overgenomen. */
+export const VERSTUURD_BEWAAR_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Verwijdert één verstuurd item pas na aantoonbare serverovername (zelfde pad in de serverlijst).
+ * Atomair: alleen als het item nog 'done' is met precies dit pad.
+ */
+export async function verwijderVerstuurd(id: string, pad: string): Promise<boolean> {
+  const d = await getDB();
+  const tx = d.transaction('photo-queue', 'readwrite');
+  const item = await tx.store.get(id);
+  if (!item || item.status !== 'done' || item.pad !== pad) { await tx.done; return false; }
+  await tx.store.delete(id);
+  await tx.done;
+  changed();
+  return true;
+}
+
+/** Opruimen na sync: alleen verstuurde items ouder dan de bewaartermijn (registratie was al bevestigd). */
+export async function ruimVerstuurdOp(nu = Date.now(), bewaar = VERSTUURD_BEWAAR_MS) {
+  const d = await getDB();
+  const tx = d.transaction('photo-queue', 'readwrite');
+  let weg = 0;
+  for (let c = await tx.store.index('by-status').openCursor('done'); c; c = await c.continue()) {
+    const k = c.value.klaarOp;
+    if (k == null || nu - k >= bewaar) { await c.delete(); weg++; }
+  }
+  await tx.done;
+  if (weg) changed();
+}
+
+/** Verwijdert alle verstuurde items direct (alleen voor expliciete opruiming/tests). */
 export async function clearDone() {
   const d = await getDB();
   const keys = await d.getAllKeysFromIndex('photo-queue', 'by-status', 'done');

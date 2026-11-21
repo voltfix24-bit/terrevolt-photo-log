@@ -66,6 +66,18 @@ export function toegestaneActies(f: Pick<BeoordeelFoto, "review_status" | "afkeu
   };
 }
 
+/** Transportfout zonder servercode (verloren antwoord): uitkomst onbekend, nooit "niet opgeslagen" melden. */
+export function isOnbevestigd(error: { code?: string | null } | null | undefined): boolean {
+  return !!error && !error.code;
+}
+
+/** Eindcontroleregel voor vereiste onderdelen; pending categorieën tellen in SQL niet als ontbrekend, dus geen groen vinkje zolang er nog te beoordelen is. */
+export function vereisteCheck(c: Pick<Eindcontrole, "ontbrekend" | "te_beoordelen">): { ok: boolean; neutraal?: boolean; tekst: string } {
+  if (c.ontbrekend.length > 0) return { ok: false, tekst: `Ontbreekt: ${c.ontbrekend.join(", ")}` };
+  if (c.te_beoordelen > 0) return { ok: false, neutraal: true, tekst: "De aanwezige foto's moeten nog worden beoordeeld" };
+  return { ok: true, tekst: "Alle vereiste onderdelen hebben een goedgekeurde foto of N.v.t." };
+}
+
 export const ONBEVESTIGD_TEKST = "Geen bevestiging van de server ontvangen. De wijziging is mogelijk wél opgeslagen; het dossier wordt ververst — controleer de foto voordat je opnieuw beslist.";
 
 export function eindcontroleOk(c: Eindcontrole | undefined | null): boolean {

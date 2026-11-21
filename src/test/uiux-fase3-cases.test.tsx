@@ -46,6 +46,13 @@ describe("statusbetekenis en tellingen", () => {
     expect(casePresentatie(af).partijen).toEqual([]);
     expect(groepenVan(bordItems([open]), "Liander").groepen[0].titel).toMatch(/dossier nog niet afgerond/);
   });
+  it("rejected TO with a finished dossier gets no attention action; on-hold priority stays", () => {
+    const af = maak("TV-4", { dossier_status: "afgerond" }, [ronde(1, "afgekeurd", { to_acties: [actie("x", "TerreVolt", "Iets")] })]);
+    expect(casePresentatie(af).partijen).toEqual([]);
+    expect(aandachtItems([af], "2026-03-05")).toEqual([]);
+    const hold = maak("TV-5", { dossier_status: "afgerond", on_hold: true, on_hold_tot: "2026-03-01", on_hold_partij: "derden" }, [ronde(1, "afgekeurd")]);
+    expect(aandachtItems([hold], "2026-03-05").map((x) => x.soort)).toEqual(["hervatten"]);
+  });
 });
 
 describe("hervatten: Amsterdamse kalenderdag", () => {

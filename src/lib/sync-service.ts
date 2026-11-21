@@ -1,4 +1,4 @@
-import { getPendingPhotos, markDone, markError, clearDone, claimItem, bevries, type QueueItem } from './offline-queue';
+import { getPendingPhotos, markDone, markError, ruimVerstuurdOp, claimItem, bevries, type QueueItem } from './offline-queue';
 import imageCompression from 'browser-image-compression';
 import { uploadEnRegistreer, wachtrijPad, geregistreerdWachtrijPad, type Db } from './fotos-service';
 import { supabase } from '@/integrations/supabase/client';
@@ -46,7 +46,7 @@ export type SyncDeps = {
 };
 
 const standaard: SyncDeps = {
-  pending: getPendingPhotos, klaar: markDone, fout: markError, opruimen: clearDone,
+  pending: getPendingPhotos, klaar: markDone, fout: markError, opruimen: () => ruimVerstuurdOp(),
   comprimeer: bereidFotoVoor, upload: uploadEnRegistreer, ophefSkip: ophefSkipNaFoto,
   claim: claimItem, bevries,
   bestaandPad: (i) => geregistreerdWachtrijPad(i.stationId, i.categorie, i.id),

@@ -13,7 +13,7 @@ vi.mock("@/lib/require-pin", () => ({ fotowerkVoorActie: async () => true, requi
 vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn(), info: vi.fn(), loading: vi.fn(), dismiss: vi.fn() }) }));
 vi.mock("browser-image-compression", () => ({ default: vi.fn(async (f: Blob) => { if (m.comp.wacht) await m.comp.wacht; return f; }) }));
 
-import { claimItem, bevries, getDB, getPendingPhotos, markDone, markError, queuePhoto, clearDone, sluitDB, LEASE_MS, OPSLAG_GEBLOKKEERD_EVENT } from "@/lib/offline-queue";
+import { claimItem, bevries, getDB, getPendingPhotos, markDone, markError, queuePhoto, clearDone, ruimVerstuurdOp, VERSTUURD_BEWAAR_MS, sluitDB, LEASE_MS, OPSLAG_GEBLOKKEERD_EVENT } from "@/lib/offline-queue";
 import * as sync from "@/lib/sync-service";
 import { geregistreerdWachtrijPad, uploadEnRegistreer } from "@/lib/fotos-service";
 import { useWachtrijCategorie } from "@/hooks/use-wachtrij-categorie";
@@ -139,6 +139,37 @@ describe("6/7. categoriehydration", () => {
     expect(result.current.items).toHaveLength(2); // eerste blijft zichtbaar terwijl de rest wacht en de server traag is
     server = new Set(["stations/S/trafo/q_S-1.jpg"]); rerender();
     await waitFor(() => expect(result.current.items.map((i) => i.id)).toEqual(["S-2"]));
+  });
+});
+
+describe("4 (correctie). verstuurd over navigatie en remount", () => {
+  const wrapper = ({ children }: { children: ReactNode }) => createElement(QueryClientProvider, { client: new QueryClient() }, children);
+  it("confirmed upload + slow server: category away/back and full remount keep the tile; after server takeover exactly one and safe cleanup", async () => {
+    const pad = "stations/S/trafo/q_S-1.jpg";
+    await queuePhoto("S", "Trafo", foto(), { id: "S-1", pad });
+    let server = new Set<string>();
+    const h = renderHook(({ cat }) => useWachtrijCategorie("S", cat, server), { wrapper, initialProps: { cat: "Trafo" } });
+    await waitFor(() => expect(h.result.current.items).toHaveLength(1));
+    // Sync bevestigt en ruimt op zoals in productie (opruimen = ruimVerstuurdOp).
+    await act(async () => { await claimItem("S-1", "x"); await markDone("S-1", "x"); await ruimVerstuurdOp(); });
+    await waitFor(() => expect(h.result.current.items[0]?.status).toBe("done"));
+    h.rerender({ cat: "Lips" }); await waitFor(() => expect(h.result.current.items).toHaveLength(0));
+    h.rerender({ cat: "Trafo" }); await waitFor(() => expect(h.result.current.items.map((i) => [i.id, i.status])).toEqual([["S-1", "done"]]));
+    h.unmount();
+    const r = renderHook(() => useWachtrijCategorie("S", "Trafo", server), { wrapper });
+    await waitFor(() => expect(r.result.current.items.map((i) => [i.id, i.status])).toEqual([["S-1", "done"]]));
+    expect(await getPendingPhotos()).toHaveLength(0); // geen herverzending
+    server = new Set([pad]); r.rerender();
+    await waitFor(() => expect(r.result.current.items).toHaveLength(0));
+    await waitFor(async () => expect(await (await getDB()).get("photo-queue", "S-1")).toBeUndefined());
+  });
+  it("cleanup after sync keeps fresh confirmed items and removes only old ones", async () => {
+    await queuePhoto("S", "Trafo", foto(), { id: "S-1", pad: "a" });
+    await claimItem("S-1", "x"); await markDone("S-1", "x");
+    await ruimVerstuurdOp();
+    expect(await (await getDB()).get("photo-queue", "S-1")).toBeTruthy();
+    await ruimVerstuurdOp(Date.now() + VERSTUURD_BEWAAR_MS + 1);
+    expect(await (await getDB()).get("photo-queue", "S-1")).toBeUndefined();
   });
 });
 

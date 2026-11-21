@@ -15,7 +15,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { toast } from "sonner";
 import {
   type BeoordeelFoto as Foto, type Eindcontrole, eindcontroleOk, geldigeSelectie, inFilter, isOpenAfkeur,
-  rpcFoutTekst, sneltoetsToegestaan, volgendeNaBesluit, toegestaneActies, ONBEVESTIGD_TEKST,
+  rpcFoutTekst, sneltoetsToegestaan, volgendeNaBesluit, toegestaneActies, ONBEVESTIGD_TEKST, isOnbevestigd, vereisteCheck,
 } from "@/lib/beoordeling";
 
 const D = {
@@ -30,7 +30,8 @@ const FOCUS = "focus-visible:outline focus-visible:outline-[2.5px] focus-visible
 type RpcUitkomst = { ok: boolean; reden?: string; beoordeling_id?: string; versie?: number; station_status?: string; station_hersteld?: boolean; controle?: Eindcontrole; al_afgerond?: boolean };
 type Laatste = { beoordelingId: string; stationId: string; fotoId: string; label: string; stationGewijzigd: boolean };
 /** Context waarin een operatie begon: station + generatie (stationwissel) + lijstgeneratie (filterwissel). */
-type Ctx = { stationId: string; stationGen: number; lijstGen: number };
+/** gebruikerGen: synchroon verhoogd bij elke gebruikerswijziging van filter of fotokeuze (niet bij automatische doorgang). */
+type Ctx = { stationId: string; stationGen: number; gebruikerGen: number };
 
 function Icon({ name, size = 16, color }: { name: string; size?: number; color?: string }) {
   return <span className="material-symbols-rounded" aria-hidden="true" style={{ fontSize: size, color, lineHeight: 1 }}>{name}</span>;
@@ -72,7 +73,7 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const [filter, setFilterRaw] = useState<string>("pending");
-  const [gekozenId, setGekozenId] = useState<string | null>(null);
+  const [gekozenId, setGekozenIdRaw] = useState<string | null>(null);
   const [weergave, setWeergave] = useState<"inspectie" | "raster">("inspectie");
   const [rejectFor, setRejectFor] = useState<{ id: string; versie: number } | null>(null);
   const [afhandelFor, setAfhandelFor] = useState<{ id: string; versie: number } | null>(null);
@@ -87,20 +88,21 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
   const [beoordelaar, setBeoordelaarState] = useState(getBeoordelaar());
   const regioRef = useRef<HTMLDivElement>(null);
   const stationGen = useRef(0);
-  const lijstGen = useRef(0);
+  const gebruikerGen = useRef(0);
   const huidigStation = useRef(id);
   // Stationwissel (A→B): selectie, dialogen en herstel van A horen niet bij B.
   useEffect(() => {
     if (huidigStation.current === id) return;
-    huidigStation.current = id; stationGen.current++; lijstGen.current++;
-    setGekozenId(null); setRejectFor(null); setAfhandelFor(null); setAfrondenOpen(false); setGroot(false); setLaatste(null); setFilterRaw("pending");
+    huidigStation.current = id; stationGen.current++; gebruikerGen.current++;
+    setGekozenIdRaw(null); setRejectFor(null); setAfhandelFor(null); setAfrondenOpen(false); setGroot(false); setLaatste(null); setFilterRaw("pending");
   }, [id]);
-  useEffect(() => { lijstGen.current++; }, [filter]);
   // Unmount (bijv. route A→B met nieuwe key): lopende operaties van dit scherm zijn niet meer actief.
   useEffect(() => () => { stationGen.current++; huidigStation.current = undefined; }, []);
-  const ctxNu = (): Ctx => ({ stationId: id!, stationGen: stationGen.current, lijstGen: lijstGen.current });
+  const ctxNu = (): Ctx => ({ stationId: id!, stationGen: stationGen.current, gebruikerGen: gebruikerGen.current });
+  /** Handmatige fotokeuze door de gebruiker: nieuwe gebruikerscontext. */
+  const kiesFoto = (fid: string | null) => { gebruikerGen.current++; setGekozenIdRaw(fid); };
   const stationActief = (c: Ctx) => c.stationGen === stationGen.current && c.stationId === huidigStation.current;
-  const lijstActief = (c: Ctx) => stationActief(c) && c.lijstGen === lijstGen.current;
+  const gebruikerActief = (c: Ctx) => stationActief(c) && c.gebruikerGen === gebruikerGen.current;
 
   const station = useQuery({
     queryKey: ["station", id],
@@ -164,7 +166,7 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
   const afgerond = station.data?.status === "goedgekeurd";
   const beoordeelbaar = dataBekend && station.data?.submitted_at != null && !afgerond;
 
-  const setFilter = (f: string) => { setFilterRaw(f); setGekozenId(null); };
+  const setFilter = (f: string) => { gebruikerGen.current++; setFilterRaw(f); setGekozenIdRaw(null); };
 
   const tellingen = {
     all: photos.length,
@@ -186,7 +188,7 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
    * Eén beslissing tegelijk: het slot gaat dicht vóór de (asynchrone) PIN-controle. Na de PIN wordt
    * gecontroleerd of de bedoelde context nog actief is; zo niet, dan wordt niets verzonden.
    */
-  const metSlot = useCallback(async (label: string, ctx: Ctx, werk: (ctx: Ctx) => Promise<void>) => {
+  const metSlot = useCallback(async (label: string, ctx: Ctx, werk: (ctx: Ctx) => Promise<void>, eis: "gebruiker" | "station" = "gebruiker") => {
     if (bezigRef.current) return;
     bezigRef.current = true; setBezig(label);
     let verzonden = false;
@@ -194,6 +196,7 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
       if (!internetVereist()) return;
       if (!await zorgVoorBeheer()) { toast.error(BEHEER_NODIG); return; }
       if (!stationActief(ctx)) { toast("Je bekijkt intussen een ander dossier — er is niets verzonden."); return; }
+      if (eis === "gebruiker" && !gebruikerActief(ctx)) { toast("Je hebt intussen een andere foto of filter gekozen — er is niets verzonden."); return; }
       verzonden = true;
       await werk(ctx);
     } catch {
@@ -211,8 +214,8 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
     const { data, error } = await supabase.rpc("foto_beoordelen", { _foto_id: foto.id, _verwacht_versie: versie, _besluit: soort, _reden: tekst ?? null });
     const r = data as unknown as RpcUitkomst | null;
     if (error || !r?.ok || !r.beoordeling_id || r.versie == null) {
-      if (lijstActief(ctx)) setGekozenId(foto.id); // dezelfde foto blijft geselecteerd
-      if (error && error.code !== "42501" && !error.code) { toast.error(ONBEVESTIGD_TEKST); ververs(ctx.stationId); return false; }
+      if (gebruikerActief(ctx)) setGekozenIdRaw(foto.id); // dezelfde foto blijft geselecteerd
+      if (isOnbevestigd(error)) { toast.error(ONBEVESTIGD_TEKST); ververs(ctx.stationId); return false; }
       toast.error(error?.code === "42501" ? `Niet opgeslagen. ${BEHEER_NODIG}` : error ? "Niet opgeslagen. Controleer de verbinding en probeer het opnieuw." : rpcFoutTekst(r?.reden));
       if (r?.reden || !r) ververs(ctx.stationId);
       return false;
@@ -223,7 +226,7 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
     // Gecommitteerd: blijft bij het oorspronkelijke station; UI van een andere context wordt niet aangeraakt.
     queryClient.setQueryData<Foto[]>(["review-fotos", ctx.stationId], (oud) => oud?.map((f) => (f.id === foto.id ? nieuw : f)));
     if (stationActief(ctx)) setLaatste({ beoordelingId: r.beoordeling_id, stationId: ctx.stationId, fotoId: foto.id, label: soort === "approved" ? "goedkeuring" : soort === "rejected" ? "afkeuring" : "afhandeling", stationGewijzigd: soort === "rejected" });
-    if (lijstActief(ctx)) { setGekozenId(volgendeNaBesluit(lijst, foto.id, nieuw, lijstFilter)); focusRegio(); }
+    if (gebruikerActief(ctx)) { setGekozenIdRaw(volgendeNaBesluit(lijst, foto.id, nieuw, lijstFilter)); focusRegio(); }
     ververs(ctx.stationId);
     return true;
   }, [queryClient, ververs]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -275,6 +278,7 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
     void metSlot("undo", ctxNu(), async (ctx) => {
       const { data, error } = await supabase.rpc("foto_beoordeling_herstellen", { _beoordeling_id: l.beoordelingId });
       const r = data as unknown as RpcUitkomst | null;
+      if (isOnbevestigd(error)) { toast.error(ONBEVESTIGD_TEKST); ververs(ctx.stationId); return; }
       if (error || !r?.ok) {
         toast.error(error?.code === "42501" ? `Niet hersteld. ${BEHEER_NODIG}` : error ? "Niet hersteld. Controleer de verbinding en probeer het opnieuw." : `Niet hersteld. ${rpcFoutTekst(r?.reden)}`);
         if (stationActief(ctx) && (r?.reden === "gewijzigd" || r?.reden === "al_hersteld")) setLaatste(null);
@@ -282,7 +286,9 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
         return;
       }
       ververs(ctx.stationId);
-      if (stationActief(ctx)) { setLaatste(null); setFilterRaw("all"); setGekozenId(l.fotoId); focusRegio(); }
+      if (stationActief(ctx)) setLaatste(null);
+      // Filter/selectie/focus alleen als de gebruiker intussen niets anders koos.
+      if (gebruikerActief(ctx)) { gebruikerGen.current++; setFilterRaw("all"); setGekozenIdRaw(l.fotoId); focusRegio(); }
       toast.success(`Laatste ${l.label} hersteld`);
       if (l.stationGewijzigd && !r.station_hersteld) toast("Foto hersteld; de taak blijft heropend omdat er intussen iets anders is gewijzigd.");
       if (l.stationGewijzigd && r.station_hersteld && !await sharepointStatusBijwerken(ctx.stationId)) toast.error("Status in SharePoint is niet bijgewerkt — zie SharePoint-status bij het station");
@@ -294,6 +300,7 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
     void metSlot("afronden", ctxNu(), async (ctx) => {
       const { data, error } = await supabase.rpc("dossier_afronden", { _station_id: ctx.stationId });
       const r = data as unknown as RpcUitkomst | null;
+      if (isOnbevestigd(error)) { toast.error(ONBEVESTIGD_TEKST); ververs(ctx.stationId); return; }
       if (error || !r?.ok) {
         toast.error(error?.code === "42501" ? `Dossier niet afgerond. ${BEHEER_NODIG}` : error ? "Dossier niet afgerond. Controleer de verbinding en probeer het opnieuw." : "Dossier niet afgerond: de eindcontrole is intussen veranderd. Bekijk de punten hieronder.");
         ververs(ctx.stationId);
@@ -323,8 +330,8 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
       const k = event.key;
       if (k === "a" || k === "A") { event.preventDefault(); keurGoed(); }
       else if (k === "x" || k === "X") { event.preventDefault(); openAfkeuren(); }
-      else if (k === "ArrowRight" && zichtbaar[selectedIndex + 1]) { event.preventDefault(); setGekozenId(zichtbaar[selectedIndex + 1].id); }
-      else if (k === "ArrowLeft" && selectedIndex > 0) { event.preventDefault(); setGekozenId(zichtbaar[selectedIndex - 1].id); }
+      else if (k === "ArrowRight" && zichtbaar[selectedIndex + 1]) { event.preventDefault(); kiesFoto(zichtbaar[selectedIndex + 1].id); }
+      else if (k === "ArrowLeft" && selectedIndex > 0) { event.preventDefault(); kiesFoto(zichtbaar[selectedIndex - 1].id); }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
@@ -365,7 +372,7 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
   const thumbs = (
     <div role="listbox" aria-label="Foto's in werklijst" style={{ display: "flex", gap: 6, overflowX: "auto", padding: "8px 0 2px" }}>
       {zichtbaar.map((f, i) => (
-        <button key={f.id} role="option" aria-selected={f.id === selectedId} aria-label={`Foto ${i + 1}: ${f.categorie}`} onClick={() => setGekozenId(f.id)} className={FOCUS}
+        <button key={f.id} role="option" aria-selected={f.id === selectedId} aria-label={`Foto ${i + 1}: ${f.categorie}`} onClick={() => kiesFoto(f.id)} className={FOCUS}
           style={{ flexShrink: 0, width: 58, height: 44, borderRadius: 6, padding: 0, border: "none", overflow: "hidden", position: "relative", outline: f.id === selectedId ? `2.5px solid ${D.green}` : "none", outlineOffset: -1 }}>
           <LaadAfbeelding src={f.url} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} wrapperStyle={{ position: "absolute", inset: 0 }} />
         </button>
@@ -461,7 +468,7 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
           <div style={{ fontSize: 11, color: D.sub, letterSpacing: "0.05em", marginBottom: 8 }}>{groep.naam.toUpperCase()} · {groep.items.length}</div>
           <div style={{ display: "grid", gridTemplateColumns: `repeat(${isMobile ? 2 : 4}, minmax(0,1fr))`, gap: 11 }}>
             {groep.items.map((foto) => (
-              <button key={foto.id} onClick={() => { setGekozenId(foto.id); setWeergave("inspectie"); }} className={FOCUS} aria-label={`${foto.categorie}: ${statusLabel(foto).t}`} style={{ background: "none", border: "none", padding: 0, textAlign: "left" }}>
+              <button key={foto.id} onClick={() => { kiesFoto(foto.id); setWeergave("inspectie"); }} className={FOCUS} aria-label={`${foto.categorie}: ${statusLabel(foto).t}`} style={{ background: "none", border: "none", padding: 0, textAlign: "left" }}>
                 <div style={{ aspectRatio: "4/3", borderRadius: 8, position: "relative", overflow: "hidden", outline: foto.id === selectedId ? `2.5px solid ${D.green}` : "none", outlineOffset: -1 }}>
                   <LaadAfbeelding src={foto.url} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} wrapperStyle={{ position: "absolute", inset: 0 }} />
                   {foto.review_status !== "pending" && (
@@ -488,11 +495,11 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
   ];
   const toonRaster = weergave === "raster" || filter === "nvt";
 
-  const checks = [
+  const checks: { ok: boolean; neutraal?: boolean; tekst: string }[] = [
     { ok: controle.station_status === "opgeleverd", tekst: controle.station_status === "opgeleverd" ? "Dossier is opgeleverd" : `Dossierstatus is "${controle.station_status}" — eerst opnieuw opleveren door de monteur` },
     { ok: controle.te_beoordelen === 0, tekst: controle.te_beoordelen === 0 ? "Geen foto's meer te beoordelen" : `${controle.te_beoordelen} foto('s) nog te beoordelen` },
     { ok: controle.open_afkeuren === 0, tekst: controle.open_afkeuren === 0 ? `Geen open afkeuren${controle.afgehandelde_afkeuren ? ` (${controle.afgehandelde_afkeuren} afgehandeld in historie)` : ""}` : `${controle.open_afkeuren} afkeur(en) nog niet afgehandeld` },
-    { ok: controle.ontbrekend.length === 0, tekst: controle.ontbrekend.length === 0 ? "Alle vereiste onderdelen hebben een goedgekeurde foto of N.v.t." : `Ontbreekt: ${controle.ontbrekend.join(", ")}` },
+    vereisteCheck(controle),
   ];
 
   return (
@@ -597,7 +604,7 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
             <ul className="mt-4 flex flex-col gap-2" aria-label="Eindcontrole">
               {checks.map((c) => (
                 <li key={c.tekst} style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 14, color: D.body }}>
-                  <Icon name={c.ok ? "check_circle" : "error"} size={20} color={c.ok ? D.green : D.danger} />
+                  <Icon name={c.ok ? "check_circle" : c.neutraal ? "pending" : "error"} size={20} color={c.ok ? D.green : c.neutraal ? D.sub : D.danger} />
                   <span>{c.tekst}</span>
                 </li>
               ))}
