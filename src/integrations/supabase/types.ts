@@ -203,14 +203,79 @@ export type Database = {
         }
         Relationships: []
       }
+      foto_beoordelingen: {
+        Row: {
+          actie: string
+          door: string | null
+          foto_id: string
+          herstel_van: string | null
+          hersteld_op: string | null
+          id: string
+          nieuw: Json
+          nieuw_station: Json
+          nieuw_versie: number
+          op: string
+          oud: Json
+          oud_station: Json
+          oud_versie: number
+          sessie: string | null
+          station_id: string
+        }
+        Insert: {
+          actie: string
+          door?: string | null
+          foto_id: string
+          herstel_van?: string | null
+          hersteld_op?: string | null
+          id?: string
+          nieuw: Json
+          nieuw_station: Json
+          nieuw_versie: number
+          op?: string
+          oud: Json
+          oud_station: Json
+          oud_versie: number
+          sessie?: string | null
+          station_id: string
+        }
+        Update: {
+          actie?: string
+          door?: string | null
+          foto_id?: string
+          herstel_van?: string | null
+          hersteld_op?: string | null
+          id?: string
+          nieuw?: Json
+          nieuw_station?: Json
+          nieuw_versie?: number
+          op?: string
+          oud?: Json
+          oud_station?: Json
+          oud_versie?: number
+          sessie?: string | null
+          station_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "foto_beoordelingen_herstel_van_fkey"
+            columns: ["herstel_van"]
+            isOneToOne: false
+            referencedRelation: "foto_beoordelingen"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fotos: {
         Row: {
+          afkeur_afgehandeld_op: string | null
+          afkeur_afgehandeld_toelichting: string | null
           categorie: string
           created_at: string | null
           gps_afstand_m: number | null
           id: string
           review_reden: string | null
           review_status: string
+          review_versie: number
           reviewed_at: string | null
           scherpte: string | null
           station_id: string
@@ -220,12 +285,15 @@ export type Database = {
           volgorde: number | null
         }
         Insert: {
+          afkeur_afgehandeld_op?: string | null
+          afkeur_afgehandeld_toelichting?: string | null
           categorie: string
           created_at?: string | null
           gps_afstand_m?: number | null
           id?: string
           review_reden?: string | null
           review_status?: string
+          review_versie?: number
           reviewed_at?: string | null
           scherpte?: string | null
           station_id: string
@@ -235,12 +303,15 @@ export type Database = {
           volgorde?: number | null
         }
         Update: {
+          afkeur_afgehandeld_op?: string | null
+          afkeur_afgehandeld_toelichting?: string | null
           categorie?: string
           created_at?: string | null
           gps_afstand_m?: number | null
           id?: string
           review_reden?: string | null
           review_status?: string
+          review_versie?: number
           reviewed_at?: string | null
           scherpte?: string | null
           station_id?: string
@@ -988,7 +1059,26 @@ export type Database = {
         Args: { _categorie: string; _station_id: string; _tekst: string }
         Returns: boolean
       }
+      dossier_afronden: { Args: { _station_id: string }; Returns: Json }
+      dossier_eindcontrole: { Args: { _station_id: string }; Returns: Json }
       dossier_snapshot: { Args: { _station_id: string }; Returns: Json }
+      foto_beoordelen: {
+        Args: {
+          _besluit: string
+          _foto_id: string
+          _reden?: string
+          _verwacht_versie: number
+        }
+        Returns: Json
+      }
+      foto_beoordeling_herstellen: {
+        Args: { _beoordeling_id: string }
+        Returns: Json
+      }
+      foto_beoordeling_staat: {
+        Args: { f: Database["public"]["Tables"]["fotos"]["Row"] }
+        Returns: Json
+      }
       foto_pad_toegestaan: { Args: { _pad: string }; Returns: boolean }
       fotodossier_aanbieden: {
         Args: {

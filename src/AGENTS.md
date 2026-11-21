@@ -7,4 +7,4 @@
 - Fan existing mutation invalidations across all case/detail/WV/duplicate/resolver/station keys. Why: no divergent board or stale renamed links.
 - Count photo queues through counts/key cursors and refresh on queue events, never value cursors or polling photo blobs. Why: metadata reads must not deserialize files.
 - Keep offline photo and category-note modules eagerly available; lazy-load Excel and download-only modules. Why: revisiting opened photo routes offline must continue working without a service worker.
-- Dossier drafts persist with their dedicated note version and save on blur/unmount; conflicts require an explicit merge or server-text choice. Why: retries and navigation cannot silently overwrite colleagues.
+- Dossier drafts persist with their dedicated note version and save on blur/unmount; conflicts require an explicit merge or server-text choice. Why: retries and navigation cannot silently overwrite colleagues.- Review UI: selection stays in the active filter, decision lock set before the PIN await, no global Enter, shortcuts only outside inputs/dialogs/foreign buttons. Why: predictable sequential review.

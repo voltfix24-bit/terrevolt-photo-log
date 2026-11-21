@@ -19,7 +19,7 @@ import { generatePdfHtml } from "@/lib/pdf-generator";
 import { useVoorbeelden } from "@/components/CategorieSettings";
 import { useInstellingen } from "@/hooks/use-theme";
 import { Kruimelpad, deelLink } from "@/components/url/Kruimelpad";
-import { categorieUrl, caseUrl, korteUrl, opleverUrl, sectieUrl, type Sub } from "@/lib/urls";
+import { beoordeelUrl, categorieUrl, caseUrl, korteUrl, opleverUrl, sectieUrl, type Sub } from "@/lib/urls";
 import { GlassBar, Pressable, T, R, ROW_MIN } from "@/components/apple/Primitives";
 import { useSkippedCategories } from "@/hooks/use-skipped-categories";
 import { useStationUpload } from "@/hooks/use-station-upload";
@@ -354,6 +354,7 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
             />
           ))}
         </div>
+        {vergrendeld && !wizardOpen && <div aria-hidden="true" style={{ height: station?.status === 'opgeleverd' ? 250 : 190 }} />}
       </main>
 
       {/* ── BOTTOM CTA ── */}
@@ -395,6 +396,12 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
                 ? `Goedgekeurd door ${station?.opdrachtgever ?? 'de opdrachtgever'}. Wijzigen kan alleen met de toegangscode.`
                 : `Opgeleverd aan ${station?.opdrachtgever ?? 'de opdrachtgever'}. Wijzigen kan alleen met de toegangscode.`}
             </div>
+            {station?.status === 'opgeleverd' && station?.uitvoerder === 'terrevolt' && (
+              <Pressable onClick={() => navigate(beoordeelUrl(station))} style={{ minHeight: ROW_MIN, background: T.surface, color: T.green, borderRadius: R.control, fontSize: 17, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, border: `1px solid ${T.green}` }}>
+                <span className="material-symbols-rounded" style={{ fontSize: 20 }}>fact_check</span>
+                Dossier beoordelen
+              </Pressable>
+            )}
             <div className="flex gap-2.5">
               <Pressable
                 onClick={() => {

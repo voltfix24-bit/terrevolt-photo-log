@@ -32,7 +32,6 @@ vi.mock("@tanstack/react-query", () => ({
 
 import { bewaarNotitie, lokaleNotitie, lokaleNotitieStatus, verstuurNotities, verstuurNotitiesNaBeheer } from "@/lib/notities";
 import { NotitieSheet } from "@/components/NotitieSheet";
-import BeoordeelDossier from "@/pages/BeoordeelDossier";
 
 const note = { stationId: "station", categorie: "Test", tekst: "Bewaar deze tekst" };
 beforeEach(() => {
@@ -83,35 +82,5 @@ describe("notitieherstel zonder achtergrond-PIN", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Beheer ontgrendelen" }));
     await waitFor(() => expect(lokaleNotitie(note.stationId, note.categorie)).toBeUndefined());
     expect(mock.pin).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe("beoordeling vereist geraakte doelrijen", () => {
-  const open = () => render(<MemoryRouter><BeoordeelDossier stationId="station" /></MemoryRouter>);
-  it("zero approved photo rows never advances to the next photo", async () => {
-    open(); fireEvent.click(await screen.findByRole("button", { name: "Keur goed" }));
-    await waitFor(() => expect(mock.writes).toHaveLength(1));
-    expect(mock.refresh).not.toHaveBeenCalled();
-    mock.responses.push({ data: [{ id: "p1" }], error: null });
-    fireEvent.click(screen.getByRole("button", { name: "Keur goed" }));
-    await waitFor(() => expect(mock.writes).toHaveLength(2));
-    expect(mock.writes[1].filters).toEqual({ id: "p1", station_id: "station" });
-  });
-  it.each([false, true])("rejection stops before sync when photo succeeds=%s but a required row is missing", async photoOk => {
-    if (photoOk) mock.responses.push({ data: [{ id: "p1" }], error: null });
-    open(); fireEvent.click(await screen.findByRole("button", { name: "Afkeuren" }));
-    const buttons = await screen.findAllByRole("button", { name: "Afkeuren" });
-    fireEvent.click(buttons[buttons.length - 1]);
-    await waitFor(() => expect(mock.writes).toHaveLength(photoOk ? 2 : 1));
-    expect(mock.sync).not.toHaveBeenCalled(); expect(mock.success).not.toHaveBeenCalled();
-  });
-  it.each([false, true])("zero-photo/NVT dossier requires only its station row (row succeeds=%s)", async ok => {
-    mock.photos = [];
-    if (ok) mock.responses.push({ data: [{ id: "station" }], error: null });
-    open(); fireEvent.keyDown(window, { key: "Enter" });
-    await waitFor(() => expect(mock.writes).toHaveLength(1));
-    expect(mock.writes[0].table).toBe("stations");
-    if (ok) await waitFor(() => expect(mock.sync).toHaveBeenCalledWith("station"));
-    else { expect(mock.sync).not.toHaveBeenCalled(); expect(mock.success).not.toHaveBeenCalled(); }
   });
 });

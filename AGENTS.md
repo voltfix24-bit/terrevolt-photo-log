@@ -41,3 +41,5 @@
 - Field triggers check OLD/NEW; immutable photo sources/linkage and no storage overwrite prevent delivered-dossier bypasses.
 - `fotodossier_aanbieden` is the sole open submission transition, locks the station and checks required categories/skips before creating the run. Why: RLS-safe atomic boundary.
 - Keep phase-1 integration fixtures entirely local; do not mutate production or contact real SharePoint in tests. Why: user-approved isolation; scale tests belong to a later phase.
+- Photo review/undo/finalize only via `foto_beoordelen`/`foto_beoordeling_herstellen`/`dossier_afronden` (PIN, `review_versie` CAS, history). Why: no lost colleague changes.
+- Rejections persist across resubmission until explicitly resolved (`afkeur_afgehandeld_*`); never inferred; snapshots exclude rejected. Why: traceable resolution.
