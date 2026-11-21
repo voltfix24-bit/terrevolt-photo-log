@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mock = vi.hoisted(() => ({ save: vi.fn() }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {
+  rpc: (_name: string, value: { _tekst: string }) => mock.save(value._tekst ? { opmerking: value._tekst } : { deleted: true }),
   from: () => ({
     upsert: (value: unknown) => mock.save(value),
     delete: () => ({ eq: () => ({ eq: () => mock.save({ deleted: true }) }) }),
@@ -28,7 +29,7 @@ beforeEach(async () => {
   vi.stubGlobal("File", NodeFile);
   online(true);
   localStorage.clear();
-  mock.save.mockReset().mockResolvedValue({ error: null });
+  mock.save.mockReset().mockResolvedValue({ data: true, error: null });
   await (await getDB()).clear("photo-queue");
 });
 
@@ -54,6 +55,13 @@ describe("offline notities", () => {
     expect(await verstuurNotities()).toBe(1);
     expect(lokaleNotitie(note.stationId, note.categorie)).toBeUndefined();
   });
+  it("verlopen beheer bewaart ook een leeg notitie-item voor retry", async () => {
+    mock.save.mockResolvedValueOnce({ data: null, error: { code: "42501", message: "Beheer verlopen" } });
+    expect(await bewaarNotitie({ ...note, tekst: "" })).toBe("wachtrij");
+    expect(lokaleNotitie(note.stationId, note.categorie)).toBe("");
+    expect(await verstuurNotities()).toBe(1);
+    expect(lokaleNotitie(note.stationId, note.categorie)).toBeUndefined();
+  });
   it("quota-fout weigert opgeslagen te melden", async () => {
     online(false);
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new DOMException("vol", "QuotaExceededError"); });
@@ -62,13 +70,13 @@ describe("offline notities", () => {
   });
   it("bewaren tijdens sync verliest nieuwe tekst of een andere categorie niet", async () => {
     online(false); await bewaarNotitie(note);
-    let klaar: ((value: { error: null }) => void) | undefined;
-    mock.save.mockImplementationOnce(() => new Promise<{ error: null }>(resolve => { klaar = resolve; }));
+    let klaar: ((value: { data: boolean; error: null }) => void) | undefined;
+    mock.save.mockImplementationOnce(() => new Promise<{ data: boolean; error: null }>(resolve => { klaar = resolve; }));
     online(true); const bezig = verstuurNotities();
     online(false);
     await bewaarNotitie({ ...note, tekst: "Nieuwe tekst" });
     await bewaarNotitie({ ...note, categorie: "Trafo", tekst: "Andere categorie" });
-    klaar?.({ error: null }); await bezig;
+    klaar?.({ data: true, error: null }); await bezig;
     expect(lokaleNotitie(note.stationId, note.categorie)).toBe("Nieuwe tekst");
     expect(lokaleNotitie(note.stationId, "Trafo")).toBe("Andere categorie");
     online(true); expect(await verstuurNotities()).toBe(2);

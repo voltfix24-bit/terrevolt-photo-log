@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";
+import { authenticateCronRequest } from "../_shared/cron-auth.ts";
 import { isBeheerder } from "../_shared/admin-auth.ts";
 import { context, controleerSleutel, nietSyncReden, syncEnRegistreer, zetStatus } from "../_shared/sharepoint.ts";
 
@@ -18,7 +19,9 @@ Deno.serve(async (req) => {
   const parsed = Body.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return json({ error: parsed.error.flatten().fieldErrors }, 400);
 
-  const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+  const machine = authenticateCronRequest(req) === null;
+  if (!machine && !await isBeheerder(req)) return json({ error: "Beheer vergrendeld of verlopen — ontgrendel opnieuw met de PIN." }, 403);
+  const db = createClient((Deno.env.get("SUPABASE_URL") ?? ""), (Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""));
   if ("controle" in parsed.data) {
     if (!(await isBeheerder(req))) return json({ error: "Alleen na de toegangscode" }, 403);
     // Sleutel + machtigingen controleren (knop in Instellingen)

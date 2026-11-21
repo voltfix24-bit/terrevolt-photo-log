@@ -10,6 +10,7 @@ import { fotoFout } from "@/lib/foto-validatie";
 import { handmatigeSyncToegestaan, syncUitkomst } from "@/lib/opleverketen";
 import * as F from "./pdf-fixture";
 
+vi.mock("@/lib/require-pin", () => ({ fotowerkVoorActie: vi.fn(async () => true), BEHEER_NODIG: "Beheer vergrendeld" }));
 const queuePhoto = vi.fn();
 vi.mock("@/lib/offline-queue", () => ({ queuePhoto: (...a: unknown[]) => queuePhoto(...a) }));
 vi.mock("@/lib/fotos-service", () => ({ nieuwPad: vi.fn(), uploadEnRegistreer: vi.fn(), verwijderFoto: vi.fn() }));

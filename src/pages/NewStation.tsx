@@ -1,3 +1,4 @@
+import { zorgVoorBeheer } from "@/lib/require-pin";
 // Variant 3a — Nieuw station, één formulier gegroepeerd
 import { useState } from "react";
 import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
@@ -71,7 +72,7 @@ export default function NewStation() {
   const kiesMonteur = (naam: string) => { setSelectedMonteur(naam); setMonteurOpen(false); setMonteurZoek(""); };
 
   const voegMonteurToe = async () => {
-    if (!internetVereist()) return;
+    if (!internetVereist() || !await zorgVoorBeheer()) return;
     const naam = monteurZoek.trim();
     if (!naam) return;
     const { error } = await supabase.from("monteurs").insert({ naam });

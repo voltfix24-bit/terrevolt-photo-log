@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { controleerPin } from "@/lib/require-pin";
+import { useEffect, useState, useRef } from 'react';
+import { controleerPin, heeftBeheerSessie, zorgVoorBeheer } from "@/lib/require-pin";
 import { internetVereist } from "@/lib/internet";
 import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { useNavigate } from 'react-router-dom';
@@ -57,6 +57,7 @@ export default function Instellingen() {
   const [unlocked, setUnlocked] = useState(false);
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState(false);
+  useEffect(() => { void heeftBeheerSessie().then(setUnlocked); }, []);
 
   const [form, setForm] = useState<Partial<AppInstellingen>>({});
   const current = { ...instellingen, ...form } as AppInstellingen;
@@ -130,22 +131,22 @@ export default function Instellingen() {
   };
 
   const handleSave = async () => {
-    if (!internetVereist()) return;
+    if (!internetVereist() || !await zorgVoorBeheer()) return;
     if (!instellingen?.id) return;
     setSaving(true);
-    const { error } = await supabase
+    const { data: rows, error } = await supabase
       .from('instellingen')
       .update({ ...form, updated_at: new Date().toISOString() })
-      .eq('id', instellingen.id);
+      .eq('id', instellingen.id).select('id');
     setSaving(false);
-    if (error) { toast.error('Opslaan mislukt'); return; }
+    if (error || !rows?.length) { toast.error('Opslaan geweigerd — ontgrendel beheer opnieuw'); return; }
     queryClient.invalidateQueries({ queryKey: ['instellingen'] });
     setForm({});
     toast.success('Instellingen opgeslagen ✓');
   };
 
   const handleReset = async () => {
-    if (!internetVereist()) return;
+    if (!internetVereist() || !await zorgVoorBeheer()) return;
     if (!instellingen?.id) return;
     const resetData = {
       primary_color: DEFAULT_THEME.primary_color,
@@ -154,10 +155,11 @@ export default function Instellingen() {
       accent_gold_color: DEFAULT_THEME.accent_gold_color,
       orange_color: DEFAULT_THEME.orange_color,
     };
-    const { error } = await supabase
+    const { data: rows, error } = await supabase
       .from('instellingen')
       .update(resetData)
-      .eq('id', instellingen.id);
+      .eq('id', instellingen.id).select('id');
+    if (error || !rows?.length) { toast.error('Opslaan geweigerd — ontgrendel beheer opnieuw'); return; }
     if (!error) {
       setForm({});
       applyTheme(DEFAULT_THEME);
@@ -167,14 +169,15 @@ export default function Instellingen() {
   };
 
   const handleLogoUpload = async (file: File) => {
-    if (!internetVereist()) return;
+    if (!internetVereist() || !await zorgVoorBeheer()) return;
     if (!instellingen?.id) return;
     setUploadingLogo(true);
     const path = `branding/logo_${Date.now()}.${file.name.split('.').pop()}`;
     const { error } = await supabase.storage.from('branding').upload(path, file);
     if (!error) {
       const { data } = supabase.storage.from('branding').getPublicUrl(path);
-      await supabase.from('instellingen').update({ logo_url: data.publicUrl }).eq('id', instellingen.id);
+      const saved = await supabase.from('instellingen').update({ logo_url: data.publicUrl }).eq('id', instellingen.id).select('id');
+      if (saved.error || !saved.data?.length) { toast.error('Logo niet gekoppeld — ontgrendel beheer opnieuw'); setUploadingLogo(false); return; }
       queryClient.invalidateQueries({ queryKey: ['instellingen'] });
       toast.success('Logo opgeslagen ✓');
     } else {
@@ -184,14 +187,15 @@ export default function Instellingen() {
   };
 
   const handleProfielUpload = async (file: File) => {
-    if (!internetVereist()) return;
+    if (!internetVereist() || !await zorgVoorBeheer()) return;
     if (!instellingen?.id) return;
     setUploadingProfiel(true);
     const path = `branding/profiel_${Date.now()}.${file.name.split('.').pop()}`;
     const { error } = await supabase.storage.from('branding').upload(path, file);
     if (!error) {
       const { data } = supabase.storage.from('branding').getPublicUrl(path);
-      await supabase.from('instellingen').update({ profielfoto_url: data.publicUrl }).eq('id', instellingen.id);
+      const saved = await supabase.from('instellingen').update({ profielfoto_url: data.publicUrl }).eq('id', instellingen.id).select('id');
+      if (saved.error || !saved.data?.length) { toast.error('Profielfoto niet gekoppeld — ontgrendel beheer opnieuw'); setUploadingProfiel(false); return; }
       queryClient.invalidateQueries({ queryKey: ['instellingen'] });
       toast.success('Profielfoto opgeslagen ✓');
     } else {

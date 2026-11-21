@@ -3,7 +3,10 @@ project_id = "aiwpseouqechfsvagxkc"
 verify_jwt = false
 
 [functions.sharepoint-sync]
-verify_jwt = true
+verify_jwt = false
 
 [functions.opleverketen]
+verify_jwt = false
+
+[functions.rapport-pdf]
 verify_jwt = false

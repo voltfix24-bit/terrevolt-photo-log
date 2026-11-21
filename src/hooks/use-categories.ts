@@ -2,6 +2,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { CATEGORIES, Category } from "@/lib/categories";
 import { toast } from "sonner";
+import { eisBeheer } from "@/lib/require-pin";
 import { internetVereist, INTERNET_NODIG } from "@/lib/internet";
 
 export interface CategoryOverride {
@@ -74,6 +75,7 @@ export function useSaveCategoryOverride() {
       volgorde?: number;
     }) => {
       if (!internetVereist()) throw new Error(INTERNET_NODIG);
+      await eisBeheer();
       // Upsert based on categorie_id
       const { data: existing } = await supabase
         .from("categorie_instellingen")
@@ -89,11 +91,11 @@ export function useSaveCategoryOverride() {
         if (params.volgorde !== undefined) updateData.volgorde = params.volgorde;
         updateData.updated_at = new Date().toISOString();
 
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("categorie_instellingen")
           .update(updateData)
-          .eq("id", existing.id);
-        if (error) throw error;
+          .eq("id", existing.id).select("id");
+        if (error || !data?.length) throw error ?? new Error("Beheer vergrendeld of verlopen");
       } else {
         const { error } = await supabase.from("categorie_instellingen").insert({
           categorie_id: params.categorie_id,
@@ -120,6 +122,7 @@ export function useBulkUpdateOrder() {
   return useMutation({
     mutationFn: async (updates: { categorie_id: number; volgorde: number }[]) => {
       if (!internetVereist()) throw new Error(INTERNET_NODIG);
+      await eisBeheer();
       for (const u of updates) {
         const { data: existing } = await supabase
           .from("categorie_instellingen")
@@ -128,15 +131,17 @@ export function useBulkUpdateOrder() {
           .maybeSingle();
 
         if (existing) {
-          await supabase
+          const { data, error } = await supabase
             .from("categorie_instellingen")
             .update({ volgorde: u.volgorde, updated_at: new Date().toISOString() })
-            .eq("id", existing.id);
+            .eq("id", existing.id).select("id");
+          if (error || !data?.length) throw error ?? new Error("Beheer vergrendeld of verlopen");
         } else {
-          await supabase.from("categorie_instellingen").insert({
+          const { error } = await supabase.from("categorie_instellingen").insert({
             categorie_id: u.categorie_id,
             volgorde: u.volgorde,
           });
+          if (error) throw error;
         }
       }
     },

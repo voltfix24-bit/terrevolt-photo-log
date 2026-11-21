@@ -1,11 +1,12 @@
 // Centrale orkestratie van de opleverketen: HTML/station (oplever-rapport) -> PDF (rapport-pdf) -> SharePoint.
 // Status persistent in public.opleverruns; één actieve run per station (unieke index); lease via opleverrun_claim.
 // tick  : cron (LOVABLE_CRON_SECRET) of interne kick — verwerkt alle runs die aan de beurt zijn.
-// status: open app (Bearer) — geeft voortgang terug en zet de run door als hij aan de beurt is (fallback zonder cron).
-// retry : open app — handmatig opnieuw na mislukt/wachten.
+// status: open, read-only; validated submission and cron drive the machine.
+// retry : active PIN grant — handmatig opnieuw na mislukt/wachten.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";
+import { isBeheerder } from "../_shared/admin-auth.ts";
 import { authenticateCronRequest } from "../_shared/cron-auth.ts";
 import { nietSyncReden, syncEnRegistreer } from "../_shared/sharepoint.ts";
 import { LEASE_SECONDEN, beslis, foutPatch, handmatigOpnieuw, type Run } from "../_shared/opleverketen.ts";
@@ -13,7 +14,7 @@ import { ketenKick } from "../_shared/keten-kick.ts";
 
 const Body = z.object({ actie: z.enum(["tick", "status", "retry"]), station_id: z.string().uuid().optional() });
 const json = (d: unknown, s = 200) => new Response(JSON.stringify(d), { status: s, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-const db = () => createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+const db = () => createClient((Deno.env.get("SUPABASE_URL") ?? ""), (Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""));
 const ACTIEF = "(afgerond,mislukt)";
 const PUBLIEK = "id, station_id, status, retry_stap, poging, volgende_poging_op, fout, stap_fouten, gestart_op, bijgewerkt_op, afgerond_op";
 
@@ -28,6 +29,17 @@ async function observeer(sb: any, run: Run) {
   const { data: station } = await sb.from("stations").select("*").eq("id", run.station_id).maybeSingle();
   const { data: files } = await sb.storage.from("rapporten").list(run.station_id, { limit: 100 });
   const namen = new Set((files ?? []).map((f: any) => f.name));
+  if (!namen.has("rapport.html") && station?.uitvoerder === "terrevolt" && station?.submitted_at) {
+    // A direct narrow RPC request/crash after its commit must still produce the HTML.
+    const prepared = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/oplever-rapport`, {
+      method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("LOVABLE_CRON_SECRET")}` },
+      body: JSON.stringify({ actie: "voorbereiden", station_id: run.station_id }),
+    });
+    await prepared.body?.cancel();
+    if (!prepared.ok) throw new Error(`Rapport voorbereiden mislukt (${prepared.status})`);
+    const { data: confirmed } = await sb.storage.from("rapporten").list(run.station_id, { limit: 100 });
+    if ((confirmed ?? []).some((f: any) => f.name === "rapport.html")) namen.add("rapport.html");
+  }
   const { data: pdf } = await sb.from("rapport_pdf").select("status, gestart_op, fout").eq("station_id", run.station_id).maybeSingle();
   return {
     station,
@@ -43,7 +55,7 @@ async function observeer(sb: any, run: Run) {
 async function startPdf(stationId: string): Promise<string> {
   const r = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/rapport-pdf`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("LOVABLE_CRON_SECRET")}` },
     body: JSON.stringify({ station_id: stationId, keten: true }),
   });
   const body = await r.json().catch(() => ({}));
@@ -118,6 +130,7 @@ Deno.serve(async (req) => {
     }
     if (!station_id) return json({ error: { station_id: ["verplicht"] } }, 400);
     if (actie === "retry") {
+      if (!await isBeheerder(req)) return json({ error: "Beheer vergrendeld of verlopen — ontgrendel opnieuw met de PIN." }, 403);
       const run = await laatste(sb, station_id);
       const p = run ? handmatigOpnieuw(run as Run) : null;
       if (!p) return json({ error: "Niets om opnieuw te proberen" }, 409);
@@ -130,7 +143,7 @@ Deno.serve(async (req) => {
       return json({ ok: true, run: await laatste(sb, station_id) });
     }
     // status: fallback-voortzetting als de run aan de beurt is (geen cron nodig om door te lopen)
-    if ((await actieveRuns(sb, station_id)).length) ketenKick(station_id);
+    // Public status is read-only; processing is driven by the validated submission/cron.
     return json({ ok: true, run: await laatste(sb, station_id) });
   } catch (e) {
     console.error("opleverketen:", (e as Error).message);

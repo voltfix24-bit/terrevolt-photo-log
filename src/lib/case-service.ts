@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { eisBeheer } from "@/lib/require-pin";
 import type { ToStatus, Uitvoerder } from "@/lib/to-rondes";
 
 export type NieuweCase = { casenummer: string; casenaam: string; uitvoerder: Uitvoerder; wv?: string; notitie?: string; ronde?: number; toStatus?: ToStatus; ingediendOp?: string | null; onHold?: boolean; onHoldReden?: string };
@@ -18,6 +19,7 @@ export function valideerCase(c: NieuweCase): string | null {
 export async function maakCase(c: NieuweCase): Promise<CaseResultaat> {
   const fout = valideerCase(c);
   if (fout) return { ok: false, fout };
+  try { await eisBeheer(); } catch (e) { return { ok: false, fout: (e as Error).message }; }
   const { data, error } = await supabase.rpc("maak_case", {
     _casenummer: normaliseer(c.casenummer),
     _casenaam: normaliseer(c.casenaam),
@@ -41,6 +43,7 @@ export async function maakCase(c: NieuweCase): Promise<CaseResultaat> {
 
 /** Wijzigt uitvoerder/WV van een case; geeft een foutmelding terug of null. */
 export async function wijzigCase(id: string, patch: { uitvoerder?: Uitvoerder; wv?: string | null }): Promise<string | null> {
+  try { await eisBeheer(); } catch (e) { return (e as Error).message; }
   const p: { uitvoerder?: Uitvoerder; wv?: string | null } = {};
   if (patch.uitvoerder) p.uitvoerder = patch.uitvoerder;
   if (patch.wv !== undefined) { const w = normaliseer(patch.wv); if (w.length > 300) return "Naam te lang"; p.wv = w || null; }

@@ -4,6 +4,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const rpc = vi.fn();
+vi.mock("@/lib/require-pin", () => ({ eisBeheer: vi.fn(async () => {}), zorgVoorBeheer: vi.fn(async () => true) }));
 const update = vi.fn();
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {

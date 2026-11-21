@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Pressable, T } from "@/components/apple/Primitives";
 import { KnopLader } from "@/components/Laden";
+import { zorgVoorBeheer } from "@/lib/require-pin";
 import { internetVereist } from "@/lib/internet";
 import { HOLD_KLEUR, HOLD_PARTIJEN, HOLD_PARTIJ_NAAM, hervat, holdDatum, holdPartij, zetOnHold, type HoldVelden, type OnHoldPartij } from "@/lib/on-hold";
 
@@ -20,9 +21,9 @@ export function OnHoldKnop({ id }: { id: string }) {
   const [bezig, setBezig] = useState(false);
   const kan = reden.trim() && partij && !bezig;
   const opslaan = async () => {
-    if (!kan || !internetVereist()) return;
+    if (!kan || !partij || !internetVereist() || !await zorgVoorBeheer()) return;
     setBezig(true);
-    const fout = await zetOnHold(id, { reden, partij: partij!, tot: tot || null });
+    const fout = await zetOnHold(id, { reden, partij, tot: tot || null });
     setBezig(false);
     if (fout) return toast.error(fout);
     await qc.invalidateQueries({ queryKey: ["cases"] });
@@ -64,7 +65,7 @@ export function OnHoldBalk({ id, station }: { id: string; station: HoldVelden & 
   const qc = useQueryClient();
   const [bezig, setBezig] = useState(false);
   const go = async () => {
-    if (!internetVereist()) return;
+    if (!internetVereist() || !await zorgVoorBeheer()) return;
     setBezig(true);
     const fout = await hervat(id, station);
     setBezig(false);

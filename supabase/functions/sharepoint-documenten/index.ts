@@ -19,13 +19,13 @@ Deno.serve(async (req) => {
   const { data: r } = await db.from("sharepoint_sync").select("sharepoint_item_id").eq("station_id", station_id).maybeSingle();
   if (!r?.sharepoint_item_id) return json({ heeft_map: false, bestanden: [] });
   try {
-    const ctx = await context();
+    const ctx = await context(undefined, false);
     const mapId = await documentenMap(ctx, r.sharepoint_item_id);
     if (!mapId) return json({ heeft_map: false, bestanden: [] });
     if (bestand_id) return json({ url: await downloadUrl(ctx, mapId, bestand_id) });
     return json({ heeft_map: true, bestanden: await documentenLijst(ctx, mapId) });
   } catch (e) {
     console.error("sharepoint-documenten:", (e as Error).message);
-    return json({ error: (e as Error).message }, 500);
+    return json({ error: "Documenten niet beschikbaar" }, 500);
   }
 });

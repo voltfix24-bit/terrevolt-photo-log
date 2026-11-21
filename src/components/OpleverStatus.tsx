@@ -1,3 +1,4 @@
+import { zorgVoorBeheer } from "@/lib/require-pin";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,7 +25,7 @@ export function OpleverStatus({ stationId }: { stationId: string }) {
   if (!w) return null;
 
   const opnieuw = async () => {
-    if (!internetVereist()) return;
+    if (!internetVereist() || !await zorgVoorBeheer()) return;
     setBezig(true);
     const { error } = await supabase.functions.invoke("opleverketen", { body: { actie: "retry", station_id: stationId } });
     setBezig(false);

@@ -1,3 +1,4 @@
+import { zorgVoorBeheer } from "@/lib/require-pin";
 import { useState, useRef, useCallback } from "react";
 import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -49,7 +50,7 @@ export function CategorieSettingsDialog({ open, onOpenChange }: { open: boolean;
   );
 
   const handleUpload = async (categorie: string, files: FileList) => {
-    if (!internetVereist()) return;
+    if (!internetVereist() || !await zorgVoorBeheer()) return;
     setUploading(categorie);
     let gelukt = 0, mislukt = 0;
     try {
@@ -92,7 +93,7 @@ export function CategorieSettingsDialog({ open, onOpenChange }: { open: boolean;
   };
 
   const handleDelete = async (v: VoorbeeldFoto) => {
-    if (!internetVereist()) return;
+    if (!internetVereist() || !await zorgVoorBeheer()) return;
     const { error } = await supabase.from("categorie_voorbeelden").delete().eq("id", v.id);
     queryClient.invalidateQueries({ queryKey: ["categorie_voorbeelden"] });
     if (error) { toast.error("Verwijderen mislukt"); return; }

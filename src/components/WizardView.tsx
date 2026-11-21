@@ -8,7 +8,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { supabase } from "@/integrations/supabase/client";
-import { requirePin } from "@/lib/require-pin";
+import { requirePin, zorgVoorBeheer, BEHEER_NODIG } from "@/lib/require-pin";
 import { SECTIONS, type Category } from "@/lib/categories";
 import type { MergedCategory } from "@/hooks/use-categories";
 import { Pressable, R, T } from "@/components/apple/Primitives";
@@ -39,11 +39,11 @@ export interface WizardViewProps {
   startIndex: number;
   stationId: string;
   onClose: () => void;
-  onSkip: (catName: string, reason?: string) => void;
+  onSkip: (catName: string, reason?: string) => void | Promise<boolean>;
   onUnskip: (catName: string) => void;
   skipped: string[];
   skippedReasons: Record<string, string>;
-  station: { vermogensveld: boolean | null; da_kast: boolean | null; naam_msr: string; type_ruimte: string | null };
+  station: { vermogensveld: boolean | null; da_kast: boolean | null; naam_msr: string; type_ruimte: string | null; status?: string | null; submitted_at?: string | null };
   fotos: FotoRow[];
   fotosByCategorie: (cat: string) => FotoRow[];
   isUploading: string | null;
@@ -162,12 +162,13 @@ export function WizardView({
 
   const saveOpmerking = useCallback(async (tekst: string) => {
     if (!cat) return;
+    if ((station.submitted_at || station.status === "opgeleverd" || station.status === "goedgekeurd") && !await zorgVoorBeheer()) throw new Error(BEHEER_NODIG);
     setOpmerkingText(tekst.trim());
     const r = await bewaarNotitie({ stationId, categorie: cat.name, tekst });
     queryClient.invalidateQueries({ queryKey: ["opmerking", stationId, cat.name] });
     queryClient.invalidateQueries({ queryKey: ["opmerkingen", stationId] });
     return r;
-  }, [cat, stationId, queryClient]);
+  }, [cat, stationId, queryClient, station.submitted_at, station.status]);
 
   const incompleteCategories = applicableCategories.filter((c) => !categorieKlaar(c.id, fotosByCategorie(c.name).length) && !skipped.includes(c.name));
 
@@ -216,10 +217,10 @@ export function WizardView({
     });
   };
 
-  const confirmSkip = (reason: string) => {
+  const confirmSkip = async (reason: string) => {
     if (!internetVereist()) throw new Error("Internet vereist om N.v.t. op te slaan");
     if (!cat || !reason.trim()) return;
-    onSkip(cat.name, reason.trim());
+    if (await onSkip(cat.name, reason.trim()) === false) throw new Error("N.v.t. niet opgeslagen — controleer je verbinding en beheerstatus");
     setSheet(null);
     goNext();
   };

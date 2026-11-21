@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { fotowerkVoorActie } from "@/lib/require-pin";
 import { internetVereist } from "@/lib/internet";
 
 /** N.v.t.-markeringen per station: server (categorie_skips) is leidend, localStorage als snelle cache. */
@@ -50,47 +52,34 @@ export function useSkippedCategories(stationId: string | undefined) {
     });
   }, [key]);
 
-  const addSkip = useCallback((catName: string, reason?: string) => {
-    if (!internetVereist()) return;
+  const addSkip = useCallback(async (catName: string, reason?: string): Promise<boolean> => {
+    if (!stationId || !reason?.trim() || !internetVereist() || !await fotowerkVoorActie(stationId)) return false;
+    const { data, error } = await supabase.from('categorie_skips').upsert({ station_id: stationId, categorie: catName, reden: reason.trim() }, { onConflict: 'station_id,categorie' }).select('id');
+    if (error || !data?.length) { toast.error("N.v.t. niet opgeslagen — controleer de beheerstatus"); return false; }
     setSkipped(prev => prev.includes(catName) ? prev : [...prev, catName]);
-    if (reason) {
-      setSkippedReasons(prev => {
-        const next = { ...prev, [catName]: reason };
-        try { localStorage.setItem(reasonsKey, JSON.stringify(next)); } catch { /* */ }
-        return next;
-      });
-      if (stationId) {
-        void supabase.from('categorie_skips').upsert({ station_id: stationId, categorie: catName, reden: reason, updated_at: new Date().toISOString() }, { onConflict: 'station_id,categorie' }).then(() => {
-          queryClient.invalidateQueries({ queryKey: ['categorie-skips', stationId] });
-        });
-      }
-    }
-  }, [queryClient, reasonsKey, setSkipped, stationId]);
+    setSkippedReasons(prev => ({ ...prev, [catName]: reason.trim() }));
+    await queryClient.invalidateQueries({ queryKey: ['categorie-skips', stationId] });
+    return true;
+  }, [queryClient, setSkipped, stationId]);
 
-  const removeSkip = useCallback((catName: string) => {
-    if (!internetVereist()) return;
+  const removeSkip = useCallback(async (catName: string): Promise<boolean> => {
+    if (!stationId || !internetVereist() || !await fotowerkVoorActie(stationId)) return false;
+    const { error } = await supabase.from('categorie_skips').delete().eq('station_id', stationId).eq('categorie', catName);
+    if (error) { toast.error("N.v.t. niet gewijzigd — controleer de beheerstatus"); return false; }
+    // Re-read the authoritative result: RLS may return zero deleted rows without error.
+    const check = await supabase.from('categorie_skips').select('id').eq('station_id', stationId).eq('categorie', catName);
+    if (check.error || check.data?.length) { toast.error("N.v.t. niet gewijzigd — controleer de beheerstatus"); return false; }
     setSkipped(prev => prev.filter(n => n !== catName));
-    setSkippedReasons(prev => {
-      const next = { ...prev };
-      delete next[catName];
-      try { localStorage.setItem(reasonsKey, JSON.stringify(next)); } catch { /* */ }
-      return next;
-    });
-    if (stationId) {
-      void supabase.from('categorie_skips').delete().eq('station_id', stationId).eq('categorie', catName).then(() => {
-        queryClient.invalidateQueries({ queryKey: ['categorie-skips', stationId] });
-      });
-    }
-  }, [queryClient, reasonsKey, setSkipped, stationId]);
+    setSkippedReasons(prev => { const next = { ...prev }; delete next[catName]; return next; });
+    await queryClient.invalidateQueries({ queryKey: ['categorie-skips', stationId] });
+    return true;
+  }, [queryClient, setSkipped, stationId]);
 
-  const toggleSkip = useCallback((catName: string) => {
-    if (!internetVereist()) return;
-    setSkipped(prev =>
-      prev.includes(catName)
-        ? prev.filter(n => n !== catName)
-        : [...prev, catName]
-    );
-  }, [setSkipped]);
+  const toggleSkip = useCallback(async (catName: string) => {
+    if (skipped.includes(catName)) return removeSkip(catName);
+    toast.error("Geef eerst een reden voor N.v.t.");
+    return false;
+  }, [skipped, removeSkip]);
 
   const isSkipped = useCallback((catName: string) => skipped.includes(catName), [skipped]);
 

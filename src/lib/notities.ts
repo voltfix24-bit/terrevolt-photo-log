@@ -15,11 +15,10 @@ const schrijf = (q: Record<string, Bewaard>) => {
 };
 
 async function bewaarOnline({ stationId, categorie, tekst }: Item) {
-  const t = tekst.trim();
-  const { error } = t
-    ? await supabase.from("categorie_opmerkingen").upsert({ station_id: stationId, categorie, opmerking: t, updated_at: new Date().toISOString() }, { onConflict: "station_id,categorie" })
-    : await supabase.from("categorie_opmerkingen").delete().eq("station_id", stationId).eq("categorie", categorie);
-  if (error) throw error;
+  const { data, error } = await supabase.rpc("categorienotitie_opslaan", {
+    _station_id: stationId, _categorie: categorie, _tekst: tekst.trim(),
+  });
+  if (error || data !== true) throw error ?? new Error("Notitie nog niet verstuurd — beheer vergrendeld of verlopen");
 }
 
 /** Slaat op; offline of bij een fout gaat hij in de wachtrij. Geeft "online" | "wachtrij". */

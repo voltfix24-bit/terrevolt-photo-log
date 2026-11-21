@@ -126,7 +126,7 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
 
   const filledCount = applicableCategories.filter(catDone).length;
 
-  const { uploadingCat, uploadProgress, handleUpload, handleDelete } = useStationUpload(id, { fotosByCategorie, isSkipped, removeSkip });
+  const { uploadingCat, uploadProgress, handleUpload, handleDelete } = useStationUpload(id, { fotosByCategorie, isSkipped, removeSkip, beschermd: !!station?.submitted_at || station?.status === "opgeleverd" || station?.status === "goedgekeurd" });
 
   const openLightbox = (cat: string, index: number) => {
     const catFotos = fotosByCategorie(cat);

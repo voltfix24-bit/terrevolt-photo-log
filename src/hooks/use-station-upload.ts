@@ -1,3 +1,4 @@
+import { BEHEER_NODIG, fotowerkVoorActie } from "@/lib/require-pin";
 import { useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -16,6 +17,7 @@ const compressImage = async (file: File): Promise<File> => {
 
 /** Foto-upload voor een station: offline in de wachtrij, online via fotos-service; één upload per categorie tegelijk. */
 export function useStationUpload(id: string | undefined, opts: {
+  beschermd?: boolean;
   fotosByCategorie: (cat: string) => FotoRow[];
   isSkipped: (cat: string) => boolean;
   removeSkip: (cat: string) => void;
@@ -29,6 +31,8 @@ export function useStationUpload(id: string | undefined, opts: {
   const handleUpload = async (categorie: string, files: FileList): Promise<string[]> => {
     const mislukt: string[] = [];
     if (!id) return Array.from(files).map(f => f.name);
+    if (!navigator.onLine && opts.beschermd) { toast.error("Internet en de toegangscode zijn nodig voor dit opgeleverde dossier."); return Array.from(files).map(f => f.name); }
+    if (navigator.onLine && !await fotowerkVoorActie(id)) { toast.error(BEHEER_NODIG); return Array.from(files).map(f => f.name); }
     if (!navigator.onLine) {
       let queued = 0;
       for (const file of Array.from(files)) {
@@ -56,7 +60,7 @@ export function useStationUpload(id: string | undefined, opts: {
           const compressed = await compressImage(file);
           const r = await uploadEnRegistreer(nieuwPad(id, categorie, file.name), compressed, { stationId: id, categorie, volgorde: opts.fotosByCategorie(categorie).length + done });
           if ("stap" in r) {
-            toast.error(r.stap === "opslag" ? `Upload mislukt: ${file.name}` : `${file.name} is niet opgeslagen in de app — probeer opnieuw`);
+            toast.error(/row.level|permission|beheer|42501/i.test(r.fout) ? BEHEER_NODIG : `${file.name} niet opgeslagen — probeer opnieuw`);
             mislukt.push(file.name); continue;
           }
           done++;

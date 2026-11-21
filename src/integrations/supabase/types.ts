@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      beheer_sessies: {
+        Row: {
+          geldig_tot: string
+          ingetrokken_op: string | null
+          ontgrendeld_op: string
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          geldig_tot?: string
+          ingetrokken_op?: string | null
+          ontgrendeld_op?: string
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          geldig_tot?: string
+          ingetrokken_op?: string | null
+          ontgrendeld_op?: string
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       categorie_instellingen: {
         Row: {
           categorie_id: number
@@ -711,6 +735,30 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      beheer_deadline_geldig: {
+        Args: { _ingetrokken: string; _nu: string; _tot: string }
+        Returns: boolean
+      }
+      beheer_status: { Args: never; Returns: string }
+      beheer_toestaan: {
+        Args: { _session_id: string; _user_id: string }
+        Returns: string
+      }
+      beheer_vergrendelen: { Args: never; Returns: boolean }
+      categorienotitie_opslaan: {
+        Args: { _categorie: string; _station_id: string; _tekst: string }
+        Returns: boolean
+      }
+      foto_pad_toegestaan: { Args: { _pad: string }; Returns: boolean }
+      fotodossier_aanbieden: {
+        Args: {
+          _opdrachtgever?: string
+          _station_id: string
+          _submitted_by?: string
+        }
+        Returns: Json
+      }
+      fotowerk_toegestaan: { Args: { _id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -718,6 +766,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      heeft_beheer: { Args: never; Returns: boolean }
       maak_case: {
         Args: {
           _casenaam: string
@@ -733,9 +782,18 @@ export type Database = {
         }
         Returns: string
       }
+      monteur_station: { Args: { _id: string }; Returns: boolean }
       opleverrun_claim: {
         Args: { _id: string; _seconden: number }
         Returns: string
+      }
+      vereiste_fotocategorieen: {
+        Args: { _station: Database["public"]["Tables"]["stations"]["Row"] }
+        Returns: {
+          id: number
+          minimum: number
+          naam: string
+        }[]
       }
     }
     Enums: {

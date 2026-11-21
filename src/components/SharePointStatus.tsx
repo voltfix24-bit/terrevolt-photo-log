@@ -1,3 +1,4 @@
+import { zorgVoorBeheer } from "@/lib/require-pin";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -52,7 +53,7 @@ export function SharePointStatus({ station }: { station: StationInfo }) {
   }
 
   const opnieuw = async () => {
-    if (!internetVereist()) return;
+    if (!internetVereist() || !await zorgVoorBeheer()) return;
     if (ketenActief) { toast.info("Oplevering loopt nog — SharePoint wordt automatisch bijgewerkt"); return; }
     setBezig(true);
     const { data, error } = await supabase.functions.invoke("sharepoint-sync", { body: { station_id: stationId } });

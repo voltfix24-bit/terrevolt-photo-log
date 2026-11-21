@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { readFileSync } from "fs";
 
 const rpc = vi.fn();
+vi.mock("@/lib/require-pin", () => ({ eisBeheer: vi.fn(async () => {}), zorgVoorBeheer: vi.fn(async () => true) }));
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc: (...a: unknown[]) => rpc(...a) } }));
 
 import { balVan, TO_STATUS, type CaseItem, type ToRonde } from "@/lib/to-rondes";

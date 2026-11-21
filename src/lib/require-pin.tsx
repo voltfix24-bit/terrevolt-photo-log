@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
 import { internetVereist, INTERNET_NODIG } from "@/lib/internet";
 
 /**
@@ -20,6 +21,7 @@ export async function controleerPin(pin: string, invoke = supabase.functions.inv
       return { ok: false, fout: fout || (error ? "Geen verbinding met de server" : "Onjuiste code") };
     }
     const { error: sErr } = await zetSessie({ access_token: d.access_token, refresh_token: d.refresh_token });
+    if (!sErr) window.dispatchEvent(new Event("beheer-veranderd"));
     return sErr ? { ok: false, fout: "Sessie kon niet worden gestart" } : { ok: true };
   } catch {
     return { ok: false, fout: "Geen verbinding met de server" };
@@ -36,17 +38,18 @@ function apparaatId(): string {
 
 /** Heeft dit apparaat al een geldige beheerderssessie? */
 export async function heeftBeheerSessie(): Promise<boolean> {
-  const { data } = await supabase.auth.getUser();
-  if (!data?.user) return false;
-  const { data: ok } = await supabase.rpc("has_role", { _user_id: data.user.id, _role: "admin" });
-  return ok === true;
+  try {
+    const { data, error } = await supabase.rpc("heeft_beheer");
+    return !error && data === true;
+  } catch { return false; }
 }
 
 /** Vraagt de pincode alleen als er nog geen beheerderssessie is. */
 export async function zorgVoorBeheer(title?: string, description?: string): Promise<boolean> {
   if (!internetVereist()) return false;
   if (await heeftBeheerSessie()) return true;
-  return requirePin(title, description);
+  const ok = await requirePin(title, description);
+  return ok && await heeftBeheerSessie();
 }
 
 let host: HTMLDivElement | null = null;
@@ -106,7 +109,7 @@ function PinHost() {
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={cancel} />
+      <div className="absolute inset-0 bg-foreground/50 backdrop-blur-sm" onClick={cancel} />
       <div className="relative bg-card rounded-2xl p-6 mx-6 max-w-sm w-full shadow-2xl space-y-4 animate-fade-up">
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -131,20 +134,20 @@ function PinHost() {
           />
           {error && <p className="text-sm text-orange font-semibold mt-2 text-center">{error}</p>}
           <div className="flex gap-3 justify-end mt-4">
-            <button
+            <Button
               type="button"
               onClick={cancel}
               className="px-4 py-2.5 rounded-xl text-sm font-semibold text-muted-foreground bg-surface-container hover:bg-surface-high transition-all"
             >
               Annuleren
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               disabled={bezig}
               className="px-4 py-2.5 rounded-xl text-sm font-semibold text-primary-foreground bg-primary hover:bg-primary-hover transition-all"
             >
               {bezig ? "Controleren…" : "Ontgrendelen"}
-            </button>
+            </Button>
           </div>
         </form>
       </div>
@@ -159,13 +162,16 @@ function ensureMounted() {
   createRoot(host).render(<PinHost />);
 }
 
-export function requirePin(
+let pinVraag: Promise<boolean> | null = null;
+export async function requirePin(
   title = "Bevestig met toegangscode",
   description?: string,
 ): Promise<boolean> {
   if (!internetVereist()) return Promise.resolve(false);
+  if (await heeftBeheerSessie()) return true;
+  if (pinVraag) return pinVraag;
   ensureMounted();
-  return new Promise((resolve) => {
+  pinVraag = new Promise<boolean>((resolve) => {
     const tryOpen = () => {
       if (setOpenExternal) {
         setOpenExternal({ resolve, title, description });
@@ -174,5 +180,33 @@ export function requirePin(
       }
     };
     tryOpen();
-  });
+  }).finally(() => { pinVraag = null; });
+  return pinVraag;
+}
+
+
+export const BEHEER_NODIG = "Beheer vergrendeld of verlopen — ontgrendel opnieuw met de PIN.";
+/** Server check on every protected operation; UI state is never authority. */
+export async function eisBeheer(): Promise<void> {
+  if (!await zorgVoorBeheer("Beheer ontgrendelen", "Deze wijziging vereist de toegangscode.")) throw new Error(BEHEER_NODIG);
+}
+export async function vergrendelBeheer(): Promise<boolean> {
+  if (!internetVereist()) return false;
+  const { data, error } = await supabase.rpc("beheer_vergrendelen");
+  if (error || data !== true) return false;
+  // Do not signOut globally or locally: the session retains ordinary mechanic rights.
+  window.dispatchEvent(new Event("beheer-veranderd"));
+  return true;
+}
+
+/** Foreground photo/skip actions: ordinary work stays open, delivered work prompts PIN. */
+export async function fotowerkVoorActie(stationId: string): Promise<boolean> {
+  if (!internetVereist()) return false;
+  try {
+    const { data, error } = await supabase.rpc("fotowerk_toegestaan", { _id: stationId });
+    if (!error && data === true) return true;
+    if (!await zorgVoorBeheer("Dossier wijzigen", "Deze wijziging vereist de toegangscode.")) return false;
+    const check = await supabase.rpc("fotowerk_toegestaan", { _id: stationId });
+    return !check.error && check.data === true;
+  } catch { return false; }
 }

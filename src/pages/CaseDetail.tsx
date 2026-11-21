@@ -4,6 +4,7 @@ import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/
 import { useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { zorgVoorBeheer, BEHEER_NODIG } from "@/lib/require-pin";
 import { internetVereist } from "@/lib/internet";
 import { Pressable, T } from "@/components/apple/Primitives";
 import {
@@ -42,10 +43,10 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
   const curStatus: ToStatus = cur?.status ?? "open";
   const st = TO_STATUS[curStatus];
   const refresh = () => qc.invalidateQueries({ queryKey: ["cases"] });
-  const run = async (p: PromiseLike<{ error: unknown }>) => {
-    if (!internetVereist()) return false;
-    try { const { error } = await p; if (error) { toast.error("Opslaan mislukt"); return false; } refresh(); return true; }
-    catch { toast.error("Opslaan mislukt"); return false; }
+  const run = async (p: { select: (columns: string) => PromiseLike<{ error: unknown; data: unknown[] | null }> }) => {
+    if (!internetVereist() || !await zorgVoorBeheer()) return false;
+    try { const { data, error } = await p.select("id"); if (error || !data?.length) { toast.error(`Opslaan mislukt. ${BEHEER_NODIG}`); return false; } refresh(); return true; }
+    catch { toast.error(`Opslaan mislukt. ${BEHEER_NODIG}`); return false; }
   };
 
   const updRonde = (patch: Partial<ToRonde>) =>

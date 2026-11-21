@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SharePointSleutelBanner } from "@/components/SharePointSleutelBanner";
+import { BeheerStatus } from "@/components/BeheerStatus";
 import AppHeader from "@/components/AppHeader";
 import Index from "./pages/Index";
 import NewStation from "./pages/NewStation";
@@ -61,6 +62,7 @@ function AppContent() {
   return (
     <>
       <AppHeader />
+      <BeheerStatus />
       <SharePointSleutelBanner />
       <Routes>
         <Route path="/" element={<Index />} />

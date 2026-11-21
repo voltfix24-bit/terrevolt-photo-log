@@ -10,21 +10,26 @@
 - A photo upload for a skipped category removes the skip; SharePoint gets `{nr}_{cat}_NIET GEMAAKT.txt` per skipped category without photos (sync-managed, deleted when no longer wanted) and an `Opmerking` column on files. Why: no contradictory status.
 - `src/components/TerreVoltLoader.tsx` is the user's file, kept verbatim; the only loading indicator is via `src/components/Laden.tsx` (PaginaLader 80, BlokLader 48, KnopLader 20, LaadAfbeelding 40) — no skeletons/spinners. Why: one brand loader everywhere.
 - No app-shell SW: manifest-only; `public/sw.js` is a kill-switch for old caches. Why: iPhone blank screens.
-- Storage `branding`: anon insert/read only (new filenames). Why: no overwrites.
+- Storage branding writes require a live PIN grant; uploads use new filenames. Why: protect settings without overwrites.
 - Photo writes go through `src/lib/fotos-service.ts` (upload + DB insert, idempotent by storage_path; row deleted before file); station delete/SharePoint status via `src/lib/station-service.ts`. Why: no false success, retry-safe.
 - Offline queue: remove only after storage+DB ok; failures stay 'error', retry with stable path `q_{queueId}`. Why: no loss/dupes.
 - Required photos per category: only `src/lib/foto-regels.ts` (default 1; overrides need user OK). Why: one rule.
 - `generatePdfHtml` escapes text, validates urls/HSL. Why: no injection.
 - PIN is verified server-side by `pin-sessie` (PBKDF2 hash in secret ADMIN_PIN_HASH, rate-limited via `pin_pogingen`); success returns a real session for the admin account (`user_roles` role admin, password in ADMIN_SESSION_PASSWORD). No PIN in frontend code. Why: RLS can trust admin actions.
-- RLS: deleting stations, fotos and to-fotos files requires `has_role(auth.uid(),'admin')`; deletes return rows (`.select`) so 0 rows = no success. Sign-ups are disabled. Why: destructive actions only behind the PIN, no lock-out of normal use.
-- `sharepoint-sync {controle}` and `sharepoint-weekly` (manual/dry-run) require an admin session (`_shared/admin-auth.ts`); station sync paths stay anon-callable for rapport-pdf. Why: background chain must keep working.
+- All office, settings and destructive authorization uses `heeft_beheer()` (session_id + user_id + server deadline + revocation), never the permanent admin role alone. Why: independent fixed eight-hour grants.
+- Internal PDF/SharePoint/cron calls verify the managed cron credential; manual starts/retry/sync require the same PIN grant as RLS. Why: service-role endpoints cannot trust public bearer strings.
 - Index loads only `fotos(categorie, review_status)`. Why: payload.
 - Station section cards use `Kaart` (Primitives): done = `doneBg`/`doneBorder`, open = white/`cardBorder`; never opacity or muted status colors. Why: finished sections must still look clickable.
 
 ## BESLUITEN
-- Preserve open employee read/create/update access and the existing server-verified PIN for admin deletion; no login wall or frontend PIN. Why: approved access model.
+- Open mechanic access is limited to safe TerreVolt inserts, ordinary in-execution fields, undelivered photos/category notes and validated complete submission; all Cases & TO writes, settings/category management, deletion and delivered-dossier changes require PIN. Why: user-approved phase 1 access model.
 - Keep `to-fotos` public and existing direct URLs; do not broaden permissions or backfill signed URLs. Why: preserve shared links.
 - Queue only photos and notes offline; reject all other mutations without internet, and surface local persistence failures. Why: prevent false success and data loss.
 - All progress/completion uses the central photo rule, including category 31. Why: one consistent requirement.
 - Case import: logic in `src/lib/case-import.ts`, writes only via RPC `maak_case`; indieningen = rondes ≠ open, score per uitvoerder. Why: atomic retry-safe import, VG must not skew TerreVolt FTR.
 - On hold: `stations.on_hold*` + `src/lib/on-hold.ts`; resume appends to `dossier_notitie`, only the current hold is stored and subtracted from wait time. Why: history without extra table.
+
+- PIN grants bind real session_id and user_id for eight fixed server hours; unlock never resets the shared password, refresh never extends, lock revokes only this grant. Why: device independence.
+- Field triggers check OLD/NEW; immutable photo sources/linkage and no storage overwrite prevent delivered-dossier bypasses.
+- `fotodossier_aanbieden` is the sole open submission transition, locks the station and checks required categories/skips before creating the run. Why: RLS-safe atomic boundary.
+- Keep phase-1 integration fixtures entirely local; do not mutate production or contact real SharePoint in tests. Why: user-approved isolation; scale tests belong to a later phase.

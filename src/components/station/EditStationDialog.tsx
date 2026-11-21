@@ -1,3 +1,4 @@
+import { zorgVoorBeheer } from "@/lib/require-pin";
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface EditStationDialogProps {
-  station: { id: string; naam_msr: string; behuizingsnummer: string | null; casenummer: string | null; casenaam: string | null; type_ruimte: string | null; ingevuld_door: string | null; datum: string | null };
+  station: { id: string; naam_msr: string; behuizingsnummer: string | null; casenummer: string | null; casenaam: string | null; type_ruimte: string | null; ingevuld_door: string | null; datum: string | null; status?: string | null; submitted_at?: string | null };
   open: boolean; onOpenChange: (open: boolean) => void; onSaved: () => void;
 }
 
@@ -18,10 +19,11 @@ export function EditStationDialog({ station, open, onOpenChange, onSaved }: Edit
 
   const handleSave = async () => {
     if (!internetVereist()) return;
+    if ((!["concept", "in uitvoering"].includes(station.status ?? "") || station.submitted_at) && !await zorgVoorBeheer()) return;
     setSaving(true);
-    const { error } = await supabase.from("stations").update({ naam_msr: form.naam_msr, behuizingsnummer: form.behuizingsnummer || null, casenummer: form.casenummer || null, casenaam: form.casenaam || null, type_ruimte: form.type_ruimte, ingevuld_door: form.ingevuld_door || null, datum: form.datum || null }).eq("id", station.id);
+    const { data, error } = await supabase.from("stations").update({ naam_msr: form.naam_msr, behuizingsnummer: form.behuizingsnummer || null, casenummer: form.casenummer || null, casenaam: form.casenaam || null, type_ruimte: form.type_ruimte, ingevuld_door: form.ingevuld_door || null, datum: form.datum || null }).eq("id", station.id).select("id");
     setSaving(false);
-    if (error) { toast.error("Fout bij opslaan"); } else { toast.success("Station bijgewerkt"); onSaved(); onOpenChange(false); }
+    if (error || !data?.length) { toast.error("Opslaan geweigerd — controleer de beheerstatus"); } else { toast.success("Station bijgewerkt"); onSaved(); onOpenChange(false); }
   };
 
   return (

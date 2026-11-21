@@ -1,3 +1,5 @@
+import { authenticateCronRequest } from "../_shared/cron-auth.ts";
+import { isBeheerder } from "../_shared/admin-auth.ts";
 // Professioneel PDF-opleverrapport. Stap 1 (per aanroep één foto): te grote of gedraaide foto's opnieuw comprimeren naar een cache.
 // Stap 2: PDF opbouwen met pdf-lib (miniatuur + paginavullende foto delen dezelfde afbeelding), opslaan, daarna SharePoint-sync.
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -10,7 +12,7 @@ import { ketenKick } from "../_shared/keten-kick.ts";
 
 const Body = z.object({ station_id: z.string().uuid(), stap: z.number().int().min(0).optional(), run: z.string().optional(), keten: z.boolean().optional() });
 const json = (d: unknown, s = 200) => new Response(JSON.stringify(d), { status: s, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-const db = () => createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+const db = () => createClient((Deno.env.get("SUPABASE_URL") ?? ""), (Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""));
 const BUCKET = "rapporten";
 const MAX_ORIGINEEL = 500_000; // groter → opnieuw comprimeren (kwaliteit omlaag, resolutie gelijk)
 const KWALITEIT = 78;
@@ -105,16 +107,17 @@ async function volgende(stationId: string, run: string, stap: number, keten: boo
 }
 async function volgendeEens(stationId: string, run: string, stap: number, keten: boolean) {
   const r = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/rapport-pdf`, {
-    method: "POST", headers: { Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`, "Content-Type": "application/json" },
+    method: "POST", headers: { Authorization: `Bearer ${Deno.env.get("LOVABLE_CRON_SECRET")}`, "Content-Type": "application/json" },
     body: JSON.stringify({ station_id: stationId, run, stap, keten }),
   });
   await r.body?.cancel();
+  if (!r.ok) throw new Error(`PDF vervolg geweigerd (${r.status})`);
 }
 async function sharepoint(stationId: string) {
   for (let p = 0; p < 6; p++) {
     try {
       const r = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/sharepoint-sync`, {
-        method: "POST", headers: { Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`, "Content-Type": "application/json" },
+        method: "POST", headers: { Authorization: `Bearer ${Deno.env.get("LOVABLE_CRON_SECRET")}`, "Content-Type": "application/json" },
         body: JSON.stringify({ station_id: stationId }),
       });
       if (!r.ok) console.error(`sharepoint-sync [${r.status}]: ${await r.text()}`); else await r.body?.cancel();
@@ -417,6 +420,14 @@ Deno.serve(async (req) => {
   const parsed = Body.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return json({ error: parsed.error.flatten().fieldErrors }, 400);
   const { station_id, stap, run, keten } = parsed.data;
+  const machine = authenticateCronRequest(req) === null;
+  if (!machine && (stap !== undefined || run !== undefined || keten !== undefined || !await isBeheerder(req))) return json({ error: "Beheer vergrendeld of verlopen — ontgrendel opnieuw met de PIN." }, 403);
+  const { data: station } = await db().from("stations").select("status, uitvoerder, submitted_at").eq("id", station_id).maybeSingle();
+  if (!station || station.uitvoerder !== "terrevolt" || !station.submitted_at) return json({ error: "Geen opgeleverd fotodossier" }, 409);
+  if (!machine) {
+    const { data: active } = await db().from("opleverruns").select("id").eq("station_id",station_id).not("status","in","(afgerond,mislukt)").limit(1).maybeSingle();
+    if (active) return json({ error: "Oplevering loopt nog" },409);
+  }
   if (stap === undefined) {
     const { data: st } = await db().from("stations").select("uitvoerder").eq("id", station_id).maybeSingle();
     if (!st) return json({ error: "Station niet gevonden" }, 404);
@@ -430,6 +441,7 @@ Deno.serve(async (req) => {
     r = data.gestart_op;
   }
   // @ts-ignore EdgeRuntime bestaat in Supabase Edge Functions
-  EdgeRuntime.waitUntil(voorbereiden(station_id, r!, stap ?? 0, keten ?? false));
+  if (!r) return json({ error: "Geen PDF-run" },409);
+  EdgeRuntime.waitUntil(voorbereiden(station_id, r, stap ?? 0, keten ?? false));
   return json({ ok: true, status: "bezig", run: r }, 202);
 });

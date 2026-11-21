@@ -113,6 +113,27 @@
       "when": 1795193700066,
       "tag": "0015_maak_case_on_hold",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1795260001041,
+      "tag": "0016_session_pin_security",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1795260030880,
+      "tag": "0017_photo_rules_exact_categories",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1795260285863,
+      "tag": "0018_photo_source_and_submission_guards",
+      "breakpoints": true
     }
   ]
 }

@@ -1,3 +1,4 @@
+import { zorgVoorBeheer } from "@/lib/require-pin";
 import { useState, useRef, useCallback } from "react";
 import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { useNavigate } from "react-router-dom";
@@ -149,8 +150,9 @@ export default function CategorieenBeheren() {
   };
 
   const handleUpload = async (categorie: string, files: FileList) => {
-    if (!internetVereist()) return;
+    if (!internetVereist() || !await zorgVoorBeheer()) return;
     setUploading(categorie);
+    let gelukt = 0;
     for (const file of Array.from(files)) {
       if (file.size > MAX_SIZE) { toast.error(`${file.name} is groter dan 10MB`); continue; }
       let compressed: File = file;
@@ -163,17 +165,21 @@ export default function CategorieenBeheren() {
       const { error } = await supabase.storage.from("to-fotos").upload(path, compressed);
       if (error) { toast.error(`Upload mislukt: ${error.message}`); continue; }
       const { data: urlData } = supabase.storage.from("to-fotos").getPublicUrl(path);
-      await supabase.from("categorie_voorbeelden").insert({ categorie, url: urlData.publicUrl, storage_path: path });
+      const { error: registratie } = await supabase.from("categorie_voorbeelden").insert({ categorie, url: urlData.publicUrl, storage_path: path });
+      if (registratie) { toast.error("Voorbeeld niet opgeslagen — controleer de beheerstatus"); continue; }
+      gelukt++;
     }
     queryClient.invalidateQueries({ queryKey: ["categorie_voorbeelden"] });
     setUploading(null);
-    toast.success("Voorbeeld foto geüpload ✓");
+    if (gelukt) toast.success(`${gelukt} voorbeeldfoto opgeslagen`);
   };
 
   const handleDelete = async (v: VoorbeeldFoto) => {
-    if (!internetVereist()) return;
-    await supabase.storage.from("to-fotos").remove([v.storage_path]);
-    await supabase.from("categorie_voorbeelden").delete().eq("id", v.id);
+    if (!internetVereist() || !await zorgVoorBeheer()) return;
+    const { data, error } = await supabase.from("categorie_voorbeelden").delete().eq("id", v.id).select("id");
+    if (error || !data?.length) { toast.error("Niet verwijderd — controleer de beheerstatus"); return; }
+    const { error: opslag } = await supabase.storage.from("to-fotos").remove([v.storage_path]);
+    if (opslag) { toast.error("Bestand nog niet verwijderd"); return; }
     queryClient.invalidateQueries({ queryKey: ["categorie_voorbeelden"] });
     toast.success("Voorbeeld verwijderd");
   };

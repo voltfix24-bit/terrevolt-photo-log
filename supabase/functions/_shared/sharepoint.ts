@@ -120,10 +120,11 @@ export async function bepaalRoot() {
 
 
 export type Ctx = { tok: string; root: string; prefix: string[]; driveId: string; metadata: boolean };
-export async function context(db?: any): Promise<Ctx> {
+export async function context(db?: any, metadataSchrijven = true): Promise<Ctx> {
   const { tok, root, prefix } = await bepaalRoot();
   const ctx: Ctx = { tok, root, prefix, driveId: root.split("/")[2], metadata: false };
-  ctx.metadata = await zorgKolommen(ctx);
+  // Public document reads must never create metadata columns in SharePoint.
+  ctx.metadata = metadataSchrijven ? await zorgKolommen(ctx) : false;
   if (db) await machtiging(db, "Sites.Manage.All", !ctx.metadata);
   return ctx;
 }

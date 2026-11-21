@@ -1,21 +1,17 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.58.0";
 import { z } from "npm:zod@3";
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { authenticateCronRequest } from "../_shared/cron-auth.ts";
 import { ketenKick } from "../_shared/keten-kick.ts";
 
 const Body = z.object({
-  actie: z.enum(["submit", "rapport-url"]).optional(),
+  actie: z.enum(["submit", "rapport-url", "voorbereiden"]).optional(),
   station_id: z.string().uuid(),
   opdrachtgever: z.string().trim().max(200).nullish(),
   submitted_by: z.string().trim().max(200).nullish(),
 });
 const fout = (status: number, error: unknown) =>
   new Response(JSON.stringify({ error }), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
 
 const escape = (value: unknown) =>
   String(value ?? "").replace(/[&<>"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[char] as string));
@@ -30,8 +26,8 @@ Deno.serve(async (req) => {
 
   try {
     const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      (Deno.env.get("SUPABASE_URL") ?? ""),
+      (Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""),
     );
 
     const body = parsed.data;
@@ -51,21 +47,32 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Van Gelder-cases: geen oplevering, geen rapport, geen SharePoint
-    const { data: soort } = await supabase.from("stations").select("uitvoerder").eq("id", stationId).maybeSingle();
-    if (!soort) throw new Error("Station niet gevonden");
-    if (soort.uitvoerder === "van_gelder") return fout(409, "Opleveren kan niet voor uitvoering Van Gelder");
-
-    // Idempotent: loopt er al een oplevering voor dit station, dan niets opnieuw indienen
-    const actieveRun = async () => (await supabase.from("opleverruns").select("id, status, gestart_op")
-      .eq("station_id", stationId).not("status", "in", "(afgerond,mislukt)").maybeSingle()).data;
-    const bestaand = await actieveRun();
-    if (bestaand) {
-      ketenKick(stationId);
-      const { data: signed } = await supabase.storage.from("rapporten").createSignedUrl(`${stationId}/rapport.html`, 60 * 60);
-      return new Response(JSON.stringify({ ok: true, al_ingediend: true, run: bestaand, rapport_url: signed?.signedUrl }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+    // Forward the actual client identity to the narrow SQL transition. An anon
+    // mechanic is allowed; arbitrary JWTs and stale PIN grants get no extra rights.
+    const caller = createClient((Deno.env.get("SUPABASE_URL") ?? ""), (Deno.env.get("SUPABASE_ANON_KEY") ?? ""), {
+      global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } },
+      auth: { persistSession: false },
+    });
+    let aanvraag: { id: string; nieuw: boolean };
+    if (actie === "voorbereiden") {
+      if (authenticateCronRequest(req)) return fout(403, "Alleen interne verwerking");
+      const { data: active } = await supabase.from("opleverruns").select("id").eq("station_id", stationId).not("status", "in", "(afgerond,mislukt)").limit(1).maybeSingle();
+      const { data: st } = await supabase.from("stations").select("submitted_at, uitvoerder").eq("id",stationId).maybeSingle();
+      if (!active || !st?.submitted_at || st.uitvoerder !== "terrevolt") return fout(409, "Geen actieve oplevering");
+      aanvraag = { id: active.id, nieuw: true };
+    } else {
+      const { data: result, error: submitError } = await caller.rpc("fotodossier_aanbieden", {
+        _station_id: stationId, _opdrachtgever: body.opdrachtgever ?? null, _submitted_by: body.submitted_by ?? null,
       });
+      if (submitError || !result?.id) return fout(submitError?.code === "42501" ? 403 : 409,
+        submitError?.code === "42501" ? "Beheer vergrendeld of verlopen — ontgrendel opnieuw met de PIN." : "Fotodossier is niet compleet of niet beschikbaar");
+      aanvraag = result;
+    }
+    const { data: run } = await supabase.from("opleverruns").select("id, status, gestart_op").eq("id", aanvraag.id).single();
+    if (!run) throw new Error("Oplevering niet gevonden");
+    // Existing submitted run: never rewrite files on a repeated public request.
+    if (!aanvraag.nieuw) {
+      return new Response(JSON.stringify({ ok: true, al_ingediend: true, run }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const [{ data: station }, { data: fotos }, { data: opmerkingen }, { data: skips }, { data: instellingen }] = await Promise.all([
@@ -78,9 +85,9 @@ Deno.serve(async (req) => {
 
     if (!station) throw new Error("Station niet gevonden");
 
-    const opdrachtgever = body.opdrachtgever || (station.opdrachtgever ?? "van Gelder");
-    const submittedBy = body.submitted_by || (station.ingevuld_door ?? "Onbekend");
-    const submittedAt = new Date().toISOString();
+    const opdrachtgever = station.opdrachtgever ?? "van Gelder";
+    const submittedBy = station.submitted_by ?? station.ingevuld_door ?? "Onbekend";
+    const submittedAt = station.submitted_at ?? new Date().toISOString();
 
     const perCategorie = new Map<string, { url: string }[]>();
     for (const foto of fotos ?? []) {
@@ -118,23 +125,7 @@ ${(skips ?? []).length ? `<h2>Niet van toepassing</h2>${(skips ?? []).map((skip)
       .upload(pad, new Blob([html], { type: "text/html" }), { upsert: true, contentType: "text/html" });
     if (uploadError) throw uploadError;
 
-    const { data: bijgewerkt, error: stationError } = await supabase.from("stations").update({
-      status: "opgeleverd",
-      submitted_at: submittedAt,
-      submitted_by: submittedBy,
-      opdrachtgever,
-      review_reden: null,
-    }).eq("id", stationId).select("id");
-    if (stationError || !bijgewerkt?.length) throw new Error(`Station bijwerken mislukt: ${stationError?.message ?? "0 rijen"}`);
-
-    const { error: fotoError } = await supabase.from("fotos").update({ review_status: "pending", review_reden: null }).eq("station_id", stationId).neq("review_status", "approved");
-    if (fotoError) throw new Error(`Foto's bijwerken mislukt: ${fotoError.message}`);
-
-    // Pas nu (HTML + station bevestigd) de keten starten. Unieke index = één actieve run per station.
-    let { data: run, error: runError } = await supabase.from("opleverruns")
-      .insert({ station_id: stationId, status: "aangevraagd", aangevraagd_door: submittedBy }).select("id, status, gestart_op").single();
-    if (runError?.code === "23505") { run = await actieveRun(); runError = null; }
-    if (runError || !run) throw new Error(`Opleverrun aanmaken mislukt: ${runError?.message ?? "onbekend"}`);
+    // Station transition/review reset/run creation were atomically committed by SQL.
     ketenKick(stationId);
 
     const { data: signed } = await supabase.storage.from("rapporten").createSignedUrl(pad, 60 * 60);

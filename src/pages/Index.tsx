@@ -302,7 +302,7 @@ export default function Dashboard() {
             <div style={{ marginTop: 4, color: SUB, fontSize: 14 }}>{syncLabel}</div>
           </div>
           <div style={{ display: "flex", gap: 4 }}>
-          <Pressable aria-label="Cases & TO" onClick={async () => { if (await requirePin()) navigate("/cases"); }} className="border border-transparent bg-white hover:border-[#1F5C3A] transition-colors duration-150" style={{ height: 40, padding: "0 14px 0 10px", borderRadius: 20, display: "flex", alignItems: "center", gap: 6, color: T.green, fontSize: 15, fontWeight: 600, alignSelf: "center" }}>
+          <Pressable aria-label="Cases & TO" onClick={() => navigate("/cases")} className="border border-transparent bg-white hover:border-[#1F5C3A] transition-colors duration-150" style={{ height: 40, padding: "0 14px 0 10px", borderRadius: 20, display: "flex", alignItems: "center", gap: 6, color: T.green, fontSize: 15, fontWeight: 600, alignSelf: "center" }}>
             <span className="material-symbols-rounded" style={{ fontSize: 22 }}>assignment</span>
             Cases
           </Pressable>
