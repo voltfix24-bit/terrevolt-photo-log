@@ -1,4 +1,5 @@
 import { zorgVoorBeheer } from "@/lib/require-pin";
+import { verwijderVoorbeeld } from "@/lib/fotos-service";
 import { useState, useRef, useCallback } from "react";
 import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { useNavigate } from "react-router-dom";
@@ -176,12 +177,11 @@ export default function CategorieenBeheren() {
 
   const handleDelete = async (v: VoorbeeldFoto) => {
     if (!internetVereist() || !await zorgVoorBeheer()) return;
-    const { data, error } = await supabase.from("categorie_voorbeelden").delete().eq("id", v.id).select("id");
-    if (error || !data?.length) { toast.error("Niet verwijderd — controleer de beheerstatus"); return; }
-    const { error: opslag } = await supabase.storage.from("to-fotos").remove([v.storage_path]);
-    if (opslag) { toast.error("Bestand nog niet verwijderd"); return; }
+    const result = await verwijderVoorbeeld(v.id, v.storage_path);
+    if (!result.ok) { toast.error("Niet verwijderd — controleer de beheerstatus"); return; }
     queryClient.invalidateQueries({ queryKey: ["categorie_voorbeelden"] });
-    toast.success("Voorbeeld verwijderd");
+    if (result.bestandBlijft) toast.error("Voorbeeldregistratie verwijderd, bestand nog niet verwijderd");
+    else toast.success("Voorbeeld verwijderd");
   };
 
   /* ── Filtering per section ── */

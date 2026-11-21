@@ -8,7 +8,8 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { GlassBar, Group, Hairline, NavText, PrimaryButton, Row, T, INSET_ROW, ROW_PAD_X } from "@/components/apple/Primitives";
 import { toast } from "sonner";
 import { internetVereist } from "@/lib/internet";
-import { aantalLokaleNotities, verstuurNotities } from "@/lib/notities";
+import { aantalLokaleNotities, heeftBeheerGeblokkeerdeNotities, verstuurNotities, verstuurNotitiesNaBeheer } from "@/lib/notities";
+import { zorgVoorBeheer } from "@/lib/require-pin";
 
 export default function Opleveren({ stationId }: { stationId?: string } = {}) {
   const params = useParams<{ id: string }>();
@@ -24,7 +25,8 @@ export default function Opleveren({ stationId }: { stationId?: string } = {}) {
   const { data: station } = useQuery({
     queryKey: ["station", id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("stations").select("*").eq("id", id!).single();
+      if (!id) throw new Error("Station ontbreekt");
+      const { data, error } = await supabase.from("stations").select("*").eq("id", id).single();
       if (error) throw error;
       return data;
     },
@@ -34,7 +36,8 @@ export default function Opleveren({ stationId }: { stationId?: string } = {}) {
   const { data: fotos } = useQuery({
     queryKey: ["fotos", id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("fotos").select("id").eq("station_id", id!);
+      if (!id) return [];
+      const { data, error } = await supabase.from("fotos").select("id").eq("station_id", id);
       if (error) throw error;
       return data ?? [];
     },
@@ -44,7 +47,8 @@ export default function Opleveren({ stationId }: { stationId?: string } = {}) {
   const { data: skips } = useQuery({
     queryKey: ["categorie-skips", id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("categorie_skips").select("categorie, reden").eq("station_id", id!);
+      if (!id) return [];
+      const { data, error } = await supabase.from("categorie_skips").select("categorie, reden").eq("station_id", id);
       if (error) throw error;
       return data ?? [];
     },
@@ -85,6 +89,16 @@ export default function Opleveren({ stationId }: { stationId?: string } = {}) {
     setVersturen(true);
     try {
     await verstuurNotities();
+    if (heeftBeheerGeblokkeerdeNotities(id)) {
+      toast.error("Notities blijven lokaal bewaard — beheer vergrendeld of verlopen", {
+        action: { label: "Beheer ontgrendelen", onClick: async () => {
+          if (!await zorgVoorBeheer("Notities versturen")) return;
+          try { await verstuurNotitiesNaBeheer(); }
+          catch { toast.error("Notities blijven lokaal bewaard — probeer opnieuw"); }
+        } },
+      });
+      return;
+    }
     if ((await getPendingPhotos(id)).length > 0 || aantalLokaleNotities(id) > 0) {
       toast.error("Nog niet alles verstuurd — wacht tot foto's en notities zijn gesynchroniseerd.");
       return;

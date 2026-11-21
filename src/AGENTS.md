@@ -1,3 +1,4 @@
 - Render the shared management status in normal document flow, outside fixed action bars. Why: mobile CTAs must stay accessible.
 - Persist note authorization failures with their queue version and retry on beheer-veranderd, never by prompting from background work. Why: preserve unsent text across expired grants and concurrent edits.
 - Confirm intended rows returned by protected updates before proceeding; zero-photo dossiers update only their station. Why: RLS can return zero rows without an error.
+- Both example screens delete via verwijderVoorbeeld; background photo sync confirms a skip is absent before clearing its queue item. Why: no zero-row false success.

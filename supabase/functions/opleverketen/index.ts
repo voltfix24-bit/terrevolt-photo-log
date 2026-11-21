@@ -134,10 +134,10 @@ Deno.serve(async (req) => {
       const run = await laatste(sb, station_id);
       const p = run ? handmatigOpnieuw(run as Run) : null;
       if (!p) return json({ error: "Niets om opnieuw te proberen" }, 409);
-      const { error } = await sb.from("opleverruns").update(p).eq("id", run.id).or(`lease_tot.is.null,lease_tot.lt.${new Date().toISOString()}`);
-      if (error) {
-        console.error("retry mislukt:", error.message);
-        return json({ error: error.code === "23505" ? "Er loopt al een oplevering" : "Opnieuw proberen mislukt" }, 409);
+      const { data: geraakt, error } = await sb.from("opleverruns").update(p).eq("id", run.id).or(`lease_tot.is.null,lease_tot.lt.${new Date().toISOString()}`).select("id").maybeSingle();
+      if (error || geraakt?.id !== run.id) {
+        if (error) console.error("retry mislukt:", error.message);
+        return json({ error: error?.code === "23505" || !geraakt ? "Er loopt al een oplevering of de aanvraag is gewijzigd" : "Opnieuw proberen mislukt" }, 409);
       }
       ketenKick(station_id);
       return json({ ok: true, run: await laatste(sb, station_id) });

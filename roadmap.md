@@ -1,4 +1,6 @@
 # Werkpunten
+- [x] Flow-sweep fase 1: opslag-/wachtrijregels gecontroleerd; voorbeeldverwijdering, foto-sync, opleverscherm, expliciete SharePoint-ack en serverretry hersteld; 153 tests geslaagd.
+- Buiten deze correctieronde: PDF-/wekelijkse SharePoint-resultaatbevestiging voor fase 2; voorbeeld-dialoogpatroon wacht op antwoord.
 - [x] Correctieronde fase 1: beheerstatus uit CTA-zone; sessietabelgrants intrekken.
 - [x] Correctieronde fase 1: nul-rijbevestigingen en notitieherstel na ontgrendelen.
 - [x] Correctieronde fase 1: 140 tests (11 lokale PostgreSQL), geïsoleerde schermcontrole 360/390px, automatische TypeScript/buildcontrole OK.

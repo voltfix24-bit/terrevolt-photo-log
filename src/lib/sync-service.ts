@@ -1,9 +1,18 @@
 import { getPendingPhotos, markDone, markError, clearDone } from './offline-queue';
 import imageCompression from 'browser-image-compression';
-import { uploadEnRegistreer, wachtrijPad } from './fotos-service';
+import { uploadEnRegistreer, wachtrijPad, type Db } from './fotos-service';
 import { supabase } from '@/integrations/supabase/client';
 
 export type SyncResultaat = { gelukt: number; mislukt: number; fouten: string[] };
+
+/** Absence is legitimate; an RLS-filtered zero-row delete is not proof of absence. */
+export async function ophefSkipNaFoto(stationId: string, categorie: string, db: Db = supabase): Promise<void> {
+  const { error } = await db.from('categorie_skips').delete().eq('station_id', stationId).eq('categorie', categorie);
+  if (error) throw error;
+  const check = await db.from('categorie_skips').select('id').eq('station_id', stationId).eq('categorie', categorie);
+  if (check.error) throw check.error;
+  if (!Array.isArray(check.data) || check.data.length > 0) throw new Error('N.v.t. niet opgeheven — controleer de beheerstatus; foto blijft lokaal bewaard');
+}
 
 type Item = { id: string; stationId: string; categorie: string; file: Blob; fileName: string };
 export type SyncDeps = {
@@ -24,10 +33,7 @@ const standaard: SyncDeps = {
     catch { return f; }
   },
   upload: uploadEnRegistreer,
-  ophefSkip: async (stationId, categorie) => {
-    const { error } = await supabase.from('categorie_skips').delete().eq('station_id', stationId).eq('categorie', categorie);
-    if (error) throw error;
-  },
+  ophefSkip: ophefSkipNaFoto,
 };
 
 let isSyncing = false;

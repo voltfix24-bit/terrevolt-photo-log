@@ -23,6 +23,6 @@ export async function sharepointStatusBijwerken(stationId: string, db: Db = supa
   if (!internetVereist()) return false;
   try {
     const { data, error } = await db.functions.invoke("sharepoint-sync", { body: { station_id: stationId, alleen_status: true } });
-    return !error && (data as { ok?: boolean })?.ok !== false;
+    return !error && (data as { ok?: boolean } | null)?.ok === true;
   } catch { return false; }
 }

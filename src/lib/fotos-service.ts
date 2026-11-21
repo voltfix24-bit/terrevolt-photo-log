@@ -76,3 +76,12 @@ export async function verwijderFoto(fotoId: string, pad: string, db: Db = supaba
   if (rmErr) { console.error("[fotos] bestand niet verwijderd, handmatig opruimen:", pad, rmErr.message); return { ok: true, bestandBlijft: true }; }
   return { ok: true };
 }
+
+/** Both example screens confirm the intended row before touching its storage file. */
+export async function verwijderVoorbeeld(id: string, pad: string, db: Db = supabase): Promise<{ ok: boolean; bestandBlijft?: boolean }> {
+  if (!internetVereist()) return { ok: false };
+  const { data, error } = await db.from("categorie_voorbeelden").delete().eq("id", id).select("id");
+  if (error || !Array.isArray(data) || !data.some((row: { id: string }) => row.id === id)) return { ok: false };
+  const { error: opslag } = await db.storage.from(FOTO_BUCKET).remove([pad]);
+  return opslag ? { ok: true, bestandBlijft: true } : { ok: true };
+}

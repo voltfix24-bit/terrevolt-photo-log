@@ -49,6 +49,15 @@ async function denied(tx: Tx, query: string) {
 const active = async (tx: Tx) => (await tx`SELECT public.heeft_beheer() AS ok`)[0].ok;
 
 describe.skipIf(!socket)("phase 1 real isolated PostgreSQL permissions", () => {
+  it("a retry race touching zero lease-guarded run rows differs from a confirmed retry", () => fixture(async tx => {
+    const run = (await tx`INSERT INTO public.opleverruns(station_id,status,lease_tot) VALUES(${station},'mislukt',clock_timestamp()+interval '5 minutes') RETURNING id`)[0].id;
+    await as(tx, "service_role");
+    expect((await tx`UPDATE public.opleverruns SET status='aangevraagd' WHERE id=${run} AND (lease_tot IS NULL OR lease_tot<clock_timestamp()) RETURNING id`).length).toBe(0);
+    await as(tx, "postgres");
+    await tx`UPDATE public.opleverruns SET lease_tot=NULL WHERE id=${run}`;
+    await as(tx, "service_role");
+    expect((await tx`UPDATE public.opleverruns SET status='aangevraagd' WHERE id=${run} AND (lease_tot IS NULL OR lease_tot<clock_timestamp()) RETURNING id`)[0].id).toBe(run);
+  }));
   it("revokes every default table privilege while RPCs and service grants keep working", () => fixture(async tx => {
     await tx.unsafe("GRANT ALL ON public.beheer_sessies TO anon,authenticated");
     expect((await tx`SELECT has_table_privilege('anon','public.beheer_sessies','TRUNCATE') AS ok`)[0].ok).toBe(true);

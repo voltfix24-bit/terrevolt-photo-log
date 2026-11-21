@@ -1,4 +1,5 @@
 import { zorgVoorBeheer } from "@/lib/require-pin";
+import { verwijderVoorbeeld } from "@/lib/fotos-service";
 import { useState, useRef, useCallback } from "react";
 import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -94,12 +95,11 @@ export function CategorieSettingsDialog({ open, onOpenChange }: { open: boolean;
 
   const handleDelete = async (v: VoorbeeldFoto) => {
     if (!internetVereist() || !await zorgVoorBeheer()) return;
-    const { error } = await supabase.from("categorie_voorbeelden").delete().eq("id", v.id);
+    const result = await verwijderVoorbeeld(v.id, v.storage_path);
+    if (!result.ok) { toast.error("Niet verwijderd — controleer de beheerstatus"); return; }
     queryClient.invalidateQueries({ queryKey: ["categorie_voorbeelden"] });
-    if (error) { toast.error("Verwijderen mislukt"); return; }
-    const { error: rmErr } = await supabase.storage.from("to-fotos").remove([v.storage_path]);
-    if (rmErr) console.error("[voorbeelden] bestand niet verwijderd:", v.storage_path);
-    toast.success("Voorbeeld verwijderd");
+    if (result.bestandBlijft) toast.error("Voorbeeldregistratie verwijderd, bestand nog niet verwijderd");
+    else toast.success("Voorbeeld verwijderd");
   };
 
   const filtered = CATEGORIES.filter(

@@ -55,6 +55,10 @@ export function aantalLokaleNotities(stationId: string): number {
   return Object.values(lees()).filter(item => item.stationId === stationId).length;
 }
 
+export function heeftBeheerGeblokkeerdeNotities(stationId: string): boolean {
+  return Object.values(lees()).some(item => item.stationId === stationId && item.fout === "beheer");
+}
+
 let versturen: Promise<number> | undefined;
 export function verstuurNotities(): Promise<number> {
   if (!navigator.onLine) return Promise.resolve(0);
