@@ -22,7 +22,7 @@ export function useSkippedCategories(stationId: string | undefined) {
       return raw ? JSON.parse(raw) : {};
     } catch { return {}; }
   });
-  const { data: storedSkips } = useQuery({
+  const { data: storedSkips, isError: skipsFout } = useQuery({
     queryKey: ['categorie-skips', stationId],
     queryFn: async () => {
       const { data, error } = await supabase.from('categorie_skips').select('categorie, reden').eq('station_id', stationId ?? '');
@@ -83,5 +83,5 @@ export function useSkippedCategories(stationId: string | undefined) {
 
   const isSkipped = useCallback((catName: string) => skipped.includes(catName), [skipped]);
 
-  return { skipped, skippedReasons, addSkip, removeSkip, toggleSkip, isSkipped };
+  return { skipped, skippedReasons, addSkip, removeSkip, toggleSkip, isSkipped, skipsGeladen: !!storedSkips, skipsFout };
 }

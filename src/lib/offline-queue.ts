@@ -239,3 +239,24 @@ export async function getQueueCountVoor(stationId: string): Promise<number> {
   await tx.done;
   return n;
 }
+
+export type WachtrijSamenvatting = { totaal: number; open: number; bezig: number; fout: number; verstuurd: number };
+/** Statusaantallen van één station via key-cursors en status-indexsleutels (geen blobs/value-cursors). */
+export async function getWachtrijSamenvattingVoor(stationId: string): Promise<WachtrijSamenvatting> {
+  const d = await getDB();
+  const tx = d.transaction('photo-queue', 'readonly');
+  const idx = tx.store.index('by-status');
+  const [done, err, up] = await Promise.all([idx.getAllKeys('done'), idx.getAllKeys('error'), idx.getAllKeys('uploading')]);
+  const sDone = new Set(done), sErr = new Set(err), sUp = new Set(up);
+  const s: WachtrijSamenvatting = { totaal: 0, open: 0, bezig: 0, fout: 0, verstuurd: 0 };
+  let cursor = await tx.store.index('by-station').openKeyCursor(IDBKeyRange.only(stationId));
+  while (cursor) {
+    const k = cursor.primaryKey;
+    s.totaal++;
+    if (sDone.has(k)) s.verstuurd++;
+    else { s.open++; if (sErr.has(k)) s.fout++; else if (sUp.has(k)) s.bezig++; }
+    cursor = await cursor.continue();
+  }
+  await tx.done;
+  return s;
+}

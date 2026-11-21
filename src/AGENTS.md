@@ -21,3 +21,6 @@
 - Party choice lives in the URL (?partij), independent of the executor filter in localStorage; lane headers count actions and unique cases separately. Why: cases ≠ actions.
 
 - Mobile UI: interactive controls ≥44px (frequent ≥48px), inputs ≥16px (CSS !important on mobile), small text ≥4.5:1; TO accents #8FA88F/#1F4E8C/#B33A3A/#1F5C3A stay, light accents get dark text. Why: user-approved readability baseline.
+- Beheerstatus comes only from src/lib/beheer-status-store.ts (one poller); pages with their own BeheerCompact register via useCompacteBeheer to hide the global bar. Why: no duplicate banners or polling.
+- StationDetail progress and its single primary action come from stationWerkfase; unknown/local/rejection signals mean "begonnen", loading/read errors show no progress or action. Why: no false new/complete claims.
+- StationDetail: normal SharePoint status lives in Casegegevens (deel="normaal"), exceptions always outside (deel="uitzondering"); queue summary via getWachtrijSamenvattingVoor (key cursors). Why: calm header without hiding problems.

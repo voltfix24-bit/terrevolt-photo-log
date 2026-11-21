@@ -12,14 +12,14 @@ import { requirePin } from "@/lib/require-pin";
 import { SECTIONS, type Category } from "@/lib/categories";
 import { useMergedCategories, type MergedCategory } from "@/hooks/use-categories";
 import { toast } from "sonner";
-import { useRef, useState, useCallback, useMemo, useEffect } from "react";
+import { useRef, useState, useCallback, useMemo, useEffect, type ReactNode } from "react";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { generatePdfHtml } from "@/lib/pdf-generator";
 import { useVoorbeelden } from "@/components/CategorieSettings";
 import { useInstellingen } from "@/hooks/use-theme";
-import { Kruimelpad, deelLink } from "@/components/url/Kruimelpad";
-import { beoordeelUrl, categorieUrl, caseUrl, korteUrl, opleverUrl, sectieUrl, type Sub } from "@/lib/urls";
+import { deelLink } from "@/components/url/Kruimelpad";
+import { beoordeelUrl, categorieUrl, caseUrl, jaarVan, korteUrl, opleverUrl, sectieUrl, type Sub } from "@/lib/urls";
 import { GlassBar, Pressable, T, R, ROW_MIN } from "@/components/apple/Primitives";
 import { useSkippedCategories } from "@/hooks/use-skipped-categories";
 import { useStationUpload } from "@/hooks/use-station-upload";
@@ -27,6 +27,12 @@ import { EditStationDialog } from "@/components/station/EditStationDialog";
 import { SectieKaart } from "@/components/station/SectieKaart";
 import { ShareSheet } from "@/components/station/ShareSheet";
 import type { FotoRow } from "@/components/station/types";
+import { BeheerCompact } from "@/components/BeheerStatus";
+import { useCompacteBeheer } from "@/lib/beheer-status-store";
+import { useStationWachtrij } from "@/hooks/use-station-wachtrij";
+import { stationWerkfase } from "@/lib/station-werkfase";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 /* ==================== MAIN COMPONENT ==================== */
 
@@ -51,7 +57,12 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
   const [shareStation, setShareStation] = useState('');
   const { data: voorbeelden } = useVoorbeelden();
   const { data: instellingenData } = useInstellingen();
-  const { skipped, skippedReasons, addSkip, removeSkip, isSkipped } = useSkippedCategories(id);
+  const { skipped, skippedReasons, addSkip, removeSkip, isSkipped, skipsGeladen, skipsFout } = useSkippedCategories(id);
+  const [gegevensOpen, setGegevensOpen] = useState(false);
+  const scrollNaarDocumenten = useRef(false);
+  const barRef = useRef<HTMLDivElement | null>(null);
+  const [barH, setBarH] = useState(0);
+  const wachtrij = useStationWachtrij(id);
   const { data: opmerkingen } = useQuery({
     queryKey: ['opmerkingen', id],
     queryFn: async () => {
@@ -103,7 +114,17 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
     })).filter(g => g.categories.length > 0);
   }, [applicableCategories]);
 
-  const { data: fotos } = useQuery({
+  // Afgekeurde foto's tellen als eerdere context (herindiening is geen nieuw station); prefix ["fotos", id] houdt invalidaties gelijk.
+  const { data: afgekeurd, isError: afgekeurdFout } = useQuery({
+    queryKey: ["fotos", id, "afgekeurd-aantal"],
+    queryFn: async () => {
+      const { count, error } = await supabase.from("fotos").select("id", { count: "exact", head: true }).eq("station_id", id!).eq("review_status", "rejected");
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+
+  const { data: fotos, isError: fotosFout, refetch: refetchFotos } = useQuery({
     queryKey: ["fotos", id],
     queryFn: async () => {
       const { data, error } = await supabase.from("fotos").select("*").eq("station_id", id!).neq("review_status", "rejected").order("volgorde", { ascending: true });
@@ -197,7 +218,9 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
       setTimeout(() => sectionRefs.current[sub.sectionId]?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
     } else if (sub.soort === "documenten") {
       deeplinkRef.current = subKey;
-      setTimeout(() => documentenRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+      // Documenten staan in de ingeklapte Casegegevens: eerst openen, scrollen pas na zichtbaarheid.
+      scrollNaarDocumenten.current = true;
+      setGegevensOpen(true);
     } else if (sub.soort === "categorie") {
       if (applicableCategories.length === 0 || !fotos) return;
       deeplinkRef.current = subKey;
@@ -224,18 +247,23 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
     }
   }, [station, sub, navigate]);
 
-  // Find next incomplete category across applicable categories
-  const nextIncomplete = useMemo(() => {
-    for (const cat of applicableCategories) {
-      if (!catDone(cat) && !isSkipped(cat.name)) {
-        return cat;
-      }
-    }
-    return null;
-  }, [catDone, isSkipped, applicableCategories]);
-
-  const allDone = !nextIncomplete;
   const vergrendeld = station?.status === 'opgeleverd' || station?.status === 'goedgekeurd';
+  const bewarenAantal = Object.values(bewaren).reduce((a, b) => a + b, 0);
+
+  const werkfase = useMemo(() => stationWerkfase({
+    status: station?.status ?? null,
+    submittedAt: station?.submitted_at ?? null,
+    reviewReden: station?.review_reden ?? null,
+    categorieen: applicableCategories,
+    fotosPerCategorie: fotos ? Object.fromEntries(applicableCategories.map((c) => [c.name, fotosByCategorie(c.name).length])) : null,
+    overgeslagen: skipsGeladen ? new Set(skipped) : null,
+    afgekeurd: afgekeurdFout ? null : (afgekeurd ?? null),
+    lokaal: wachtrij.samenvatting ? wachtrij.samenvatting.totaal : null,
+    bewaren: bewarenAantal,
+    leesFout: fotosFout || skipsFout,
+  }), [station, applicableCategories, fotos, fotosByCategorie, skipsGeladen, skipped, afgekeurd, afgekeurdFout, wachtrij.samenvatting, bewarenAantal, fotosFout, skipsFout]);
+
+  useCompacteBeheer(!!station);
 
   // Auto-expand first incomplete section on load
   useEffect(() => {
@@ -249,14 +277,88 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
     }
   }, [fotos]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (!gegevensOpen || !scrollNaarDocumenten.current) return;
+    const f = requestAnimationFrame(() => {
+      if (!documentenRef.current) return;
+      scrollNaarDocumenten.current = false;
+      documentenRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => cancelAnimationFrame(f);
+  }, [gegevensOpen, station]);
+
+  const toonBar = !!station && !wizardOpen && werkfase.soort !== "laden" && werkfase.soort !== "leesfout";
+  useEffect(() => {
+    const el = barRef.current;
+    if (!toonBar || !el) { setBarH(0); return; }
+    const meet = () => setBarH(el.getBoundingClientRect().height);
+    meet();
+    const ro = new ResizeObserver(meet);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [toonBar, werkfase.soort]);
+
   if (isLoading) return <PaginaLader label="Station laden…" />;
 
   if (!station) {
     return <div className="flex min-h-screen items-center justify-center bg-background text-text-primary">Station niet gevonden</div>;
   }
 
+  const og = station.opdrachtgever ?? 'de opdrachtgever';
+  const alleFotosBekijken = () => {
+    if (!fotos || fotos.length === 0) { toast.info("Geen foto's"); return; }
+    setLightboxSlides(fotos.map((f) => ({ src: f.url })));
+    setLightboxIndex(0);
+    setLightboxOpen(true);
+  };
+  const toonDocumenten = () => {
+    if (gegevensOpen) documentenRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    else { scrollNaarDocumenten.current = true; setGegevensOpen(true); }
+  };
+  const wijzig = async () => { if (vergrendeld && !(await requirePin("Dossier is opgeleverd", "Voer de toegangscode in om te wijzigen."))) return; setEditOpen(true); };
+
+  const beoordeelbaar = station.status === 'opgeleverd' && station.uitvoerder === 'terrevolt';
+  const actie: { label: string; hint?: string; icoon: string; doe: () => void } | null =
+    werkfase.soort === "nieuw" ? { label: "Start fotowerk", hint: `Eerst: ${werkfase.volgende.name}`, icoon: "photo_camera", doe: () => openWizardAt(werkfase.volgende as MergedCategory) }
+    : werkfase.soort === "bezig" ? { label: "Verder met fotowerk", hint: `Volgende: ${werkfase.volgende.name}`, icoon: "arrow_forward", doe: () => openWizardAt(werkfase.volgende as MergedCategory) }
+    : werkfase.soort === "ingevuld" ? { label: "Opleveren", hint: "Controleer en lever het fotodossier op.", icoon: "arrow_forward", doe: () => navigate(opleverUrl(station)) }
+    : werkfase.soort === "opgeleverd" ? (beoordeelbaar
+        ? { label: "Dossier beoordelen", hint: "Wijzigen kan alleen met de toegangscode.", icoon: "fact_check", doe: () => navigate(beoordeelUrl(station)) }
+        : { label: "Foto's bekijken", hint: "Wijzigen kan alleen met de toegangscode.", icoon: "photo_library", doe: alleFotosBekijken })
+    : werkfase.soort === "goedgekeurd" ? { label: "Foto's bekijken", hint: "Wijzigen kan alleen met de toegangscode.", icoon: "photo_library", doe: alleFotosBekijken }
+    : null;
+
+  const aantalFotos = fotos?.length ?? 0;
+  const metFoto = applicableCategories.filter(c => fotosByCategorie(c.name).length > 0).length;
+  const nvt = applicableCategories.filter(c => fotosByCategorie(c.name).length === 0 && isSkipped(c.name)).length;
+  const fotosTekst = (n: number) => `${n} foto${n === 1 ? "" : "'s"}`;
+  const casenaamAnders = !!station.casenaam?.trim() && station.casenaam.trim().toLowerCase() !== station.naam_msr.trim().toLowerCase();
+  const ids = [station.casenummer?.trim() && `Case ${station.casenummer.trim()}`, station.behuizingsnummer?.trim() && `Behuizing ${station.behuizingsnummer.trim()}`].filter(Boolean) as string[];
+  const q = wachtrij.samenvatting;
+  const nogTeVersturen = q ? q.open - q.fout : 0;
+
+  const voortgang = (() => {
+    switch (werkfase.soort) {
+      case "laden": return { titel: "Fotostatus laden…", sub: null as string | null, deel: null as number | null };
+      case "leesfout": return { titel: "Fotostatus kon niet worden gelezen", sub: "Er wordt geen voortgang getoond tot de gegevens geladen zijn.", deel: null };
+      case "nieuw": return { titel: `Nog niet gestart · 0 van ${werkfase.totaal} onderdelen`, sub: null, deel: 0 };
+      case "bezig": return { titel: `${werkfase.ingevuld} van ${werkfase.totaal} onderdelen ingevuld`, sub: null, deel: werkfase.ingevuld / werkfase.totaal };
+      case "ingevuld": return { titel: "Fotochecklist ingevuld", sub: `Nog niet opgeleverd · ${fotosTekst(werkfase.fotos)}`, deel: null };
+      case "opgeleverd": return { titel: `Opgeleverd aan ${og}`, sub: `Wacht op beoordeling · ${fotosTekst(aantalFotos)}`, deel: null };
+      case "goedgekeurd": return { titel: `Goedgekeurd door ${og}`, sub: fotosTekst(aantalFotos), deel: null };
+    }
+  })();
+
+  const meerItem = "min-h-[48px] text-[16px] gap-3";
+  const rij = (label: string, waarde: ReactNode) => (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: "2px 12px", padding: "10px 0", borderTop: `1px solid ${T.hairline}` }}>
+      <dt style={{ minWidth: 120, fontSize: 15, color: T.subOnBg }}>{label}</dt>
+      <dd style={{ flex: "1 1 160px", fontSize: 16, color: T.rowText, overflowWrap: "anywhere" }}>{waarde}</dd>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-background pb-28">
+    <div className="min-h-screen bg-background">
       <Lightbox open={lightboxOpen} close={() => setLightboxOpen(false)} slides={lightboxSlides} index={lightboxIndex} />
       <EditStationDialog station={station} open={editOpen} onOpenChange={setEditOpen} onSaved={() => { queryClient.invalidateQueries({ queryKey: ["station", id] }); queryClient.invalidateQueries({ queryKey: ["stations"] }); }} />
 
@@ -287,58 +389,109 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
         />
       )}
 
-      <main className="pb-0 px-3 max-w-3xl mx-auto animate-fade-up" style={{ paddingTop: "calc(10px + env(safe-area-inset-top))" }}>
-        {/* ── 1. HERO ── */}
-        <div className="px-2 pt-2 pb-5">
-          {/* ROW 1: Navigation bar */}
-          <div className="flex flex-wrap items-center justify-between gap-x-2 mb-4">
+      <main className="px-3 max-w-3xl mx-auto animate-fade-up" style={{ paddingTop: "calc(6px + env(safe-area-inset-top))", paddingBottom: toonBar ? barH + 24 : 32 }}>
+        <div className="px-2 pb-3">
+          {/* 1. Navigatierij */}
+          <nav aria-label="Stationnavigatie" className="-mx-2 flex flex-wrap items-center justify-between gap-x-1 gap-y-1 mb-2">
             <Pressable
               onClick={() => navigate('/')}
               aria-label="Terug naar stations"
-              style={{ minHeight: 44, minWidth: 70, display: "flex", alignItems: "center", gap: 2, color: T.green, fontSize: 17, fontWeight: 500, textAlign: "left", marginLeft: -10, padding: "0 10px" }}
+              style={{ minHeight: 44, display: "flex", alignItems: "center", gap: 2, color: T.green, fontSize: 17, fontWeight: 500, marginLeft: -10, padding: "0 10px" }}
             >
-              <span className="material-symbols-rounded" style={{ fontSize: 21 }}>chevron_left</span>
+              <span className="material-symbols-rounded" style={{ fontSize: 21, width: 21, overflow: "hidden" }} aria-hidden>chevron_left</span>
               <span>Stations</span>
             </Pressable>
-            <div className="flex items-center gap-2">
-              <Pressable onClick={() => void deelLink(korteUrl(station), [station.casenummer, station.casenaam].filter(Boolean).join(" ") || station.naam_msr, toast)} style={{ minHeight: 44, padding: "0 8px", color: T.green, fontSize: 17 }}>Link kopiëren</Pressable>
-              <Pressable onClick={openPdf} style={{ minHeight: 44, padding: "0 8px", color: T.green, fontSize: 17 }}>Pdf</Pressable>
-              <Pressable onClick={async () => { if (vergrendeld && !(await requirePin("Dossier is opgeleverd", "Voer de toegangscode in om te wijzigen."))) return; setEditOpen(true); }} style={{ minHeight: 44, padding: "0 4px 0 8px", color: T.green, fontSize: 17 }}>Wijzig</Pressable>
+            <div className="ml-auto flex flex-wrap items-center justify-end gap-1">
+              <BeheerCompact />
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
+                  <button type="button" className="inline-flex min-h-[44px] min-w-[44px] items-center gap-0.5 rounded-full px-2 text-[16px] font-semibold" style={{ color: T.green }} aria-label="Meer acties">
+                    Meer<span className="material-symbols-rounded" style={{ fontSize: 22, width: 22, overflow: "hidden" }} aria-hidden>more_horiz</span>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-60 max-w-[calc(100vw-24px)]">
+                  <DropdownMenuItem className={meerItem} onSelect={openPdf}><span className="material-symbols-rounded" aria-hidden>picture_as_pdf</span>PDF bekijken</DropdownMenuItem>
+                  <DropdownMenuItem className={meerItem} onSelect={() => { setShareStation(station.naam_msr); setShareOpen(true); }}><span className="material-symbols-rounded" aria-hidden>ios_share</span>Delen</DropdownMenuItem>
+                  <DropdownMenuItem className={meerItem} onSelect={() => void deelLink(korteUrl(station), [station.casenummer, station.casenaam].filter(Boolean).join(" ") || station.naam_msr, toast)}><span className="material-symbols-rounded" aria-hidden>link</span>Link kopiëren</DropdownMenuItem>
+                  {vergrendeld && actie?.label !== "Foto's bekijken" && <DropdownMenuItem className={meerItem} onSelect={alleFotosBekijken}><span className="material-symbols-rounded" aria-hidden>photo_library</span>Foto's bekijken</DropdownMenuItem>}
+                  {aantalFotos > 0 && <DropdownMenuItem className={meerItem} onSelect={() => void downloadZip()}><span className="material-symbols-rounded" aria-hidden>download</span>ZIP downloaden</DropdownMenuItem>}
+                  <DropdownMenuItem className={meerItem} onSelect={toonDocumenten}><span className="material-symbols-rounded" aria-hidden>folder_open</span>Documenten</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className={meerItem} onSelect={() => void wijzig()}><span className="material-symbols-rounded" aria-hidden>edit</span>Wijzig station</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
+          </nav>
+
+          {/* 2. Titel + identifiers */}
+          <h1 className="font-display leading-tight" style={{ overflowWrap: "anywhere", fontSize: 24, fontWeight: 600, color: T.titleOnBg }}>{station.naam_msr}</h1>
+          {ids.length > 0 && <p style={{ marginTop: 4, fontSize: 15, color: T.subOnBg }}>{ids.map((x, i) => <span key={x}>{i > 0 && " · "}<span style={{ whiteSpace: "nowrap" }}>{x}</span></span>)}</p>}
+
+          {/* 3. Casegegevens */}
+          <Collapsible open={gegevensOpen} onOpenChange={setGegevensOpen} className="mt-3 rounded-2xl" style={{ background: T.surface, border: `1px solid ${T.cardBorder}` }}>
+            <CollapsibleTrigger className="flex w-full items-center justify-between px-4 text-left" style={{ minHeight: 48, fontSize: 16, fontWeight: 600, color: T.titleOnBg }}>
+              Casegegevens
+              <span className="material-symbols-rounded" aria-hidden style={{ fontSize: 22, color: T.green, transform: gegevensOpen ? "rotate(180deg)" : undefined }}>expand_more</span>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="px-4 pb-3">
+              <dl>
+                {station.opdrachtgever && rij("Opdrachtgever", station.opdrachtgever)}
+                {rij("Jaar", jaarVan(station))}
+                {casenaamAnders && rij("Casenaam", station.casenaam)}
+                {station.type_ruimte && rij("Type ruimte", station.type_ruimte)}
+                {station.datum && rij("Datum", station.datum)}
+                {station.ingevuld_door && rij("Ingevuld door", station.ingevuld_door)}
+                {fotos && rij("Foto's", `${metFoto} met foto · ${nvt} N.v.t. · ${fotosTekst(aantalFotos)}`)}
+              </dl>
+              <div style={{ borderTop: `1px solid ${T.hairline}`, paddingTop: 4 }}><SharePointStatus station={station} deel="normaal" /></div>
+              <div ref={documentenRef} style={{ scrollMarginTop: 16 }}><SharePointDocumenten stationId={station.id} /></div>
+            </CollapsibleContent>
+          </Collapsible>
+
+          {/* Uitzonderingen blijven altijd zichtbaar */}
+          <div className="mt-3">
+            <OpleverStatus stationId={station.id} />
+            <SharePointStatus station={station} deel="uitzondering" />
+            {station.status === 'in uitvoering' && station.review_reden && (
+              <div role="status" style={{ background: T.dangerBg, borderRadius: R.group, padding: "12px 14px", marginBottom: 12 }}>
+                <div style={{ fontSize: 14, color: T.danger, fontWeight: 600, marginBottom: 3 }}>Afgekeurd door {og}</div>
+                <div style={{ fontSize: 15, color: T.rowText, lineHeight: 1.4 }}>{station.review_reden}</div>
+              </div>
+            )}
+            {wachtrij.leesFout && (
+              <div role="alert" style={{ fontSize: 15, color: T.danger, fontWeight: 600, marginBottom: 8 }}>Fotowachtrij op dit toestel kan niet worden gelezen — controleer de opslag van dit apparaat.</div>
+            )}
+            {bewarenAantal > 0 && <div role="status" style={{ fontSize: 15, color: T.bodyOnBg, marginBottom: 8 }}>{fotosTekst(bewarenAantal)} worden bewaard op dit toestel…</div>}
+            {q && q.fout > 0 && (
+              <div role="alert" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0 12px", marginBottom: 8 }}>
+                <span style={{ fontSize: 15, color: T.danger, fontWeight: 600 }}>{fotosTekst(q.fout)} niet verstuurd</span>
+                <Pressable onClick={() => { if (internetVereist()) void verstuur(); }} style={{ minHeight: 44, color: T.green, fontSize: 15, fontWeight: 600, padding: 0 }}>Versturen mislukt — opnieuw proberen</Pressable>
+              </div>
+            )}
+            {nogTeVersturen > 0 && (
+              <div role="status" style={{ fontSize: 15, color: T.upload, fontWeight: 600, marginBottom: 8 }}>
+                {q!.bezig > 0 ? `Bezig met versturen · ${fotosTekst(nogTeVersturen)}` : `${fotosTekst(nogTeVersturen)} nog te versturen`}
+              </div>
+            )}
           </div>
 
-          {sub && <Kruimelpad station={station} sectionId={sub.soort === "sectie" || sub.soort === "categorie" ? sub.sectionId : undefined} categorieId={sub.soort === "categorie" ? sub.categorieId : undefined} />}
-          {/* ROW 2: Station info */}
-          {station.behuizingsnummer && <div style={{ fontSize: 14, color: T.subOnBg, fontFamily: "ui-monospace, monospace", marginBottom: 4 }}>{station.behuizingsnummer}</div>}
-          {(station.casenummer || station.casenaam) && <div style={{ overflowWrap: "anywhere", fontSize: 14, color: T.subOnBg, marginBottom: 4 }}>Case: {[station.casenummer, station.casenaam].filter(Boolean).join(" · ")}</div>}
-          <h1 className="font-display leading-tight mb-1" style={{ overflowWrap: "anywhere", fontSize: 28, fontWeight: 500, color: T.titleOnBg }}>
-            {station.naam_msr}
-          </h1>
-          <p className="mb-5" style={{ fontSize: 14, color: T.subOnBg }}>
-            {[station.datum, station.ingevuld_door].filter(Boolean).join(' · ')}
-          </p>
-          <OpleverStatus stationId={station.id} />
-          <SharePointStatus station={station} />
-          <div ref={documentenRef} style={{ scrollMarginTop: 16 }}><SharePointDocumenten stationId={station.id} /></div>
-
-          {station.status === 'in uitvoering' && station.review_reden && (
-            <div style={{ background: T.dangerBg, borderRadius: R.group, padding: "12px 14px", marginBottom: 16 }}>
-              <div style={{ fontSize: 13, color: T.danger, marginBottom: 3 }}>Afgekeurd door {station.opdrachtgever ?? 'de opdrachtgever'}</div>
-              <div style={{ fontSize: 15, color: T.rowText, lineHeight: 1.4 }}>{station.review_reden}</div>
-            </div>
-          )}
-
-          {/* Progress row */}
-          <div>
-            <div className="font-display leading-tight" style={{ fontSize: 34, fontWeight: 500, color: T.titleOnBg }}>
-              {allDone ? 'Alle taken afgerond' : `${applicableCategories.filter(c => !catDone(c) && !isSkipped(c.name)).length} taken open`}
-            </div>
-            <div className="mt-1" style={{ fontSize: 15, color: T.subOnBg }}>{applicableCategories.filter(c => fotosByCategorie(c.name).length > 0).length} gefotografeerd · {applicableCategories.filter(c => fotosByCategorie(c.name).length === 0 && isSkipped(c.name)).length} N.v.t. · {fotos?.length ?? 0} foto&apos;s</div>
+          {/* 4. Voortgang */}
+          <div className="mt-2" role="status" aria-live="polite">
+            <div style={{ fontSize: 18, fontWeight: 600, color: werkfase.soort === "leesfout" ? T.danger : T.titleOnBg, lineHeight: 1.3 }}>{voortgang.titel}</div>
+            {voortgang.sub && <div style={{ marginTop: 2, fontSize: 15, color: T.subOnBg }}>{voortgang.sub}</div>}
+            {voortgang.deel !== null && (
+              <div aria-hidden style={{ marginTop: 8, height: 6, borderRadius: 3, background: T.softBorder, overflow: "hidden" }}>
+                <div style={{ width: `${Math.round(voortgang.deel * 100)}%`, height: "100%", background: T.green }} />
+              </div>
+            )}
+            {werkfase.soort === "leesfout" && (
+              <Pressable onClick={() => { void refetchFotos(); void queryClient.invalidateQueries({ queryKey: ['categorie-skips', id] }); }} style={{ minHeight: 44, color: T.green, fontSize: 15, fontWeight: 600, padding: 0 }}>Opnieuw proberen</Pressable>
+            )}
           </div>
         </div>
 
-        {/* ── 2. SECTION ACCORDION ── */}
-        <div className="mb-8">
+        {/* 5. Categorieën */}
+        <div className="mb-4">
           {sectionGroups.map(({ section, categories: cats }) => (
             <SectieKaart
               key={section.id}
@@ -356,77 +509,23 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
             />
           ))}
         </div>
-        {vergrendeld && !wizardOpen && <div aria-hidden="true" style={{ height: station?.status === 'opgeleverd' ? 250 : 190 }} />}
       </main>
 
-      {/* ── BOTTOM CTA ── */}
-      {nextIncomplete && !wizardOpen && !vergrendeld && (
-        <GlassBar style={{ position: "fixed", left: 0, right: 0 }}>
-          <Pressable
-            onClick={() => openWizardAt(nextIncomplete)}
-            style={{ width: "100%", maxWidth: 768, margin: "0 auto", minHeight: ROW_MIN, background: T.green, color: T.surface, borderRadius: R.control, fontSize: 17, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", gap: 9, padding: "0 16px" }}
-          >
-            Doorgaan: <span className="truncate">{nextIncomplete.name}</span><span className="material-symbols-rounded" style={{ fontSize: 20 }}>arrow_forward</span>
-          </Pressable>
-        </GlassBar>
-      )}
-      {allDone && !wizardOpen && !vergrendeld && (
-        <GlassBar style={{ position: "fixed", left: 0, right: 0 }}>
-          <div className="flex gap-2.5 max-w-3xl mx-auto">
-            <Pressable
-              onClick={() => navigate(opleverUrl(station))}
-              style={{ flex: 1, minHeight: ROW_MIN, background: T.green, color: T.surface, borderRadius: R.control, fontSize: 17, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", gap: 9 }}
-            >
-              Opleveren
-              <span className="material-symbols-rounded" style={{ fontSize: 20 }}>arrow_forward</span>
-            </Pressable>
-            <Pressable onClick={openPdf} style={{ minHeight: ROW_MIN, padding: "0 8px", color: T.green, fontSize: 17, flexShrink: 0 }}>Pdf</Pressable>
-            <Pressable
-              onClick={() => { setShareStation(station?.naam_msr || ''); setShareOpen(true); }}
-              style={{ minHeight: ROW_MIN, padding: "0 8px", color: T.green, fontSize: 17, flexShrink: 0 }}
-            >
-              Delen
-            </Pressable>
-          </div>
-        </GlassBar>
-      )}
-      {vergrendeld && !wizardOpen && (
-        <GlassBar style={{ position: "fixed", left: 0, right: 0 }}>
-          <div className="max-w-3xl mx-auto" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ textAlign: "center", fontSize: 14, color: T.subOnBg, lineHeight: 1.4 }}>
-              {station?.status === 'goedgekeurd'
-                ? `Goedgekeurd door ${station?.opdrachtgever ?? 'de opdrachtgever'}. Wijzigen kan alleen met de toegangscode.`
-                : `Opgeleverd aan ${station?.opdrachtgever ?? 'de opdrachtgever'}. Wijzigen kan alleen met de toegangscode.`}
-            </div>
-            {station?.status === 'opgeleverd' && station?.uitvoerder === 'terrevolt' && (
-              <Pressable onClick={() => navigate(beoordeelUrl(station))} style={{ minHeight: ROW_MIN, background: T.surface, color: T.green, borderRadius: R.control, fontSize: 17, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, border: `1px solid ${T.green}` }}>
-                <span className="material-symbols-rounded" style={{ fontSize: 20 }}>fact_check</span>
-                Dossier beoordelen
-              </Pressable>
-            )}
-            <div className="flex gap-2.5">
+      {/* ── Eén hoofdactie onderin ── */}
+      {toonBar && actie && (
+        <div ref={barRef} data-testid="hoofdactie-balk" style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 20 }}>
+          <GlassBar style={{ position: "relative" }}>
+            <div className="max-w-3xl mx-auto" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {actie.hint && <div style={{ fontSize: 15, color: T.bodyOnBg, lineHeight: 1.35, overflowWrap: "anywhere" }}>{actie.hint}</div>}
               <Pressable
-                onClick={() => {
-                  if (!fotos || fotos.length === 0) { toast.info("Geen foto's"); return; }
-                  setLightboxSlides(fotos.map((f) => ({ src: f.url })));
-                  setLightboxIndex(0);
-                  setLightboxOpen(true);
-                }}
-                style={{ flex: 1, minHeight: ROW_MIN, background: T.green, color: T.surface, borderRadius: R.control, fontSize: 17, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", gap: 9 }}
+                onClick={actie.doe}
+                style={{ width: "100%", minHeight: 52, background: T.green, color: T.surface, borderRadius: R.control, fontSize: 17, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 9, padding: "8px 16px", whiteSpace: "normal", textAlign: "center" }}
               >
-                Foto's bekijken
-                <span className="material-symbols-rounded" style={{ fontSize: 20 }}>photo_library</span>
-              </Pressable>
-              <Pressable
-                onClick={downloadZip}
-                style={{ minHeight: ROW_MIN, padding: "0 16px", background: T.surface, color: T.green, borderRadius: R.control, fontSize: 17, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, flexShrink: 0 }}
-              >
-                <span className="material-symbols-rounded" style={{ fontSize: 20 }}>download</span>
-                ZIP
+                {actie.label}<span className="material-symbols-rounded" style={{ fontSize: 20 }} aria-hidden>{actie.icoon}</span>
               </Pressable>
             </div>
-          </div>
-        </GlassBar>
+          </GlassBar>
+        </div>
       )}
       {/* Share bottom sheet */}
       {shareOpen && <ShareSheet stationNaam={shareStation} onClose={() => setShareOpen(false)} onZip={downloadZip} />}

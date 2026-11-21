@@ -19,7 +19,8 @@ export function nietSyncReden(s: StationInfo): string | null {
   return null;
 }
 
-export function SharePointStatus({ station }: { station: StationInfo }) {
+/** deel: "normaal" = gewone status (bij gegevens), "uitzondering" = alleen fouten/uitstel (altijd zichtbaar). */
+export function SharePointStatus({ station, deel = "alles" }: { station: StationInfo; deel?: "alles" | "normaal" | "uitzondering" }) {
   const stationId = station.id;
   const reden = nietSyncReden(station);
   const qc = useQueryClient();
@@ -50,9 +51,13 @@ export function SharePointStatus({ station }: { station: StationInfo }) {
   const vorigeVersie = !!run?.id && sync?.status === "gelukt" && sync.pdf_run !== run.id;
   const ketenActief = !handmatigeSyncToegestaan(run);
 
+  const uitzondering = !reden && (!!syncError || !!runError || !!queueError || (!(bezig || sync?.status === "bezig") && (!!wachtrij || sync?.status === "mislukt")));
+  if (deel === "normaal" && uitzondering) return null;
+  if (deel === "uitzondering" && !uitzondering) return null;
+  const marge = deel === "alles" ? { marginTop: -8, marginBottom: 16 } : { marginBottom: deel === "uitzondering" ? 8 : 0 };
   if (reden) {
     return (
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: -8, marginBottom: 16, fontSize: 15, color: T.subOnBg, fontWeight: 600, minHeight: 44 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, ...marge, fontSize: 15, color: T.subOnBg, fontWeight: 600, minHeight: 44 }}>
         <span className="material-symbols-rounded" style={{ fontSize: 20 }}>cloud_off</span>Nog niet naar SharePoint: {reden}
       </div>
     );
@@ -89,7 +94,7 @@ export function SharePointStatus({ station }: { station: StationInfo }) {
         : { icon: "cloud_upload", tekst: "Nog niet in SharePoint", kleur: T.subOnBg };
 
   return (
-    <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "4px 12px", marginTop: -8, marginBottom: 16, fontSize: 15 }}>
+    <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "4px 12px", ...marge, fontSize: 15 }}>
       {sync?.status === "gelukt" && sync.sharepoint_url && !loopt ? (
         <a href={sync.sharepoint_url} target="_blank" rel="noreferrer" style={{ display: "flex", alignItems: "center", gap: 6, color: label.kleur, fontWeight: 600, minHeight: 44 }}>
           <span className="material-symbols-rounded" style={{ fontSize: 20 }}>{label.icon}</span>{label.tekst}
