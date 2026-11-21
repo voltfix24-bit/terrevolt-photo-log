@@ -21,6 +21,18 @@ export function wachtrijPad(stationId: string, categorie: string, queueId: strin
   return `stations/${stationId}/${catSlug(categorie)}/q_${veiligeNaam(queueId)}.${extVan(blob, naam)}`;
 }
 
+/**
+ * Bestaande registratie van een wachtrij-item (q_{queueId}.*), ongeacht extensie. Een oud item zonder
+ * vastgelegd pad kan eerder al als .png geregistreerd zijn; dan hergebruiken we dat pad.
+ */
+export async function geregistreerdWachtrijPad(stationId: string, categorie: string, queueId: string, db: Db = supabase): Promise<string | null> {
+  const prefix = `stations/${stationId}/${catSlug(categorie)}/q_${veiligeNaam(queueId)}.`;
+  const { data, error } = await db.from("fotos").select("storage_path").eq("station_id", stationId).like("storage_path", `${prefix}%`).limit(1);
+  if (error) throw new Error(String(error.message ?? error));
+  const p = Array.isArray(data) ? (data[0] as { storage_path?: string } | undefined)?.storage_path : undefined;
+  return p && p.startsWith(prefix) ? p : null;
+}
+
 export type UploadResultaat = { ok: true; pad: string; url: string; al: boolean } | { ok: false; fout: string; stap: "opslag" | "registratie" };
 
 type Registratie = { stationId: string; categorie: string; volgorde: number };

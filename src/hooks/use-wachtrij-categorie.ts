@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getCategorieItems, QUEUE_EVENT, type QueueStatus } from "@/lib/offline-queue";
 
-export type WachtrijFoto = { id: string; pad?: string; url: string; status: QueueStatus; fout?: string; beheer: boolean; fileName: string };
+export type WachtrijFoto = { id: string; pad?: string; url: string; status: QueueStatus; fout?: string; beheer: boolean; fileName: string; timestamp?: string };
 
 // Gedeelde object-URL's per queue-ID met referentietelling: remounts en categoriewissels houden
 // dezelfde preview, en een URL wordt pas ingetrokken als niemand hem meer toont.
@@ -22,33 +22,67 @@ function laat(id: string) {
 }
 export const _previewUrls = urls;
 
-/** Duurzame wachtrijstatus van één categorie; laadt alleen de blobs van deze categorie. */
-export function useWachtrijCategorie(stationId: string | undefined, categorie: string | undefined) {
-  const [items, setItems] = useState<WachtrijFoto[]>([]);
+/**
+ * Duurzame wachtrijstatus van één categorie; laadt alleen de blobs van deze categorie.
+ * Iedere read is gebonden aan station+categorie en een generatie: een verouderde read (na wissel of
+ * unmount) neemt geen state of object-URL-referenties over. Een bevestigd verstuurde foto blijft als
+ * "Verstuurd" zichtbaar tot de serverlijst hetzelfde pad bevat, ook als de wachtrij hem al opruimde.
+ */
+export function useWachtrijCategorie(stationId: string | undefined, categorie: string | undefined, serverPaden?: ReadonlySet<string>) {
+  const sleutel = stationId && categorie ? `${stationId}\u0000${categorie}` : "";
+  const [staat, setStaat] = useState<{ sleutel: string; items: WachtrijFoto[] }>({ sleutel: "", items: [] });
   const [leesFout, setLeesFout] = useState(false);
   const vast = useRef<Set<string>>(new Set());
+  const bewaardVerstuurd = useRef<Map<string, WachtrijFoto>>(new Map());
+  const generatie = useRef(0);
+  const serverRef = useRef(serverPaden);
+  serverRef.current = serverPaden;
 
   const laad = useCallback(async () => {
-    if (!stationId || !categorie) { setItems([]); return; }
+    const gen = ++generatie.current;
+    if (!stationId || !categorie) { setStaat({ sleutel: "", items: [] }); return; }
     try {
       const rijen = await getCategorieItems(stationId, categorie);
+      if (gen !== generatie.current) return; // verouderd: niets overnemen
       rijen.sort((a, b) => a.timestamp.localeCompare(b.timestamp) || a.id.localeCompare(b.id));
       const nu = new Set(rijen.map((r) => r.id));
       for (const r of rijen) if (!vast.current.has(r.id)) { pak(r.id, r.file); vast.current.add(r.id); }
-      for (const id of [...vast.current]) if (!nu.has(id)) { laat(id); vast.current.delete(id); }
-      setItems(rijen.map((r) => ({ id: r.id, pad: r.pad, url: urls.get(r.id)!.url, status: r.status, fout: r.laatsteFout, beheer: r.foutSoort === "beheer", fileName: r.fileName })));
+      const lijst: WachtrijFoto[] = rijen.map((r) => ({ id: r.id, pad: r.pad, url: urls.get(r.id)!.url, status: r.status, fout: r.laatsteFout, beheer: r.foutSoort === "beheer", fileName: r.fileName, timestamp: r.timestamp }));
+      for (const w of lijst) if (w.status === "done") bewaardVerstuurd.current.set(w.id, w);
+      for (const id of [...vast.current]) {
+        if (nu.has(id)) continue;
+        const oud = bewaardVerstuurd.current.get(id);
+        if (oud && !(oud.pad && serverRef.current?.has(oud.pad))) continue; // nog niet in serverlijst: tegel houden
+        bewaardVerstuurd.current.delete(id); laat(id); vast.current.delete(id);
+      }
+      const extra = [...bewaardVerstuurd.current.values()].filter((w) => !nu.has(w.id));
+      setStaat({ sleutel: `${stationId}\u0000${categorie}`, items: [...lijst, ...extra].sort((a, b) => (a.timestamp ?? "").localeCompare(b.timestamp ?? "") || a.id.localeCompare(b.id)) });
       setLeesFout(false);
-    } catch { setLeesFout(true); }
+    } catch { if (gen === generatie.current) setLeesFout(true); }
   }, [stationId, categorie]);
 
   useEffect(() => {
     void laad();
     const h = () => void laad();
     window.addEventListener(QUEUE_EVENT, h);
-    const set = vast.current;
-    return () => { window.removeEventListener(QUEUE_EVENT, h); for (const id of set) laat(id); set.clear(); };
+    const set = vast.current; const verstuurd = bewaardVerstuurd.current;
+    return () => {
+      generatie.current++; // lopende reads verouderen (ook bij unmount)
+      window.removeEventListener(QUEUE_EVENT, h);
+      for (const id of set) laat(id); set.clear(); verstuurd.clear();
+    };
   }, [laad]);
 
+  // Zodra de serverlijst een vastgehouden verstuurde foto bevat, verdwijnt de lokale tegel (exact één).
+  const serverSleutel = serverPaden ? [...serverPaden].sort().join("|") : "";
+  useEffect(() => {
+    if (!serverPaden) return;
+    let weg = false;
+    for (const [id, w] of bewaardVerstuurd.current) if (w.pad && serverPaden.has(w.pad)) { bewaardVerstuurd.current.delete(id); if (vast.current.has(id)) { laat(id); vast.current.delete(id); } weg = true; }
+    if (weg) setStaat((s) => ({ ...s, items: s.items.filter((w) => !(w.pad && serverPaden.has(w.pad) && w.status === "done" && !bewaardVerstuurd.current.has(w.id) && !vast.current.has(w.id))) }));
+  }, [serverSleutel]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const items = staat.sleutel === sleutel ? staat.items : [];
   return { items, leesFout, herlaad: laad };
 }
 

@@ -37,15 +37,36 @@ export function volgendeNaBesluit(lijst: BeoordeelFoto[], huidig: string, nieuw:
   return naBesluit.some((f) => f.id === huidig) ? huidig : naBesluit[0]?.id ?? null;
 }
 
-/** Sneltoetsen alleen zonder modifier/IME/herhaling en buiten invoervelden, dialogen en andere knoppen. */
+/**
+ * Sneltoetsen alleen zonder modifier/IME/herhaling, met een daadwerkelijk zichtbare reviewregio
+ * (geen melding zoals opdrachtgever-mismatch), en niet vanuit invoer, dialogen, andere knoppen of thumbnails.
+ */
 export function sneltoetsToegestaan(e: Pick<KeyboardEvent, "key" | "repeat" | "isComposing" | "ctrlKey" | "metaKey" | "altKey" | "target">, regio: Element | null, dialoogOpen: boolean): boolean {
   if (dialoogOpen || e.repeat || e.isComposing || e.ctrlKey || e.metaKey || e.altKey || e.key === "Process") return false;
+  if (!regio || !regio.isConnected) return false;
   const t = e.target as HTMLElement | null;
-  if (!t || typeof t.closest !== "function") return true;
+  if (!t) return false;
+  if (typeof (t as unknown as Node).nodeType !== "number") return true; // Window: geen focus op een element
+  if (typeof t.closest !== "function") return false;
   if (t.closest("input, textarea, select, [contenteditable=''], [contenteditable='true'], [role='dialog']")) return false;
-  if (t === document.body || t === document.documentElement) return true;
-  return !!regio && regio.contains(t);
+  if (t === document.body || t === document.documentElement || t === regio) return true;
+  if (!regio.contains(t)) return false;
+  // Binnen de regio: geen andere bedieningselementen (knoppen, thumbs, links).
+  return !t.closest("button, a, [role='option'], [role='button'], summary");
 }
+
+/** Eén gedeelde actiebevoegdheid voor knoppen én sneltoetsen. */
+export function toegestaneActies(f: Pick<BeoordeelFoto, "review_status" | "afkeur_afgehandeld_op"> | null | undefined, beoordeelbaar: boolean, bezig: boolean) {
+  const kan = !!f && beoordeelbaar && !bezig;
+  const open = !!f && isOpenAfkeur(f);
+  return {
+    goedkeuren: kan && !open && f!.review_status !== "approved",
+    afkeuren: kan && !open && f!.review_status !== "rejected",
+    afhandelen: kan && open,
+  };
+}
+
+export const ONBEVESTIGD_TEKST = "Geen bevestiging van de server ontvangen. De wijziging is mogelijk wél opgeslagen; het dossier wordt ververst — controleer de foto voordat je opnieuw beslist.";
 
 export function eindcontroleOk(c: Eindcontrole | undefined | null): boolean {
   return !!c && c.station_status === "opgeleverd" && c.te_beoordelen === 0 && c.open_afkeuren === 0 && c.ontbrekend.length === 0;

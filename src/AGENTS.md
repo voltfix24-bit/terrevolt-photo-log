@@ -7,7 +7,17 @@
 - Fan existing mutation invalidations across all case/detail/WV/duplicate/resolver/station keys. Why: no divergent board or stale renamed links.
 - Count photo queues through counts/key cursors and refresh on queue events, never value cursors or polling photo blobs. Why: metadata reads must not deserialize files.
 - Keep offline photo and category-note modules eagerly available; lazy-load Excel and download-only modules. Why: revisiting opened photo routes offline must continue working without a service worker.
-- Dossier drafts persist with their dedicated note version and save on blur/unmount; conflicts require an explicit merge or server-text choice. Why: retries and navigation cannot silently overwrite colleagues.- Review UI: selection stays in the active filter, decision lock set before the PIN await, no global Enter, shortcuts only outside inputs/dialogs/foreign buttons. Why: predictable sequential review.
+- Dossier drafts persist with their dedicated note version and save on blur/unmount; conflicts require an explicit merge or server-text choice. Why: retries and navigation cannot silently overwrite colleagues.
+- Review UI: selection stays in the active filter, decision lock set before the PIN await, no global Enter, shortcuts only outside inputs/dialogs/foreign buttons. Why: predictable sequential review.
 - Every selected photo (online too) is prepared once and stored in the IndexedDB queue with a random queue-ID and frozen blob/path before transport; sends go only through syncPendingPhotos with an IDB lease. Why: durable identity, no duplicate rows across retries/tabs.
 - uploadEnRegistreer never deletes storage after an insert error; it re-reads by path (q_ paths are unique in DB). Why: an uncertain INSERT may be committed.
 - Wizard tiles come from server photos plus useWachtrijCategorie (per-category index, ref-counted object URLs), deduped by storage path; local photos never count as server proof. Why: status survives remounts.
+- Review operations (decide/undo/finalize) bind to their original station and a context generation; after the PIN await nothing is sent if the context changed, and committed results only update UI of the still-active context; route renders BeoordeelDossier with key=station. Why: no A-actions, undo or selection on B.
+- Review buttons and A/X shortcuts share toegestaneActies; shortcuts need a visible review region with a photo and never fire from other controls. Why: an open rejection is only resolved via explicit handling.
+- Queue finalisation (markDone/markError) is one owner-checked IDB transaction; sync plans a single timer at the earliest foreign lease expiry; legacy items reuse an already registered q_{id}.* path. Why: late workers and crashes cannot clobber or duplicate.
+- getDB uses one shared open promise with blocked/blocking handling and never deletes the database. Why: an old tab must not hang storage or lose photos.
+- Confirmed uploads emit SYNC_RESULTAAT_EVENT per station; App invalidates exactly those stations; wizard keeps a sent tile until the server list has its path. Why: no vanishing tiles, other stations refresh.
+- Attention list (aandachtItems) uses only existing dates; resume is late only when on_hold_tot is before today's Europe/Amsterdam date. Why: no invented deadlines.
+- Party choice lives in the URL (?partij), independent of the executor filter in localStorage; lane headers count actions and unique cases separately. Why: cases ≠ actions.
+
+- Mobile UI: interactive controls ≥44px (frequent ≥48px), inputs ≥16px (CSS !important on mobile), small text ≥4.5:1; TO accents #8FA88F/#1F4E8C/#B33A3A/#1F5C3A stay, light accents get dark text. Why: user-approved readability baseline.

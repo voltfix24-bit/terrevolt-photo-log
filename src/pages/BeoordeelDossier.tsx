@@ -15,20 +15,22 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { toast } from "sonner";
 import {
   type BeoordeelFoto as Foto, type Eindcontrole, eindcontroleOk, geldigeSelectie, inFilter, isOpenAfkeur,
-  rpcFoutTekst, sneltoetsToegestaan, volgendeNaBesluit,
+  rpcFoutTekst, sneltoetsToegestaan, volgendeNaBesluit, toegestaneActies, ONBEVESTIGD_TEKST,
 } from "@/lib/beoordeling";
 
 const D = {
   bg: "#DCE8D6", content: "#F4F8F2", panel: "rgba(220,232,214,0.55)", surface: "#FFFFFF",
-  green: "#1F5C3A", title: "#0A2A18", body: "#3D4F42", sub: "#5E7A66", rowSub: "#7A857A",
-  done: "#8FA893", warn: "#BA7517", danger: "#B3352C", hairline: "#E6EBE5",
+  green: "#1F5C3A", title: "#0A2A18", body: "#3D4F42", sub: "#4A6352", rowSub: "#4F5B50",
+  done: "#8FA893", warn: "#BA7517", warnTekst: "#8A5410", danger: "#B3352C", hairline: "#E6EBE5",
 };
 const glass = { background: "rgba(220,232,214,0.7)", WebkitBackdropFilter: "saturate(180%) blur(30px)", backdropFilter: "saturate(180%) blur(30px)" } as const;
 const REDENEN = ["Onscherp", "Verkeerd onderwerp", "Onvolledig", "Anders"];
 const FOCUS = "focus-visible:outline focus-visible:outline-[2.5px] focus-visible:outline-offset-2 focus-visible:outline-[#1F5C3A]";
 
 type RpcUitkomst = { ok: boolean; reden?: string; beoordeling_id?: string; versie?: number; station_status?: string; station_hersteld?: boolean; controle?: Eindcontrole; al_afgerond?: boolean };
-type Laatste = { beoordelingId: string; fotoId: string; label: string; stationGewijzigd: boolean };
+type Laatste = { beoordelingId: string; stationId: string; fotoId: string; label: string; stationGewijzigd: boolean };
+/** Context waarin een operatie begon: station + generatie (stationwissel) + lijstgeneratie (filterwissel). */
+type Ctx = { stationId: string; stationGen: number; lijstGen: number };
 
 function Icon({ name, size = 16, color }: { name: string; size?: number; color?: string }) {
   return <span className="material-symbols-rounded" aria-hidden="true" style={{ fontSize: size, color, lineHeight: 1 }}>{name}</span>;
@@ -36,10 +38,10 @@ function Icon({ name, size = 16, color }: { name: string; size?: number; color?:
 
 function SidebarItem({ icon, label, count, color, active, onClick }: { icon: string; label: string; count: number; color?: string; active: boolean; onClick: () => void }) {
   return (
-    <button onClick={onClick} aria-pressed={active} className={FOCUS} style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "8px 10px", borderRadius: 8, marginBottom: 2, border: "none", background: active ? D.surface : "transparent", textAlign: "left" }}>
+    <button onClick={onClick} aria-pressed={active} className={FOCUS} style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "0 10px", minHeight: 44, borderRadius: 8, marginBottom: 2, border: "none", background: active ? D.surface : "transparent", textAlign: "left" }}>
       <Icon name={icon} color={color ?? D.sub} />
       <span style={{ flex: 1, fontSize: 13, color: active ? "#0A0A0A" : D.body, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
-      <span className="font-mono" style={{ fontSize: 12, color: color ?? D.rowSub }}>{count}</span>
+      <span className="font-mono" style={{ fontSize: 12, color: D.rowSub }}>{count}</span>
     </button>
   );
 }
@@ -84,6 +86,21 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
   const [laatste, setLaatste] = useState<Laatste | null>(null);
   const [beoordelaar, setBeoordelaarState] = useState(getBeoordelaar());
   const regioRef = useRef<HTMLDivElement>(null);
+  const stationGen = useRef(0);
+  const lijstGen = useRef(0);
+  const huidigStation = useRef(id);
+  // Stationwissel (A→B): selectie, dialogen en herstel van A horen niet bij B.
+  useEffect(() => {
+    if (huidigStation.current === id) return;
+    huidigStation.current = id; stationGen.current++; lijstGen.current++;
+    setGekozenId(null); setRejectFor(null); setAfhandelFor(null); setAfrondenOpen(false); setGroot(false); setLaatste(null); setFilterRaw("pending");
+  }, [id]);
+  useEffect(() => { lijstGen.current++; }, [filter]);
+  // Unmount (bijv. route A→B met nieuwe key): lopende operaties van dit scherm zijn niet meer actief.
+  useEffect(() => () => { stationGen.current++; huidigStation.current = undefined; }, []);
+  const ctxNu = (): Ctx => ({ stationId: id!, stationGen: stationGen.current, lijstGen: lijstGen.current });
+  const stationActief = (c: Ctx) => c.stationGen === stationGen.current && c.stationId === huidigStation.current;
+  const lijstActief = (c: Ctx) => stationActief(c) && c.lijstGen === lijstGen.current;
 
   const station = useQuery({
     queryKey: ["station", id],
@@ -160,56 +177,69 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
   const categorieen = useMemo(() => [...new Set(photos.map((f) => f.categorie))], [photos]);
   const perCategorie = useMemo(() => categorieen.map((naam) => ({ naam, items: zichtbaar.filter((f) => f.categorie === naam) })).filter((g) => g.items.length > 0), [categorieen, zichtbaar]);
 
-  const ververs = useCallback(() => {
-    for (const key of [["review-fotos", id], ["station", id], ["dossier-eindcontrole", id], ["stations"], ["dossiers"]]) void queryClient.invalidateQueries({ queryKey: key });
-  }, [queryClient, id]);
+  /** Altijd het oorspronkelijke station verversen, ook als de gebruiker intussen elders is. */
+  const ververs = useCallback((stationId: string) => {
+    for (const key of [["review-fotos", stationId], ["station", stationId], ["fotos", stationId], ["dossier-eindcontrole", stationId], ["stations"], ["dossiers"]]) void queryClient.invalidateQueries({ queryKey: key });
+  }, [queryClient]);
 
-  /** Eén beslissing tegelijk: het slot gaat dicht vóór de (asynchrone) PIN-controle. */
-  const metSlot = useCallback(async (label: string, werk: () => Promise<void>) => {
+  /**
+   * Eén beslissing tegelijk: het slot gaat dicht vóór de (asynchrone) PIN-controle. Na de PIN wordt
+   * gecontroleerd of de bedoelde context nog actief is; zo niet, dan wordt niets verzonden.
+   */
+  const metSlot = useCallback(async (label: string, ctx: Ctx, werk: (ctx: Ctx) => Promise<void>) => {
     if (bezigRef.current) return;
     bezigRef.current = true; setBezig(label);
+    let verzonden = false;
     try {
       if (!internetVereist()) return;
       if (!await zorgVoorBeheer()) { toast.error(BEHEER_NODIG); return; }
-      await werk();
+      if (!stationActief(ctx)) { toast("Je bekijkt intussen een ander dossier — er is niets verzonden."); return; }
+      verzonden = true;
+      await werk(ctx);
     } catch {
-      toast.error("Geen verbinding met de server. Er is niets gewijzigd; probeer het opnieuw.");
+      // Een commit met verloren antwoord is mogelijk: niet beweren dat er niets veranderde.
+      if (verzonden) { toast.error(ONBEVESTIGD_TEKST); ververs(ctx.stationId); }
+      else toast.error("Geen verbinding met de server. Er is niets verzonden; probeer het opnieuw.");
     } finally {
       bezigRef.current = false; setBezig(null);
     }
-  }, []);
+  }, [ververs]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const focusRegio = () => requestAnimationFrame(() => regioRef.current?.focus({ preventScroll: true }));
 
-  const besluit = useCallback(async (foto: Foto, versie: number, soort: "approved" | "rejected" | "afgehandeld", tekst?: string): Promise<boolean> => {
+  const besluit = useCallback(async (ctx: Ctx, lijst: Foto[], lijstFilter: string, foto: Foto, versie: number, soort: "approved" | "rejected" | "afgehandeld", tekst?: string): Promise<boolean> => {
     const { data, error } = await supabase.rpc("foto_beoordelen", { _foto_id: foto.id, _verwacht_versie: versie, _besluit: soort, _reden: tekst ?? null });
     const r = data as unknown as RpcUitkomst | null;
     if (error || !r?.ok || !r.beoordeling_id || r.versie == null) {
-      setGekozenId(foto.id);
+      if (lijstActief(ctx)) setGekozenId(foto.id); // dezelfde foto blijft geselecteerd
+      if (error && error.code !== "42501" && !error.code) { toast.error(ONBEVESTIGD_TEKST); ververs(ctx.stationId); return false; }
       toast.error(error?.code === "42501" ? `Niet opgeslagen. ${BEHEER_NODIG}` : error ? "Niet opgeslagen. Controleer de verbinding en probeer het opnieuw." : rpcFoutTekst(r?.reden));
-      if (r?.reden) ververs();
+      if (r?.reden || !r) ververs(ctx.stationId);
       return false;
     }
     const nieuw: Foto = soort === "afgehandeld"
       ? { ...foto, review_versie: r.versie, afkeur_afgehandeld_op: new Date().toISOString(), afkeur_afgehandeld_toelichting: tekst ?? null }
       : { ...foto, review_status: soort, review_reden: soort === "rejected" ? tekst ?? null : null, review_versie: r.versie };
-    setGekozenId(volgendeNaBesluit(zichtbaar, foto.id, nieuw, filter));
-    queryClient.setQueryData<Foto[]>(["review-fotos", id], (oud) => oud?.map((f) => (f.id === foto.id ? nieuw : f)));
-    setLaatste({ beoordelingId: r.beoordeling_id, fotoId: foto.id, label: soort === "approved" ? "goedkeuring" : soort === "rejected" ? "afkeuring" : "afhandeling", stationGewijzigd: soort === "rejected" });
-    ververs();
-    focusRegio();
+    // Gecommitteerd: blijft bij het oorspronkelijke station; UI van een andere context wordt niet aangeraakt.
+    queryClient.setQueryData<Foto[]>(["review-fotos", ctx.stationId], (oud) => oud?.map((f) => (f.id === foto.id ? nieuw : f)));
+    if (stationActief(ctx)) setLaatste({ beoordelingId: r.beoordeling_id, stationId: ctx.stationId, fotoId: foto.id, label: soort === "approved" ? "goedkeuring" : soort === "rejected" ? "afkeuring" : "afhandeling", stationGewijzigd: soort === "rejected" });
+    if (lijstActief(ctx)) { setGekozenId(volgendeNaBesluit(lijst, foto.id, nieuw, lijstFilter)); focusRegio(); }
+    ververs(ctx.stationId);
     return true;
-  }, [zichtbaar, filter, queryClient, id, ververs]);
+  }, [queryClient, ververs]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const acties = toegestaneActies(selected, beoordeelbaar, !!bezig);
 
   const keurGoed = useCallback(() => {
     const foto = selected;
-    if (!foto || !beoordeelbaar || foto.review_status === "approved") return;
-    const versie = foto.review_versie;
-    void metSlot("approve", async () => { if (await besluit(foto, versie, "approved")) toast.success("Foto goedgekeurd"); });
-  }, [selected, beoordeelbaar, metSlot, besluit]);
+    // Eén gedeelde bevoegdheid voor knop én sneltoets: een open afkeur kan niet via A worden goedgekeurd.
+    if (!foto || !toegestaneActies(foto, beoordeelbaar, bezigRef.current).goedkeuren) return;
+    const versie = foto.review_versie; const lijst = zichtbaar; const f = filter;
+    void metSlot("approve", ctxNu(), async (ctx) => { if (await besluit(ctx, lijst, f, foto, versie, "approved")) toast.success("Foto goedgekeurd"); });
+  }, [selected, beoordeelbaar, metSlot, besluit, zichtbaar, filter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const openAfkeuren = useCallback(() => {
-    if (!selected || !beoordeelbaar || bezigRef.current || selected.review_status === "rejected") return;
+    if (!selected || !toegestaneActies(selected, beoordeelbaar, bezigRef.current).afkeuren) return;
     setRejectFor({ id: selected.id, versie: selected.review_versie });
   }, [selected, beoordeelbaar]);
 
@@ -218,11 +248,12 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
     if (!doel || !rejectFor || !id) return;
     const tekst = reden === "Anders" ? toelichting.trim() : `${reden}${toelichting.trim() ? ` — ${toelichting.trim()}` : ""}`;
     if (!tekst) return;
-    void metSlot("reject", async () => {
-      if (!await besluit(doel, rejectFor.versie, "rejected", tekst)) return;
-      setRejectFor(null); setToelichting(""); setReden(REDENEN[0]);
+    const lijst = zichtbaar; const f = filter;
+    void metSlot("reject", ctxNu(), async (ctx) => {
+      if (!await besluit(ctx, lijst, f, doel, rejectFor.versie, "rejected", tekst)) return;
+      if (stationActief(ctx)) { setRejectFor(null); setToelichting(""); setReden(REDENEN[0]); }
       toast.success("Afgekeurd — de taak staat weer open bij de monteur");
-      if (!await sharepointStatusBijwerken(id)) toast.error("Status in SharePoint is niet bijgewerkt — zie SharePoint-status bij het station");
+      if (!await sharepointStatusBijwerken(ctx.stationId)) toast.error("Status in SharePoint is niet bijgewerkt — zie SharePoint-status bij het station");
     });
   };
 
@@ -230,49 +261,48 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
     const doel = afhandelFor && photos.find((f) => f.id === afhandelFor.id);
     const tekst = afhandelTekst.trim();
     if (!doel || !afhandelFor || !tekst) return;
-    void metSlot("afhandelen", async () => {
-      if (!await besluit(doel, afhandelFor.versie, "afgehandeld", tekst)) return;
-      setAfhandelFor(null); setAfhandelTekst("");
+    const lijst = zichtbaar; const f = filter;
+    void metSlot("afhandelen", ctxNu(), async (ctx) => {
+      if (!await besluit(ctx, lijst, f, doel, afhandelFor.versie, "afgehandeld", tekst)) return;
+      if (stationActief(ctx)) { setAfhandelFor(null); setAfhandelTekst(""); }
       toast.success("Afkeur afgehandeld en vastgelegd in de historie");
     });
   };
 
   const herstel = () => {
     const l = laatste;
-    if (!l || !id) return;
-    void metSlot("undo", async () => {
+    if (!l || !id || l.stationId !== id) { setLaatste(null); return; } // nooit herstel van A op B
+    void metSlot("undo", ctxNu(), async (ctx) => {
       const { data, error } = await supabase.rpc("foto_beoordeling_herstellen", { _beoordeling_id: l.beoordelingId });
       const r = data as unknown as RpcUitkomst | null;
       if (error || !r?.ok) {
         toast.error(error?.code === "42501" ? `Niet hersteld. ${BEHEER_NODIG}` : error ? "Niet hersteld. Controleer de verbinding en probeer het opnieuw." : `Niet hersteld. ${rpcFoutTekst(r?.reden)}`);
-        if (r?.reden === "gewijzigd" || r?.reden === "al_hersteld") setLaatste(null);
-        ververs();
+        if (stationActief(ctx) && (r?.reden === "gewijzigd" || r?.reden === "al_hersteld")) setLaatste(null);
+        ververs(ctx.stationId);
         return;
       }
-      setLaatste(null);
-      setFilterRaw("all"); setGekozenId(l.fotoId);
-      ververs();
+      ververs(ctx.stationId);
+      if (stationActief(ctx)) { setLaatste(null); setFilterRaw("all"); setGekozenId(l.fotoId); focusRegio(); }
       toast.success(`Laatste ${l.label} hersteld`);
       if (l.stationGewijzigd && !r.station_hersteld) toast("Foto hersteld; de taak blijft heropend omdat er intussen iets anders is gewijzigd.");
-      if (l.stationGewijzigd && r.station_hersteld && !await sharepointStatusBijwerken(id)) toast.error("Status in SharePoint is niet bijgewerkt — zie SharePoint-status bij het station");
-      focusRegio();
+      if (l.stationGewijzigd && r.station_hersteld && !await sharepointStatusBijwerken(ctx.stationId)) toast.error("Status in SharePoint is niet bijgewerkt — zie SharePoint-status bij het station");
     });
   };
 
   const afronden = () => {
     if (!id || !dataBekend || !eindcontroleOk(controleQ.data)) return;
-    void metSlot("afronden", async () => {
-      const { data, error } = await supabase.rpc("dossier_afronden", { _station_id: id });
+    void metSlot("afronden", ctxNu(), async (ctx) => {
+      const { data, error } = await supabase.rpc("dossier_afronden", { _station_id: ctx.stationId });
       const r = data as unknown as RpcUitkomst | null;
       if (error || !r?.ok) {
         toast.error(error?.code === "42501" ? `Dossier niet afgerond. ${BEHEER_NODIG}` : error ? "Dossier niet afgerond. Controleer de verbinding en probeer het opnieuw." : "Dossier niet afgerond: de eindcontrole is intussen veranderd. Bekijk de punten hieronder.");
-        ververs();
+        ververs(ctx.stationId);
         return;
       }
-      setAfrondenOpen(false); setLaatste(null);
-      ververs();
+      if (stationActief(ctx)) { setAfrondenOpen(false); setLaatste(null); }
+      ververs(ctx.stationId);
       toast.success("Dossier afgerond en goedgekeurd");
-      if (!r.al_afgerond && !await sharepointStatusBijwerken(id)) toast.error("Status in SharePoint is niet bijgewerkt — zie SharePoint-status bij het station");
+      if (!r.al_afgerond && !await sharepointStatusBijwerken(ctx.stationId)) toast.error("Status in SharePoint is niet bijgewerkt — zie SharePoint-status bij het station");
     });
   };
 
@@ -289,6 +319,7 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
       if (event.defaultPrevented || !sneltoetsToegestaan(event, regioRef.current, dialoogOpen)) return;
+      if (!regioRef.current?.isConnected || !regioRef.current.querySelector("[data-reviewfoto]")) return; // alleen bij een zichtbare foto
       const k = event.key;
       if (k === "a" || k === "A") { event.preventDefault(); keurGoed(); }
       else if (k === "x" || k === "X") { event.preventDefault(); openAfkeuren(); }
@@ -318,9 +349,8 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
 
   const controle = controleQ.data!;
   const kanAfronden = beoordeelbaar && eindcontroleOk(controle);
-  const actiesUit = !beoordeelbaar || !!bezig;
 
-  const statusLabel = (f: Foto) => f.review_status === "approved" ? { t: "Goedgekeurd", c: D.green } : f.review_status === "pending" ? { t: "Te beoordelen", c: D.warn } : f.afkeur_afgehandeld_op ? { t: "Afkeur afgehandeld (historie)", c: D.sub } : { t: "Afgekeurd — open", c: D.danger };
+  const statusLabel = (f: Foto) => f.review_status === "approved" ? { t: "Goedgekeurd", c: D.green } : f.review_status === "pending" ? { t: "Te beoordelen", c: D.warnTekst } : f.afkeur_afgehandeld_op ? { t: "Afkeur afgehandeld (historie)", c: D.sub } : { t: "Afgekeurd — open", c: D.danger };
 
   const leeg = () => {
     if (filter === "pending" && tellingen.pending === 0) {
@@ -336,27 +366,27 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
     <div role="listbox" aria-label="Foto's in werklijst" style={{ display: "flex", gap: 6, overflowX: "auto", padding: "8px 0 2px" }}>
       {zichtbaar.map((f, i) => (
         <button key={f.id} role="option" aria-selected={f.id === selectedId} aria-label={`Foto ${i + 1}: ${f.categorie}`} onClick={() => setGekozenId(f.id)} className={FOCUS}
-          style={{ flexShrink: 0, width: 56, height: 42, borderRadius: 6, padding: 0, border: "none", overflow: "hidden", position: "relative", outline: f.id === selectedId ? `2.5px solid ${D.green}` : "none", outlineOffset: -1 }}>
+          style={{ flexShrink: 0, width: 58, height: 44, borderRadius: 6, padding: 0, border: "none", overflow: "hidden", position: "relative", outline: f.id === selectedId ? `2.5px solid ${D.green}` : "none", outlineOffset: -1 }}>
           <LaadAfbeelding src={f.url} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} wrapperStyle={{ position: "absolute", inset: 0 }} />
         </button>
       ))}
     </div>
   );
 
-  const acties = selected && (
+  const actieBlok = selected && (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       {!beoordeelbaar && <div style={{ fontSize: 12, color: D.sub, textAlign: "center" }}>{afgerond ? "Dossier is afgerond; beoordelen is gesloten." : "Dit dossier is (nog) niet opgeleverd."}</div>}
       {isOpenAfkeur(selected) ? (
-        <button onClick={() => setAfhandelFor({ id: selected.id, versie: selected.review_versie })} disabled={actiesUit} className={FOCUS}
-          style={{ minHeight: 46, borderRadius: 10, border: "none", background: actiesUit ? D.done : D.green, color: "#fff", fontSize: 14 }}>Afkeur afhandelen…</button>
+        <button onClick={() => { if (acties.afhandelen) setAfhandelFor({ id: selected.id, versie: selected.review_versie }); }} disabled={!acties.afhandelen} className={FOCUS}
+          style={{ minHeight: 48, borderRadius: 10, border: "none", background: !acties.afhandelen ? D.done : D.green, color: "#fff", fontSize: 14 }}>Afkeur afhandelen…</button>
       ) : (
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={keurGoed} disabled={actiesUit || selected.review_status === "approved"} className={FOCUS}
-            style={{ flex: 1, minHeight: 46, background: actiesUit || selected.review_status === "approved" ? D.done : D.green, color: "#fff", borderRadius: 10, border: "none", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          <button onClick={keurGoed} disabled={!acties.goedkeuren} className={FOCUS}
+            style={{ flex: 1, minHeight: 48, background: !acties.goedkeuren ? D.done : D.green, color: "#fff", borderRadius: 10, border: "none", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
             {bezig === "approve" ? <KnopLader label="Opslaan…" /> : null}Foto goedkeuren
           </button>
-          <button onClick={openAfkeuren} disabled={actiesUit || selected.review_status === "rejected"} className={FOCUS}
-            style={{ flex: 1, minHeight: 46, background: "rgba(179,53,44,0.1)", border: "0.5px solid rgba(179,53,44,0.25)", borderRadius: 10, color: D.danger, fontSize: 14, opacity: actiesUit || selected.review_status === "rejected" ? 0.5 : 1 }}>
+          <button onClick={openAfkeuren} disabled={!acties.afkeuren} className={FOCUS}
+            style={{ flex: 1, minHeight: 48, background: "rgba(179,53,44,0.1)", border: "0.5px solid rgba(179,53,44,0.25)", borderRadius: 10, color: D.danger, fontSize: 14, opacity: !acties.afkeuren ? 0.5 : 1 }}>
             Foto afkeuren
           </button>
         </div>
@@ -398,20 +428,20 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
             <div style={{ fontSize: 15, fontWeight: 600, color: D.title, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{selected.categorie}</div>
             <div aria-live="polite" style={{ fontSize: 12, color: D.sub }}>Foto {selectedIndex + 1} van {zichtbaar.length} in deze lijst</div>
           </div>
-          <button onClick={() => setGroot(true)} className={FOCUS} style={{ border: "none", background: "rgba(255,255,255,0.85)", borderRadius: 8, padding: "7px 11px", fontSize: 13, color: D.green, display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
+          <button onClick={() => setGroot(true)} className={FOCUS} style={{ border: "none", background: "rgba(255,255,255,0.85)", borderRadius: 8, padding: "0 12px", minHeight: 44, fontSize: 13, color: D.green, display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
             <Icon name="zoom_in" size={18} color={D.green} /> Zoomen
           </button>
         </div>
         <button onClick={() => setGroot(true)} aria-label="Foto vergroten en zoomen" className={FOCUS}
           style={{ flex: 1, minHeight: isMobile ? "min(52vh, 420px)" : 320, borderRadius: 10, border: "none", padding: 0, background: "#0E1A12", overflow: "hidden", position: "relative", width: "100%" }}>
-          <LaadAfbeelding key={selected.id} src={selected.url} alt={selected.categorie} style={{ width: "100%", height: "100%", objectFit: "contain" }} wrapperStyle={{ position: "absolute", inset: 0 }} />
+          <span data-reviewfoto={selected.id} hidden /><LaadAfbeelding key={selected.id} src={selected.url} alt={selected.categorie} style={{ width: "100%", height: "100%", objectFit: "contain" }} wrapperStyle={{ position: "absolute", inset: 0 }} />
         </button>
         {thumbs}
       </div>
       <div style={{ width: isMobile ? "100%" : 268, flexShrink: 0, display: "flex", flexDirection: "column" }}>
         {meta}
         <div style={{ flex: 1 }} />
-        <div style={isMobile ? { position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 4, padding: "10px 12px calc(10px + env(safe-area-inset-bottom))", borderTop: "0.5px solid rgba(31,92,58,0.14)", ...glass } : undefined}>{acties}</div>
+        <div style={isMobile ? { position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 4, padding: "10px 12px calc(10px + env(safe-area-inset-bottom))", borderTop: "0.5px solid rgba(31,92,58,0.14)", ...glass } : undefined}>{actieBlok}</div>
       </div>
     </div>
   ) : leeg();
@@ -468,7 +498,7 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
   return (
     <div style={{ height: "100dvh", background: D.bg, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <div style={{ minHeight: 52, borderBottom: "0.5px solid rgba(31,92,58,0.14)", display: "flex", alignItems: "center", padding: "6px 12px", gap: 8, flexShrink: 0, flexWrap: isMobile ? "wrap" : "nowrap", ...glass }}>
-        <button onClick={() => navigate("/beoordelen")} aria-label="Terug naar dossiers" className={FOCUS} style={{ border: "none", background: "none", color: D.green, display: "flex", alignItems: "center", gap: 2, fontSize: 13, padding: "8px 4px" }}>
+        <button onClick={() => navigate("/beoordelen")} aria-label="Terug naar dossiers" className={FOCUS} style={{ border: "none", background: "none", color: D.green, display: "flex", alignItems: "center", gap: 2, fontSize: 13, padding: "0 6px", minHeight: 44 }}>
           <Icon name="chevron_left" size={20} color={D.green} /> Dossiers
         </button>
         <div style={{ flex: isMobile ? "1 1 calc(100% - 110px)" : 1, textAlign: isMobile ? "left" : "center", minWidth: 0 }}>
@@ -477,13 +507,13 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
         </div>
         <div style={{ display: "flex", gap: 8, width: isMobile ? "100%" : undefined, justifyContent: "flex-end", flexWrap: "wrap" }}>
         {laatste && (
-          <button onClick={herstel} disabled={!!bezig} className={FOCUS} style={{ padding: "7px 11px", borderRadius: 8, background: "rgba(255,255,255,0.8)", border: "none", fontSize: 13, color: D.green, display: "flex", alignItems: "center", gap: 5 }}>
+          <button onClick={herstel} disabled={!!bezig} className={FOCUS} style={{ padding: "0 12px", minHeight: 44, borderRadius: 8, background: "rgba(255,255,255,0.8)", border: "none", fontSize: 13, color: D.green, display: "flex", alignItems: "center", gap: 5 }}>
             {bezig === "undo" ? <KnopLader label="Herstellen…" /> : <Icon name="undo" size={16} color={D.green} />} Herstel {laatste.label}
           </button>
         )}
-        <button onClick={() => void openRapport()} className={FOCUS} style={{ padding: "7px 11px", borderRadius: 8, background: "rgba(255,255,255,0.8)", border: "none", fontSize: 13, color: D.green }}>Rapport (PDF)</button>
+        <button onClick={() => void openRapport()} className={FOCUS} style={{ padding: "0 12px", minHeight: 44, borderRadius: 8, background: "rgba(255,255,255,0.8)", border: "none", fontSize: 13, color: D.green }}>Rapport (PDF)</button>
         <button onClick={() => setAfrondenOpen(true)} disabled={afgerond} className={FOCUS}
-          style={{ padding: "7px 13px", borderRadius: 8, border: "none", fontSize: 13, color: "#fff", background: afgerond ? D.done : kanAfronden ? D.green : D.warn }}>
+          style={{ padding: "0 13px", minHeight: 44, borderRadius: 8, border: "none", fontSize: 13, color: afgerond ? D.title : kanAfronden ? "#fff" : "#2B1A00", background: afgerond ? D.done : kanAfronden ? D.green : "#E9B45C" }}>
           {afgerond ? "Dossier afgerond" : "Dossier afronden…"}
         </button>
         </div>
@@ -493,7 +523,7 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
         <div style={{ display: "flex", gap: 8, overflowX: "auto", padding: "10px 12px", flexShrink: 0, ...glass }}>
           {[...filters, { key: "__weergave", icon: "", label: toonRaster ? "Inspectie" : "Raster", count: -1 }].map((item) => (
             <button key={item.key} onClick={() => item.key === "__weergave" ? setWeergave(toonRaster ? "inspectie" : "raster") : setFilter(item.key)} aria-pressed={filter === item.key} className={FOCUS}
-              style={{ flexShrink: 0, border: "none", borderRadius: 999, padding: "8px 13px", fontSize: 13, background: filter === item.key ? D.green : "rgba(255,255,255,0.8)", color: filter === item.key ? "#fff" : D.body }}>
+              style={{ flexShrink: 0, border: "none", borderRadius: 999, padding: "0 14px", minHeight: 44, fontSize: 13, background: filter === item.key ? D.green : "rgba(255,255,255,0.8)", color: filter === item.key ? "#fff" : D.body }}>
               {item.label}{item.count >= 0 ? ` ${item.count}` : ""}
             </button>
           ))}

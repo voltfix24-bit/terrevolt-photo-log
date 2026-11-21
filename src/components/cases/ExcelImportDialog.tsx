@@ -16,7 +16,7 @@ import {
   type ImportPreviewRij, type ImportVeld, type Mapping,
 } from "@/lib/case-import";
 
-const ORANJE = "#B5541A", ORANJE_BG = "#FDEFE4";
+const ORANJE = "#9A4A06", ORANJE_BG = "#FDEFE4";
 type Resultaat = Record<number, RijUitkomst>;
 
 /** Van Gelder-cases plakken uit Excel (TSV, primair) of optioneel .xlsx; elke case + rondes via maak_case (atomair). Niets wordt lokaal bewaard. */
@@ -93,15 +93,17 @@ export function ExcelImportDialog({ open, onOpenChange, bestaand }: { open: bool
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!bezig) { onOpenChange(o); if (!o) reset(); } }}>
-      <DialogContent className="max-h-[90vh] max-w-[calc(100vw-24px)] overflow-y-auto sm:max-w-3xl">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[calc(100dvh-24px)] max-w-[calc(100vw-24px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
+        <DialogHeader className="shrink-0 px-5 pb-3 pt-5 pr-14 sm:px-6">
           <DialogTitle>Van Gelder-cases importeren</DialogTitle>
           <DialogDescription>Kopieer de rijen in Excel, inclusief de kopregel, en plak ze hieronder.</DialogDescription>
         </DialogHeader>
+        {/* Alleen het middendeel scrolt; telling en acties blijven in de vaste footer bereikbaar. */}
+        <div data-testid="import-midden" className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-5 pb-4 sm:px-6 [&>*]:shrink-0">
         <textarea aria-label="Geplakte Excel-rijen" value={tekst} onChange={(e) => plak(e.target.value)} rows={7} spellCheck={false} disabled={bezig}
           placeholder={"Casenummer\tCasenaam\tTO-status\tRonde\tWV"}
           className="w-full min-w-0 font-mono" style={{ fontSize: 16, padding: 12, borderRadius: 12, border: `1px solid ${T.hairline}`, background: T.soft, whiteSpace: "pre", overflowX: "auto" }} />
-        <label className="min-w-0" style={{ fontSize: 13, color: T.subOnBg }}>Of kies een .xlsx-bestand: <input className="w-full min-w-0" type="file" accept=".xlsx" disabled={bezig} onChange={(e) => void kiesBestand(e.target.files?.[0])} /></label>
+        <label className="min-w-0" style={{ fontSize: 14, color: T.bodyOnBg }}>Of kies een .xlsx-bestand: <input className="w-full min-w-0" type="file" accept=".xlsx" disabled={bezig} onChange={(e) => void kiesBestand(e.target.files?.[0])} /></label>
 
         {koppen.length > 0 && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }} aria-label="Kolommen">
@@ -110,13 +112,13 @@ export function ExcelImportDialog({ open, onOpenChange, bestaand }: { open: bool
               if (v) return (
                 <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 4px 3px 10px", borderRadius: 999, fontSize: 13, fontWeight: 600, background: "#E3EFE0", color: T.green }}>
                   {k || `Kolom ${i + 1}`} → {VELD_LABEL[v]}
-                  <Button aria-label={`${k} ontkoppelen`} disabled={bezig} onClick={() => wijzigMapping(zetMapping(mapping, i, null))} style={{ padding: "0 6px" }}>×</Button>
+                  <Button aria-label={`${k} ontkoppelen`} disabled={bezig} onClick={() => wijzigMapping(zetMapping(mapping, i, null))} variant="ghost" style={{ padding: 0, width: 44, height: 44, margin: "-8px -2px -8px 0", color: T.green }}>×</Button>
                 </span>
               );
               return (
                 <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 6px 3px 10px", borderRadius: 999, fontSize: 13, fontWeight: 600, background: ORANJE_BG, color: ORANJE }}>
                   {k || `Kolom ${i + 1}`}{isDubbelHerkend(koppen, mapping, i) ? " (dubbel)" : ""}
-                  <select aria-label={`Kolom ${k} koppelen`} value="" disabled={bezig} onChange={(e) => wijzigMapping(zetMapping(mapping, i, (e.target.value || null) as ImportVeld | null))} style={{ background: "transparent", color: ORANJE, fontWeight: 600 }}>
+                  <select aria-label={`Kolom ${k} koppelen`} value="" disabled={bezig} onChange={(e) => wijzigMapping(zetMapping(mapping, i, (e.target.value || null) as ImportVeld | null))} style={{ background: "transparent", color: ORANJE, fontWeight: 600, fontSize: 16, minHeight: 44 }}>
                     <option value="">kies kolom…</option>
                     {VELDEN.map((f) => <option key={f} value={f}>{VELD_LABEL[f]}{mapping.includes(f) ? " (vervangt)" : ""}</option>)}
                     <option value="">negeren</option>
@@ -151,9 +153,9 @@ export function ExcelImportDialog({ open, onOpenChange, bestaand }: { open: bool
               </tbody>
             </table>
             <div className="flex items-center justify-between gap-2 py-2">
-              <Button variant="ghost" aria-label="Vorige previewpagina" disabled={bezig || pagina === 0} onClick={() => setPagina(pagina-1)}>←</Button>
+              <Button variant="ghost" className="h-11 w-11" aria-label="Vorige previewpagina" disabled={bezig || pagina === 0} onClick={() => setPagina(pagina-1)}>←</Button>
               <span>Rijen {pagina*100+1}–{Math.min((pagina+1)*100,preview.length)} van {preview.length}</span>
-              <Button variant="ghost" aria-label="Volgende previewpagina" disabled={bezig || (pagina+1)*100>=preview.length} onClick={() => setPagina(pagina+1)}>→</Button>
+              <Button variant="ghost" className="h-11 w-11" aria-label="Volgende previewpagina" disabled={bezig || (pagina+1)*100>=preview.length} onClick={() => setPagina(pagina+1)}>→</Button>
             </div>
             {waarschuwingen.length > 0 && <div style={{ fontSize: 13, color: ORANJE, marginTop: 8 }}>{waarschuwingen.length} rij{waarschuwingen.length === 1 ? "" : "en"} met waarschuwing: onbekende status wordt TO open. Controleer dit vóór importeren.</div>}
           </div>
@@ -161,11 +163,12 @@ export function ExcelImportDialog({ open, onOpenChange, bestaand }: { open: bool
         {nummersLaden && open && <div className="flex items-center gap-2"><KnopLader />Casenummers controleren…</div>}
         {nummersFout && <div role="alert">Bestaande casenummers konden niet worden gecontroleerd. <Button variant="ghost" onClick={() => qc.invalidateQueries({ queryKey: ["alle-case-nummers"] })}>Opnieuw proberen</Button></div>}
         {fout && <div role="alert" style={{ overflowWrap: "anywhere", color: T.danger, fontSize: 14 }}>{fout}</div>}
+        </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", borderTop: `1px solid ${T.hairline}`, paddingTop: 12 }}>
-          <span style={{ flex: "1 1 220px", fontSize: 14, fontWeight: 600 }}>{tel.opgeslagen} opgeslagen · {teDoen.length} resterend · {tel.bestaat} bestaat al · {tel.fout} fout</span>
-          <Button onClick={() => { if (!bezig) { reset(); onOpenChange(false); } }} disabled={bezig} className="px-4 py-2.5 rounded-xl font-semibold" style={{ border: `1px solid ${T.hairline}` }}>Annuleren</Button>
-          <Button onClick={importeer} disabled={bezig || !teDoen.length || !nummers || !!nummersFout} className="bg-primary text-primary-foreground font-bold px-4 py-2.5 rounded-xl disabled:opacity-50">
+        <div data-testid="import-footer" className="shrink-0 px-5 pt-3 sm:px-6" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", borderTop: `1px solid ${T.hairline}`, background: T.surface, paddingBottom: "calc(14px + env(safe-area-inset-bottom))" }}>
+          <span aria-live="polite" style={{ flex: "1 1 220px", fontSize: 14, fontWeight: 600 }}>{tel.opgeslagen} opgeslagen · {teDoen.length} resterend · {tel.bestaat} bestaat al · {tel.fout} fout</span>
+          <Button onClick={() => { if (!bezig) { reset(); onOpenChange(false); } }} disabled={bezig} className="min-h-[48px] px-4 rounded-xl font-semibold" variant="outline" style={{ border: `1px solid ${T.hairline}` }}>Annuleren</Button>
+          <Button onClick={importeer} disabled={bezig || !teDoen.length || !nummers || !!nummersFout} className="min-h-[48px] bg-primary text-primary-foreground font-bold px-4 rounded-xl disabled:opacity-50">
             {bezig ? <span className="inline-flex items-center gap-2"><KnopLader />Importeren</span> : `${teDoen.length} case${teDoen.length === 1 ? "" : "s"} importeren`}
           </Button>
         </div>

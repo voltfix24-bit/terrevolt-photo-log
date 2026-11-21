@@ -1,6 +1,6 @@
 import { getPendingPhotos, markDone, markError, clearDone, claimItem, bevries, type QueueItem } from './offline-queue';
 import imageCompression from 'browser-image-compression';
-import { uploadEnRegistreer, wachtrijPad, type Db } from './fotos-service';
+import { uploadEnRegistreer, wachtrijPad, geregistreerdWachtrijPad, type Db } from './fotos-service';
 import { supabase } from '@/integrations/supabase/client';
 
 export type SyncResultaat = { gelukt: number; mislukt: number; fouten: string[] };
@@ -26,8 +26,15 @@ export async function bereidFotoVoor(f: File): Promise<Blob> {
 type Item = Pick<QueueItem, 'id' | 'stationId' | 'categorie' | 'file' | 'fileName'> & Partial<QueueItem>;
 export type SyncDeps = {
   pending: () => Promise<Item[]>;
-  klaar: (id: string) => Promise<void>;
-  fout: (id: string, msg: string, soort?: 'beheer' | 'overig') => Promise<void>;
+  /** Eigenaar-gecontroleerd; false = lease intussen bij een ander, niets gewijzigd. */
+  klaar: (id: string, eigenaar?: string) => Promise<boolean | void>;
+  fout: (id: string, msg: string, soort?: 'beheer' | 'overig', eigenaar?: string) => Promise<boolean | void>;
+  /** Eerder geregistreerd pad van dit queue-ID (oude items zonder vastgelegd pad). */
+  bestaandPad?: (item: Item) => Promise<string | null>;
+  /** Plant een herpoging op het moment dat een vreemde lease verloopt. */
+  plan?: (ms: number) => void;
+  /** Eigenaar van deze syncinstantie (tests: twee tabs). */
+  eigenaar?: string;
   opruimen: () => Promise<void>;
   comprimeer: (f: File) => Promise<Blob>;
   upload: typeof uploadEnRegistreer;
@@ -42,9 +49,25 @@ const standaard: SyncDeps = {
   pending: getPendingPhotos, klaar: markDone, fout: markError, opruimen: clearDone,
   comprimeer: bereidFotoVoor, upload: uploadEnRegistreer, ophefSkip: ophefSkipNaFoto,
   claim: claimItem, bevries,
+  bestaandPad: (i) => geregistreerdWachtrijPad(i.stationId, i.categorie, i.id),
+  plan: planHerpoging,
 };
 
-const eigenaar = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : String(Math.random());
+/** Bevestigde uploads per station; App vernieuwt precies die stations. */
+export const SYNC_RESULTAAT_EVENT = 'foto-sync-resultaat';
+
+let timer: ReturnType<typeof setTimeout> | undefined;
+let timerOp = 0;
+/** Eén gerichte timer op het vroegste leaseverloop; geen polling van alle foto's. */
+export function planHerpoging(ms: number) {
+  const op = Date.now() + ms;
+  if (timer && timerOp <= op) return;
+  if (timer) clearTimeout(timer);
+  timerOp = op;
+  timer = setTimeout(() => { timer = undefined; timerOp = 0; void syncPendingPhotos().catch(() => undefined); }, Math.max(0, ms) + 250);
+}
+
+const tabEigenaar = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : String(Math.random());
 let isSyncing = false;
 let nogEens = false;
 
@@ -59,36 +82,51 @@ export async function syncPendingPhotos(onProgress?: (done: number, total: numbe
   if (isSyncing) { nogEens = true; return res; }
   if (!navigator.onLine) return res;
   isSyncing = true;
+  const eigenaar = deps.eigenaar ?? tabEigenaar;
+  // Eigenaarcontrole alleen als er werkelijk een lease is genomen.
+  const eig: [string] | [] = deps.claim ? [eigenaar] : [];
   try {
     do {
       nogEens = false;
       const pending = await deps.pending();
       let n = 0;
+      let vroegsteLease = Infinity;
       for (const kandidaat of pending) {
         if (!navigator.onLine) break; // niets verwijderen wanneer het netwerk onderweg wegvalt
         const item = deps.claim ? await deps.claim(kandidaat.id, eigenaar) : kandidaat;
-        if (!item) continue;
+        if (!item) {
+          // Vreemde, nog geldige lease (bijv. van een gecrashte sessie): hervat zodra die verloopt.
+          if (kandidaat.status === 'uploading' && kandidaat.leaseTot) vroegsteLease = Math.min(vroegsteLease, kandidaat.leaseTot);
+          continue;
+        }
         try {
           let blob: Blob = item.file; let pad = item.pad;
           if (!item.voorbereid || !pad) {
-            blob = await deps.comprimeer(new File([item.file], item.fileName, { type: item.file.type }));
-            pad = wachtrijPad(item.stationId, item.categorie, item.id, blob, item.fileName);
+            const bestaand = deps.bestaandPad ? await deps.bestaandPad(item) : null;
+            if (bestaand) pad = bestaand; // eerder geregistreerd: hetzelfde bestand hergebruiken, geen nieuwe extensie/rij
+            else {
+              blob = await deps.comprimeer(new File([item.file], item.fileName, { type: item.file.type }));
+              pad = wachtrijPad(item.stationId, item.categorie, item.id, blob, item.fileName);
+            }
             if (deps.bevries && !await deps.bevries(item.id, eigenaar, blob, pad)) throw new Error('Foto kon niet worden vastgelegd op dit toestel');
           }
           const r = await deps.upload(pad, blob, { stationId: item.stationId, categorie: item.categorie, volgorde: 0 });
           if ("fout" in r) throw new Error(r.fout);
           await deps.ophefSkip?.(item.stationId, item.categorie);
-          await deps.klaar(item.id);
-          res.gelukt++;
+          if (await deps.klaar(item.id, ...eig) !== false) {
+            res.gelukt++;
+            window.dispatchEvent(new CustomEvent(SYNC_RESULTAAT_EVENT, { detail: { stationId: item.stationId, pad } }));
+          }
         } catch (e) {
           const msg = (e as Error)?.message || 'Onbekende fout';
           res.mislukt++; res.fouten.push(`${item.fileName}: ${msg}`);
-          await deps.fout(item.id, msg, isBeheerFout(msg) ? 'beheer' : 'overig').catch(() => {});
+          await deps.fout(item.id, msg, isBeheerFout(msg) ? 'beheer' : 'overig', ...eig).catch(() => {});
         }
         onProgress?.(res.gelukt + res.mislukt, pending.length);
         n++;
       }
       await deps.opruimen();
+      if (vroegsteLease < Infinity) deps.plan?.(vroegsteLease - Date.now());
     } while (nogEens && navigator.onLine);
     return res;
   } finally {

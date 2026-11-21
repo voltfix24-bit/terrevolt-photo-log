@@ -15,7 +15,8 @@ const LANES: { key: Lane; sub: string }[] = [
   { key: "Liander", sub: "Ter controle bij netbeheerder" },
   { key: "Derden", sub: "Aannemers en leveranciers" },
 ];
-const MUTED = "#8A9A8D";
+const MUTED = T.subOnBg;
+const LAAT = "#9A4A06";
 const opslagKey = (l: Lane, g: GroepKey) => `cases-bord-groep:${l}:${g}`;
 const standaardDicht = (g: GroepKey) => g === "goedgekeurd" || g === "onhold";
 function leesDicht(l: Lane, g: GroepKey) {
@@ -25,11 +26,12 @@ function leesDicht(l: Lane, g: GroepKey) {
 function Wacht({ i }: { i: BordItem }) {
   if (i.groep === "onhold") {
     const laat = hervattenVoorbij(i.c.station);
-    return <span style={{ fontSize: 12, whiteSpace: "nowrap", color: laat ? "#C2610C" : T.bodyOnBg, fontWeight: laat ? 600 : 400 }}>sinds {i.dagen === 1 ? "1 dag" : `${i.dagen} dagen`}{laat ? " · hervatten?" : ""}</span>;
+    return <span style={{ fontSize: 12, whiteSpace: "nowrap", color: laat ? LAAT : T.bodyOnBg, fontWeight: laat ? 600 : 400 }}>sinds {i.dagen === 1 ? "1 dag" : `${i.dagen} dagen`}{laat ? " · hervatdatum verstreken" : ""}</span>;
   }
   if (i.geenDatum) return <span style={{ fontSize: 12, color: MUTED, whiteSpace: "nowrap" }}>geen datum</span>;
+  // Rood vanaf tien dagen is een aandachtsindicatie, geen harde deadline.
   const rood = i.dagen >= 10;
-  return <span style={{ fontSize: 12, whiteSpace: "nowrap", color: rood ? "#B33A3A" : T.bodyOnBg, fontWeight: rood ? 600 : 400 }}>{dagenTekst(i.dagen)}</span>;
+  return <span title={rood ? "Wacht 10 dagen of langer (indicatie, geen deadline)" : undefined} style={{ fontSize: 12, whiteSpace: "nowrap", color: rood ? "#B33A3A" : T.bodyOnBg, fontWeight: rood ? 600 : 400 }}>{dagenTekst(i.dagen)}</span>;
 }
 
 function Kaart({ i, open }: { i: BordItem; open: (s: UrlStation) => void }) {
@@ -49,10 +51,14 @@ function Kaart({ i, open }: { i: BordItem; open: (s: UrlStation) => void }) {
       <div style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.25, color: T.titleOnBg, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{naam}</div>
       {toonStation && <div style={{ fontSize: 12, color: T.subOnBg, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{station}</div>}
       {(i.groep === "actiepunt" || i.groep === "onhold") && (
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 4, fontSize: 12.5, color: "#1F5C3A" }}>
-          <CornerDownRight size={14} style={{ flexShrink: 0, marginTop: 1 }} />
-          <span style={{ minWidth: 0, overflowWrap: "anywhere" }}>{i.txt}{i.wie !== i.lane || (i.lane === "Derden" && i.label !== "Derden") ? ` · ${i.label}` : ""}</span>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 4, fontSize: 13, color: "#1F5C3A" }}>
+          <CornerDownRight size={14} style={{ flexShrink: 0, marginTop: 2 }} />
+          <span style={{ minWidth: 0, overflowWrap: "anywhere" }}>{i.txt}{i.lane === "Derden" && i.label !== "Derden" && i.wie === i.lane ? ` · ${i.label}` : ""}</span>
         </div>
+      )}
+      {/* Onderliggende actiehouder wanneer die afwijkt van de casepartij (bijv. Van Gelder-case, actie bij TerreVolt). */}
+      {i.groep !== "onhold" && i.wie !== i.lane && (
+        <div style={{ fontSize: 12, fontWeight: 600, color: T.bodyOnBg }}>Actie bij: {i.label}</div>
       )}
       {wv && <div style={{ fontSize: 12, overflowWrap: "anywhere", color: T.subOnBg }}>WV: {wv}</div>}
     </Pressable>
@@ -69,17 +75,17 @@ function Groep({ lane, g, titel, items, open }: { lane: Lane; g: GroepKey; titel
   const Chev = dicht ? ChevronRight : ChevronDown;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <button type="button" onClick={toggle} aria-expanded={!dicht} style={{ display: "flex", alignItems: "center", gap: 6, padding: "2px 2px", color: kleur, background: "none", border: 0, cursor: "pointer", textAlign: "left" }}>
+      <button type="button" onClick={toggle} aria-expanded={!dicht} className="focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1F5C3A] rounded-lg" style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 4px", minHeight: 44, color: kleur, background: "none", border: 0, cursor: "pointer", textAlign: "left" }}>
         <Chev size={16} />
         {g === "onhold" && <PauseCircle size={15} />}
         <span style={{ fontSize: 13, fontWeight: 700 }}>{titel}</span>
-        <span style={{ fontSize: 12, fontWeight: 600, background: T.surface, color: T.bodyOnBg, borderRadius: 10, padding: "1px 8px" }}>{items.length}</span>
+        <span aria-label={`${items.length} actie${items.length === 1 ? "" : "s"}`} style={{ fontSize: 12, fontWeight: 600, background: T.surface, color: T.bodyOnBg, borderRadius: 10, padding: "1px 8px" }}>{items.length}</span>
       </button>
       {!dicht && (g === "goedgekeurd" ? (
         <div style={{ background: T.surface, borderRadius: 12, border: "1px solid #DCE6DA", overflow: "hidden" }}>
           {zicht.map((i, k) => (
             <Pressable key={i.c.station.id + k} onClick={() => open(i.c.station)} scale={0.99} className="hover:bg-[#F3F8F2]"
-              style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", width: "100%", textAlign: "left", borderTop: k ? "1px solid #DCE6DA" : "none" }}>
+              style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 12px", minHeight: 48, width: "100%", textAlign: "left", borderTop: k ? "1px solid #DCE6DA" : "none" }}>
               <span className="font-mono" style={{ fontSize: 12, color: T.bodyOnBg, flexShrink: 0 }}>{caseNr(i.c.station)}</span>
               <span style={{ fontSize: 13, fontWeight: 600, color: T.titleOnBg, minWidth: 0, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{caseNaam(i.c.station)}</span>
               <UitvoeringLabel uitvoerder={uitvoerderVan(i.c)} variant="afk" />
@@ -88,7 +94,7 @@ function Groep({ lane, g, titel, items, open }: { lane: Lane; g: GroepKey; titel
         </div>
       ) : zicht.map((i, k) => <Kaart key={i.c.station.id + k} i={i} open={open} />))}
       {!dicht && items.length > max && (
-        <button type="button" onClick={() => setAlles((a) => !a)} style={{ alignSelf: "flex-start", fontSize: 13, fontWeight: 600, color: T.green, background: "none", border: 0, cursor: "pointer", padding: "2px 4px" }}>
+        <button type="button" onClick={() => setAlles((a) => !a)} className="focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1F5C3A] rounded-lg" style={{ alignSelf: "flex-start", fontSize: 14, fontWeight: 600, color: T.green, background: "none", border: 0, cursor: "pointer", padding: "0 8px", minHeight: 44 }}>
           {alles ? "Toon minder" : `Toon nog ${items.length - max}`}
         </button>
       )}
@@ -96,19 +102,20 @@ function Groep({ lane, g, titel, items, open }: { lane: Lane; g: GroepKey; titel
   );
 }
 
-export function Bord({ cases, open }: { cases: CaseItem[]; open: (s: UrlStation) => void }) {
+export function Bord({ cases, open, partij = "alle" }: { cases: CaseItem[]; open: (s: UrlStation) => void; partij?: Lane | "alle" }) {
   const items = bordItems(cases);
+  const lanes = partij === "alle" ? LANES : LANES.filter((l) => l.key === partij);
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[repeat(4,minmax(0,1fr))]" style={{ gap: 18 }}>
-      {LANES.map((lane) => {
+    <div className={partij === "alle" ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[repeat(4,minmax(0,1fr))]" : "grid grid-cols-1"} style={{ gap: 18 }}>
+      {lanes.map((lane) => {
         const st = PARTIJ_STIJL[lane.key];
-        const { groepen, open: n } = groepenVan(items, lane.key);
+        const { groepen, open: n, openCases } = groepenVan(items, lane.key);
         return (
           <section key={lane.key} aria-label={lane.key} style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
             <div style={{ padding: "0 2px" }}>
               <div className="font-display" style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 700, fontSize: 19, color: T.titleOnBg }}>
                 <span className="material-symbols-rounded" style={{ fontSize: 22, color: st.fg }}>{st.icon}</span>
-                {lane.key}<span style={{ fontFamily: "Inter, sans-serif", fontWeight: 500, fontSize: 14, color: T.bodyOnBg }}>{n} open</span>
+                {lane.key}<span style={{ fontFamily: "Inter, sans-serif", fontWeight: 500, fontSize: 14, color: T.bodyOnBg }}>{n} {n === 1 ? "actie" : "acties"} · {openCases} {openCases === 1 ? "case" : "cases"} open</span>
               </div>
               <div style={{ fontSize: 13, color: T.bodyOnBg }}>{lane.sub}</div>
             </div>

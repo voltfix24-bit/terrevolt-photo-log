@@ -30,23 +30,42 @@ interface OfflineDB extends DBSchema {
   };
 }
 
-let db: IDBPDatabase<OfflineDB> | undefined;
+let dbPromise: Promise<IDBPDatabase<OfflineDB>> | undefined;
 
 export const QUEUE_EVENT = 'foto-wachtrij-veranderd';
+/** Een andere (oude) tab houdt de fotodatabase open; detail.geblokkeerd = true/false. */
+export const OPSLAG_GEBLOKKEERD_EVENT = 'foto-opslag-geblokkeerd';
 const changed = () => window.dispatchEvent(new Event(QUEUE_EVENT));
+const blokkade = (geblokkeerd: boolean) => window.dispatchEvent(new CustomEvent(OPSLAG_GEBLOKKEERD_EVENT, { detail: { geblokkeerd } }));
 export const LEASE_MS = 120_000;
+export const DB_VERSIE = 2;
 
-export async function getDB() {
-  if (!db) {
-    db = await openDB<OfflineDB>('terrevolt-offline', 2, {
+/**
+ * Eén gedeelde open-promise. Houdt een oude tab de database open (blocked), dan wacht de upgrade
+ * tot die tab sluit en meldt de UI dat; vraagt een nieuwere tab om een upgrade (blocking/versionchange),
+ * dan sluiten we onze eigen verbinding zodat die kan doorgaan. Nooit wissen.
+ */
+export function getDB(): Promise<IDBPDatabase<OfflineDB>> {
+  if (!dbPromise) {
+    const open = openDB<OfflineDB>('terrevolt-offline', DB_VERSIE, {
       upgrade(d, oldVersion, _new, tx) {
         const store = oldVersion < 1 ? d.createObjectStore('photo-queue', { keyPath: 'id' }) : tx.objectStore('photo-queue');
         if (oldVersion < 1) { store.createIndex('by-station', 'stationId'); store.createIndex('by-status', 'status'); }
         if (!store.indexNames.contains('by-station-cat')) store.createIndex('by-station-cat', ['stationId', 'categorie']);
       },
+      blocked() { blokkade(true); },
+      blocking() { void sluitDB(); },
+      terminated() { dbPromise = undefined; },
     });
+    dbPromise = open.then((d) => { blokkade(false); return d; }, (e) => { dbPromise = undefined; throw e; });
   }
-  return db;
+  return dbPromise;
+}
+
+/** Sluit de eigen verbinding (bij versionchange); een volgende getDB opent opnieuw. */
+export async function sluitDB() {
+  const p = dbPromise; dbPromise = undefined;
+  if (p) { try { (await p).close(); } catch { /* al dicht */ } }
 }
 
 /** Nieuwe, willekeurige queue-identiteit; twee gelijke bestandsnamen blijven verschillende keuzes. */
@@ -117,18 +136,26 @@ export async function bevries(id: string, eigenaar: string, blob: Blob, pad: str
   return true;
 }
 
-export async function markDone(id: string) {
+/**
+ * Atomaire, eigenaar-gecontroleerde finalisatie: alleen de huidige leasehouder mag afronden of een
+ * fout vastleggen. Een late worker wiens lease verliep en door een ander is geclaimd, raakt niets.
+ */
+async function finaliseer(id: string, eigenaar: string | undefined, f: (i: QueueItem) => QueueItem): Promise<boolean> {
   const d = await getDB();
-  const item = await d.get('photo-queue', id);
-  if (item) { await d.put('photo-queue', { ...item, status: 'done', leaseTot: undefined, leaseEigenaar: undefined }); changed(); }
+  const tx = d.transaction('photo-queue', 'readwrite');
+  const item = await tx.store.get(id);
+  if (!item || (eigenaar !== undefined && item.leaseEigenaar !== eigenaar)) { await tx.done; return false; }
+  await tx.store.put(f(item));
+  await tx.done;
+  changed();
+  return true;
 }
 
-export async function markError(id: string, fout: string, soort: 'beheer' | 'overig' = 'overig') {
-  const d = await getDB();
-  const item = await d.get('photo-queue', id);
-  if (item) await d.put('photo-queue', { ...item, status: 'error', foutSoort: soort, pogingen: (item.pogingen ?? 0) + 1, laatsteFout: fout.slice(0, 300), leaseTot: undefined, leaseEigenaar: undefined });
-  changed();
-}
+export const markDone = (id: string, eigenaar?: string) =>
+  finaliseer(id, eigenaar, (item) => ({ ...item, status: 'done', leaseTot: undefined, leaseEigenaar: undefined }));
+
+export const markError = (id: string, fout: string, soort: 'beheer' | 'overig' = 'overig', eigenaar?: string) =>
+  finaliseer(id, eigenaar, (item) => ({ ...item, status: 'error', foutSoort: soort, pogingen: (item.pogingen ?? 0) + 1, laatsteFout: fout.slice(0, 300), leaseTot: undefined, leaseEigenaar: undefined }));
 
 /** Zet een mislukt item terug naar 'bewaard', zodat dezelfde bevroren foto opnieuw wordt verstuurd. */
 export async function opnieuwKlaarzetten(id: string) {

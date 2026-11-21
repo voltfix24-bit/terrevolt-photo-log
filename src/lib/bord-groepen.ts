@@ -16,7 +16,7 @@ export const LANE_GROEPEN: Record<Lane, GroepKey[]> = {
 };
 
 export function groepTitel(lane: Lane, g: GroepKey) {
-  return { opnieuw: "Opnieuw indienen", actiepunt: `Actiepunt ${lane}`, klaarzetten: "TO klaarzetten en indienen", beoordelen: "TO beoordelen", goedgekeurd: "Goedgekeurd", onhold: "On hold" }[g];
+  return { opnieuw: "Opnieuw indienen", actiepunt: `Actiepunt ${lane}`, klaarzetten: "TO klaarzetten en indienen", beoordelen: "TO beoordelen", goedgekeurd: "TO goedgekeurd · dossier nog niet afgerond", onhold: "On hold" }[g];
 }
 
 function groepVan(lane: Lane, txt: string): GroepKey {
@@ -46,6 +46,16 @@ export function groepenVan(items: BordItem[], lane: Lane) {
   const groepen = LANE_GROEPEN[lane]
     .map((g) => ({ key: g, titel: groepTitel(lane, g), items: inLane.filter((i) => i.groep === g).sort(sorteer) }))
     .filter((g) => g.items.length > 0);
-  const open = inLane.filter((i) => i.groep !== "goedgekeurd" && i.groep !== "onhold").length;
-  return { groepen, open };
+  const openItems = inLane.filter((i) => i.groep !== "goedgekeurd" && i.groep !== "onhold");
+  // `open` telt actiekaarten; `openCases` telt unieke cases (station.id) — één case kan meerdere acties hebben.
+  return { groepen, open: openItems.length, openCases: uniekeCases(openItems), cases: uniekeCases(inLane), acties: inLane.length };
+}
+
+export const uniekeCases = (items: Pick<BordItem, "c">[]) => new Set(items.map((i) => i.c.station.id)).size;
+
+/** Aantallen per partij voor de directe partijkeuze; onafhankelijk van het uitvoerderfilter berekend op de gegeven cases. */
+export function partijTellingen(items: BordItem[]): Record<Lane, { acties: number; cases: number }> {
+  const r = {} as Record<Lane, { acties: number; cases: number }>;
+  for (const lane of Object.keys(LANE_GROEPEN) as Lane[]) { const g = groepenVan(items, lane); r[lane] = { acties: g.acties, cases: g.cases }; }
+  return r;
 }

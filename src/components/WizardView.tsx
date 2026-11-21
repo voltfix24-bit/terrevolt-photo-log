@@ -1,7 +1,7 @@
 // Variant 2b — Foto-wizard "camera eerst"
 // Nieuw bestand: src/components/WizardView.tsx
 // Vervangt de lokale `WizardView` + `WizardViewProps` in src/pages/StationDetail.tsx (zelfde props).
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { categorieKlaar, minFotos } from "@/lib/foto-regels";
 import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -126,10 +126,11 @@ export function WizardView({
   const section = cat ? SECTIONS.find((s) => s.id === cat.section) : null;
   const catVoorbeelden = cat ? voorbeelden.filter((v) => v.categorie === cat.name) : [];
   const isLast = currentIndex >= applicableCategories.length - 1;
-  const { items: wachtrij, leesFout: wachtrijFout } = useWachtrijCategorie(stationId, cat?.name);
-  const serverPaden = new Set(catFotos.map((f) => f.storage_path));
+  const serverPaden = useMemo(() => new Set(catFotos.map((f) => f.storage_path)), [catFotos]);
+  const { items: wachtrij, leesFout: wachtrijFout } = useWachtrijCategorie(stationId, cat?.name, serverPaden);
   // Een bevestigde serverfoto vervangt zijn wachtrij-preview (dedup op vast pad, niet op bestandsnaam).
-  const lokaleItems = wachtrij.filter((w) => !(w.pad && serverPaden.has(w.pad)) && w.status !== "done");
+  // Een bevestigd verstuurde foto blijft als "Verstuurd" staan tot de serverlijst hem bevat.
+  const lokaleItems = wachtrij.filter((w) => !(w.pad && serverPaden.has(w.pad)));
   const bezigMetBewaren = cat ? bewaren[cat.name] ?? 0 : 0;
   const uploading = false;
   const totaal = catFotos.length + lokaleItems.length;
@@ -320,14 +321,14 @@ export function WizardView({
               <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                 <h1 className="font-display" style={{ margin: 0, fontSize: 30, fontWeight: 700, lineHeight: 1.15, flex: 1, minWidth: 0 }}>{cat.effectiveName}</h1>
                 {!opmerkingText && (
-                  <button type="button" onClick={() => setSheet("notitie")} style={{ flexShrink: 0, minHeight: 40, padding: "0 13px", borderRadius: 999, border: "none", background: "rgba(252,201,52,0.16)", color: W.gold, fontSize: 15, fontWeight: 600, marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
+                  <button type="button" onClick={() => setSheet("notitie")} style={{ flexShrink: 0, minHeight: 48, padding: "0 13px", borderRadius: 999, border: "none", background: "rgba(252,201,52,0.16)", color: W.gold, fontSize: 15, fontWeight: 600, marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
                     <span className="material-symbols-rounded" style={{ fontSize: 19 }}>add</span>Notitie
                   </button>
                 )}
                 {hasInfo && (
                   <Popover>
                     <PopoverTrigger asChild>
-                      <button type="button" aria-label="Informatie" style={{ flexShrink: 0, width: 40, height: 40, borderRadius: 999, border: "none", background: "rgba(255,255,255,0.14)", color: W.text, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 2 }}>
+                      <button type="button" aria-label="Informatie" style={{ flexShrink: 0, width: 48, height: 48, borderRadius: 999, border: "none", background: "rgba(255,255,255,0.14)", color: W.text, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 0 }}>
                         <span className="material-symbols-rounded" style={{ fontSize: 24 }}>info</span>
                       </button>
                     </PopoverTrigger>
@@ -349,10 +350,10 @@ export function WizardView({
                 <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.04em", color: W.body }}>N.V.T.</div>
                 <div style={{ fontSize: 15, color: W.text }}>{skippedReasons[cat.name] || "Geen reden opgegeven"}</div>
               </div>
-              <Pressable onClick={() => onUnskip(cat.name)} style={{ minHeight: 40, padding: "0 12px", borderRadius: 10, background: "rgba(255,255,255,0.16)", color: W.text, fontSize: 14, fontWeight: 600 }}>Toch foto maken</Pressable>
+              <Pressable onClick={() => onUnskip(cat.name)} style={{ minHeight: 48, padding: "0 12px", borderRadius: 10, background: "rgba(255,255,255,0.16)", color: W.text, fontSize: 14, fontWeight: 600 }}>Toch foto maken</Pressable>
             </div>
           ) : totaal === 0 && (
-            <button type="button" onClick={() => setSheet("skip")} style={{ alignSelf: "flex-start", minHeight: 36, border: "none", background: "none", padding: 0, color: W.body, fontSize: 15, textDecoration: "underline", textUnderlineOffset: 3 }}>Niet gemaakt / N.v.t.</button>
+            <button type="button" onClick={() => setSheet("skip")} style={{ alignSelf: "flex-start", minHeight: 48, border: "none", background: "none", padding: 0, color: W.body, fontSize: 15, textDecoration: "underline", textUnderlineOffset: 3 }}>Niet gemaakt / N.v.t.</button>
           )}
         </div>
 

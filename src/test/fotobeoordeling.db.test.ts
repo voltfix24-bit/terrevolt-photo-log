@@ -15,6 +15,7 @@ async function fixture(fn:(c:Ctx)=>Promise<void>,extra='') {
  const foto=async(cat:string,status='pending')=>{const id=randomUUID();await db`INSERT INTO public.fotos(id,station_id,categorie,storage_path,url,review_status) VALUES(${id},${s},${cat},${'stations/'+s+'/'+id+'.jpg'},'x',${status})`;return id;};
  try{await fn({s,u,sa,sb,foto});}finally{
   await Promise.all([a.unsafe('RESET ROLE'),b.unsafe('RESET ROLE')]);
+  await db`DELETE FROM public.opleverruns WHERE station_id=${s}`;await db`DELETE FROM storage.objects WHERE bucket_id='to-fotos' AND split_part(name,'/',2)=${s}`;
   await db`DELETE FROM public.foto_beoordelingen WHERE station_id=${s}`;await db`DELETE FROM public.fotos WHERE station_id=${s}`;await db`DELETE FROM public.categorie_skips WHERE station_id=${s}`;
   await db`DELETE FROM public.stations WHERE id=${s}`;await db`DELETE FROM public.beheer_sessies WHERE user_id=${u}`;await db`DELETE FROM public.user_roles WHERE user_id=${u}`;await db`DELETE FROM auth.sessions WHERE user_id=${u}`;
  }
@@ -76,5 +77,30 @@ describe.skipIf(!socket)('fotobeoordeling real PostgreSQL',()=>{
   await expect(b`UPDATE public.fotos SET review_versie=99 WHERE id=${p}`).rejects.toThrow(/Beheer/);
   expect((await db`SELECT review_versie,afkeur_afgehandeld_op FROM public.fotos WHERE id=${p}`)[0]).toEqual({review_versie:'0',afkeur_afgehandeld_op:null});
   const snap=(await db`SELECT public.dossier_snapshot(${s}) AS d`)[0].d;expect(snap.fotos.map((f:{id:string})=>f.id)).not.toContain(p);
+ }));
+ it('real valid resubmission via fotodossier_aanbieden keeps rejection status/reason/handling and excludes it from the stored run snapshot',()=>fixture(async({s,u,sa,foto})=>{
+  await db`INSERT INTO public.categorie_skips(station_id,categorie,reden) SELECT ${s},c.naam,'Fictief n.v.t.' FROM public.stations st, public.vereiste_fotocategorieen(st) c WHERE st.id=${s} AND c.naam<>'Lips-sloten'`;
+  const oud=await foto('Lips-sloten');
+  await db`INSERT INTO storage.objects(bucket_id,name) SELECT 'to-fotos',storage_path FROM public.fotos WHERE id=${oud}`;
+  await als(a,'authenticated',u,sa);
+  expect((await besluit(a,oud,0,'rejected','Onscherp — fictief')).ok).toBe(true);
+  expect((await db`SELECT status FROM public.stations WHERE id=${s}`)[0].status).toBe('in uitvoering');
+  // Vervangende foto; een afgekeurd dossier was al opgeleverd, dus zonder PIN weigert de server herindiening (fase-1-grens).
+  const nieuw=await foto('Lips-sloten');
+  await db`INSERT INTO storage.objects(bucket_id,name) SELECT 'to-fotos',storage_path FROM public.fotos WHERE id=${nieuw}`;
+  await als(b,'anon');
+  await expect(b`SELECT public.fotodossier_aanbieden(${s})`).rejects.toThrow(/Beheer/);
+  await b.unsafe('RESET ROLE');
+  const run=(await a`SELECT public.fotodossier_aanbieden(${s}) AS r`)[0].r;
+  expect(run).toMatchObject({nieuw:true});
+  expect((await db`SELECT status FROM public.stations WHERE id=${s}`)[0].status).toBe('opgeleverd');
+  expect((await db`SELECT review_status,review_reden,afkeur_afgehandeld_op FROM public.fotos WHERE id=${oud}`)[0]).toEqual({review_status:'rejected',review_reden:'Onscherp — fictief',afkeur_afgehandeld_op:null});
+  const dossier=(await db`SELECT dossier FROM public.opleverruns WHERE id=${run.id}`)[0].dossier;
+  const ids=dossier.fotos.map((f:{id:string})=>f.id);
+  expect(ids).toContain(nieuw);expect(ids).not.toContain(oud);
+  // Expliciete afhandeling daarna: afkeur blijft afgekeurd, met historie.
+  expect((await besluit(a,oud,1,'afgehandeld','Vervangen door nieuwe foto')).ok).toBe(true);
+  expect((await db`SELECT review_status,afkeur_afgehandeld_toelichting FROM public.fotos WHERE id=${oud}`)[0]).toEqual({review_status:'rejected',afkeur_afgehandeld_toelichting:'Vervangen door nieuwe foto'});
+  expect((await db`SELECT count(*)::int AS n FROM public.foto_beoordelingen WHERE foto_id=${oud}`)[0].n).toBe(2);
  }));
 });

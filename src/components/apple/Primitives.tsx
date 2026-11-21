@@ -5,10 +5,10 @@ export const T = {
   surface: "#FFFFFF",
   green: "#1F5C3A",
   titleOnBg: "#0A2A18",
-  subOnBg: "#5E7A66",
+  subOnBg: "#4E6656", // ≥4,5:1 op bg en wit
   bodyOnBg: "#3D4F42",
   rowText: "#0A0A0A",
-  rowSub: "#7A857A",
+  rowSub: "#4E6656",
   done: "#8FA893",
   muted: "#B0B8B0",
   chevron: "#C4CCC4",

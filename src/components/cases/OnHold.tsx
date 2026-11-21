@@ -32,7 +32,7 @@ export function OnHoldKnop({ id }: { id: string }) {
   };
   return (
     <>
-      <Pressable onClick={() => setOpen(true)} scale={0.97} style={{ marginLeft: "auto", minHeight: 40, padding: "0 14px", borderRadius: 20, fontSize: 15, fontWeight: 600, background: HOLD_KLEUR.bg, color: HOLD_KLEUR.fg, display: "flex", alignItems: "center", gap: 6 }}>
+      <Pressable onClick={() => setOpen(true)} scale={0.97} style={{ marginLeft: "auto", minHeight: 44, padding: "0 14px", borderRadius: 20, fontSize: 15, fontWeight: 600, background: HOLD_KLEUR.bg, color: HOLD_KLEUR.fg, display: "flex", alignItems: "center", gap: 6 }}>
         <PauseCircle size={17} />On hold zetten
       </Pressable>
       <Dialog open={open} onOpenChange={setOpen}>

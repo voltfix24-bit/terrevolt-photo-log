@@ -16,7 +16,8 @@ import NotFound from "./pages/NotFound";
 import { BeoordelenSleutelRoute, CasesSleutelRoute, KorteLink, OpdrachtgeverRoute, StationsRoute } from "./pages/UrlRoutes";
 import { useInstellingen } from "@/hooks/use-theme";
 import { useOnline } from "@/hooks/use-online";
-import { syncPendingPhotos } from "@/lib/sync-service";
+import { syncPendingPhotos, SYNC_RESULTAAT_EVENT } from "@/lib/sync-service";
+import { OPSLAG_GEBLOKKEERD_EVENT } from "@/lib/offline-queue";
 import { getQueueCount } from "@/lib/offline-queue";
 import { verstuurNotities, verstuurNotitiesNaBeheer } from "@/lib/notities";
 import { toast } from "sonner";
@@ -27,6 +28,26 @@ const queryClient = new CaseQueryClient();
 function AppContent() {
   useInstellingen();
   const isOnline = useOnline();
+
+  useEffect(() => {
+    // Iedere bevestigde upload vernieuwt direct het werkelijk getroffen station (ook als de sync elders startte).
+    let stationsTimer: ReturnType<typeof setTimeout> | undefined;
+    const resultaat = (e: Event) => {
+      const stationId = (e as CustomEvent<{ stationId: string }>).detail?.stationId;
+      if (!stationId) return;
+      void queryClient.invalidateQueries({ queryKey: ["fotos", stationId] });
+      void queryClient.invalidateQueries({ queryKey: ["categorie-skips", stationId] });
+      if (stationsTimer) clearTimeout(stationsTimer);
+      stationsTimer = setTimeout(() => void queryClient.invalidateQueries({ queryKey: ["stations"] }), 400);
+    };
+    const geblokkeerd = (e: Event) => {
+      if ((e as CustomEvent<{ geblokkeerd: boolean }>).detail?.geblokkeerd) toast.error("Foto-opslag wacht op een ander geopend tabblad van deze app. Sluit dat tabblad; je foto's blijven bewaard en gaan daarna vanzelf verder.", { id: "opslag-geblokkeerd", duration: Infinity });
+      else toast.dismiss("opslag-geblokkeerd");
+    };
+    window.addEventListener(SYNC_RESULTAAT_EVENT, resultaat);
+    window.addEventListener(OPSLAG_GEBLOKKEERD_EVENT, geblokkeerd);
+    return () => { window.removeEventListener(SYNC_RESULTAAT_EVENT, resultaat); window.removeEventListener(OPSLAG_GEBLOKKEERD_EVENT, geblokkeerd); if (stationsTimer) clearTimeout(stationsTimer); };
+  }, []);
 
   useEffect(() => {
     const herstel = () => {

@@ -17,10 +17,12 @@ import { OnHoldBalk, OnHoldKnop } from "@/components/cases/OnHold";
 import { DossierNotitie } from "@/components/cases/DossierNotitie";
 import { casePresentatie, indieningTekst } from "@/lib/case-presentatie";
 import { dagenZonderHold } from "@/lib/on-hold";
+import { dossierLabel } from "@/lib/aandacht";
 
 const SUB = T.bodyOnBg;
 const card = { background: T.surface, borderRadius: 16, padding: "20px 22px" } as const;
-const veld = { border: 0, borderRadius: 10, background: T.soft, padding: "12px 14px", font: "inherit", fontSize: 14, color: T.titleOnBg, outline: "none", width: "100%" } as const;
+// Invoer minimaal 16px: voorkomt inzoomen op iOS en blijft leesbaar.
+const veld = { border: 0, borderRadius: 10, background: T.soft, padding: "12px 14px", font: "inherit", fontSize: 16, color: T.titleOnBg, outline: "none", width: "100%" } as const;
 const kop = { fontSize: 13, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", color: SUB } as const;
 
 function Notitie({ value, placeholder, onSave, rows = 2 }: { value: string | null; placeholder: string; onSave: (v: string) => void; rows?: number }) {
@@ -84,7 +86,10 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
   const ftr = first?.status === "goedgekeurd" ? "Ja" : first?.status === "afgekeurd" ? "Nee" : "—";
   const acties = cur?.to_acties ?? [];
   const openN = acties.filter((a) => !a.afgehandeld_op).length;
-  const balWie = casePresentatie(c).partijen;
+  const presentatie = casePresentatie(c);
+  const balWie = presentatie.partijen;
+  // Onderliggende actiehouders die afwijken van de casepartij (bijv. Van Gelder-case met actie bij TerreVolt).
+  const afwijkend = [...new Set(presentatie.bal.filter((b) => !balWie.includes(b.wie)).map((b) => b.label))];
   const facts = [
     { k: "Aantal keer ingediend", v: String(indieningen(rondes)), fg: T.titleOnBg },
     { k: "First time right", v: ftr, fg: ftr === "Ja" ? T.green : ftr === "Nee" ? T.danger : SUB },
@@ -98,37 +103,40 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
   const vg = station.uitvoerder === "van_gelder";
   const placeholder = { open: vg ? "Bijv. wacht op stukken van Van Gelder" : "Bijv. wacht op laatste foto's", controle: "Bijv. Van Gelder heeft doorgezet naar Liander", afgekeurd: "Toelichting van Van Gelder / Liander", goedgekeurd: "Bijv. goedgekeurd door Liander, kenmerk …" }[curStatus];
 
-  const chip = (on: boolean, onBg = T.titleOnBg) => ({ minHeight: 38, padding: "0 12px", borderRadius: 9, display: "flex", alignItems: "center", gap: 6, fontSize: 14, fontWeight: 600, background: on ? onBg : T.soft, color: on ? T.surface : T.titleOnBg } as const);
+  const chip = (on: boolean, onBg = T.titleOnBg) => ({ minHeight: 44, padding: "0 12px", borderRadius: 9, display: "flex", alignItems: "center", gap: 6, fontSize: 14, fontWeight: 600, background: on ? onBg : T.soft, color: on ? T.surface : T.titleOnBg } as const);
 
   return (
     <div style={{ minHeight: "100vh", background: T.bg }}>
-      <div style={{ position: "sticky", top: 0, zIndex: 10, background: T.surface, borderBottom: `1px solid ${T.hairline}`, padding: "calc(12px + env(safe-area-inset-top)) 24px 12px", display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 10, background: T.surface, borderBottom: `1px solid ${T.hairline}`, padding: "calc(6px + env(safe-area-inset-top)) clamp(10px, 4vw, 24px) 6px", display: "flex", alignItems: "center", gap: "8px 14px", flexWrap: "wrap" }}>
         <Pressable onClick={() => navigate("/cases")} style={{ display: "flex", alignItems: "center", gap: 6, color: T.green, fontSize: 15, fontWeight: 600, minHeight: 44 }}>
-          <span className="material-symbols-rounded" style={{ fontSize: 22 }}>arrow_back</span>Wie moet wat doen
+          <span className="material-symbols-rounded" style={{ fontSize: 22 }}>arrow_back</span><span className="max-sm:hidden">Wie moet wat doen</span><span className="sm:hidden">Cases</span>
         </Pressable>
-        <span style={{ color: T.softBorder }}>/</span>
+        <span aria-hidden="true" style={{ color: T.softBorder }}>/</span>
         <span className="font-mono" style={{ fontSize: 15, color: SUB }}>{caseNr(station)}</span>
         {!station.on_hold && <OnHoldKnop key={station.id} id={station.id} />}
       </div>
 
-      <main style={{ padding: "24px 24px 60px", maxWidth: 1400, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+      <main style={{ padding: "clamp(12px, 4vw, 24px) clamp(12px, 4vw, 24px) 60px", maxWidth: 1400, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
         {station.on_hold && <OnHoldBalk key={station.id} id={station.id} station={station} />}
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
           <div style={{ minWidth: 0 }}>
             <div className="font-mono" style={{ fontSize: 15, fontWeight: 600, color: T.bodyOnBg }}>Case {caseNr(station)}{station.is_nummer ? <span style={{ fontSize: 12, fontWeight: 500, color: SUB, marginLeft: 8 }}>{String(station.is_nummer)}</span> : null}</div>
             <h1 className="font-display" style={{ margin: "4px 0 0", fontWeight: 800, fontSize: 30, overflowWrap: "anywhere", lineHeight: 1.15, color: T.titleOnBg }}>{caseNaam(station)}</h1>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
               <UitvoeringLabel uitvoerder={vg ? "van_gelder" : "terrevolt"} />
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 8px", borderRadius: 7, fontSize: 13, fontWeight: 600, background: st.bg, color: st.fg }}><span style={{ width: 7, height: 7, borderRadius: 4, background: st.dot }} />TO-status: {st.label}</span>
+              <span style={{ display: "inline-flex", padding: "3px 8px", borderRadius: 7, fontSize: 13, fontWeight: 600, background: station.dossier_status === "afgerond" ? "#E3EFE0" : T.soft, color: station.dossier_status === "afgerond" ? T.green : T.bodyOnBg }}>Dossier: {dossierLabel(station.dossier_status as string | null)}</span>
             </div>
             {vg ? <VgVelden id={station.id} uitvoerder="van_gelder" wv={(station.wv as string | null) ?? null} namen={wvNamen} />
               : <div style={{ fontSize: 14, color: SUB }}>{[caseSub(station), "opdrachtgever Van Gelder", "netbeheerder Liander"].filter(Boolean).join(" · ")}</div>}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 14, color: SUB }}>Bal ligt bij</span>
+            <span style={{ fontSize: 14, color: SUB }}>Bal bij</span>
             {(balWie.length ? balWie : (["—"] as any[])).map((w) => {
               const p = PARTIJ_STIJL[w as Partij] ?? { bg: T.soft, fg: SUB, icon: "check" };
               return <span key={w} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: 10, fontSize: 15, fontWeight: 700, background: p.bg, color: p.fg }}><span className="material-symbols-rounded" style={{ fontSize: 18 }}>{p.icon}</span>{w === "—" ? "Niemand" : w}</span>;
             })}
+            {afwijkend.length > 0 && <span style={{ fontSize: 14, fontWeight: 600, color: T.bodyOnBg }}>· Actie bij: {afwijkend.join(", ")}</span>}
           </div>
         </div>
 
@@ -137,16 +145,17 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
             const s = TO_STATUS[r.status];
             return (
               <div key={k} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 11px", borderRadius: 999, fontSize: 13, fontWeight: 600, background: s.bg, color: s.fg }}><span style={{ width: 8, height: 8, borderRadius: 4, background: s.dot }} />Ronde {k + 1} · {s.label}</span>
+                <span style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 11px", borderRadius: 999, fontSize: 13, fontWeight: 600, background: s.bg, color: s.fg, boxShadow: r.status === "open" ? `inset 0 0 0 1px ${T.softBorder}` : "none" }}><span style={{ width: 8, height: 8, borderRadius: 4, background: s.dot }} />Ronde {k + 1} · {s.label}</span>
                 {k < arr.length - 1 && <span className="material-symbols-rounded" style={{ fontSize: 18, color: T.done }}>arrow_forward</span>}
               </div>
             );
           })}
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 380px), 1fr))", gap: 20, alignItems: "start" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0, gridColumn: "auto" }}>
-            <div style={{ ...card, display: "flex", flexDirection: "column", gap: 16, boxShadow: `inset 0 0 0 2px ${st.dot}` }}>
+        {/* Mobiel: huidige ronde en actueel dossier vóór de ingeklapte rondehistorie (wrappers worden 'contents'). */}
+        <div className="grid items-start gap-5 lg:grid-cols-2">
+          <div className="flex min-w-0 flex-col gap-3.5 max-lg:contents">
+            <div className="order-1 min-w-0 lg:order-none" style={{ ...card, display: "flex", flexDirection: "column", gap: 16, boxShadow: `inset 0 0 0 2px ${st.dot}` }}>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                 <div className="font-display" style={{ fontWeight: 700, fontSize: 20 }}>Ronde {n} <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 500, fontSize: 14, color: SUB }}>· huidige ronde</span></div>
                 <div style={{ fontSize: 14, color: SUB }}>{dateLine}</div>
@@ -199,8 +208,10 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
                       const done = !!a.afgehandeld_op, ps = PARTIJ_STIJL[a.bij];
                       return (
                         <div key={a.id} style={{ display: "flex", gap: 12, padding: "12px 14px", borderRadius: 12, background: done ? "#F7FAF6" : T.soft }}>
-                          <Pressable aria-label={done ? "Heropenen" : "Afhandelen"} onClick={() => toggleActie(a.id, a.afgehandeld_op)} style={{ width: 24, height: 24, borderRadius: 7, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: done ? T.green : T.surface, boxShadow: `inset 0 0 0 1.5px ${T.green}`, color: T.surface }}>
-                            {done && <span className="material-symbols-rounded" style={{ fontSize: 18 }}>check</span>}
+                          <Pressable role="checkbox" aria-checked={done} aria-label={`${a.omschrijving}: ${done ? "afgehandeld, heropenen" : "afhandelen"}`} onClick={() => toggleActie(a.id, a.afgehandeld_op)} style={{ width: 44, height: 44, margin: "-10px -6px -10px -10px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent" }}>
+                            <span style={{ width: 24, height: 24, borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center", background: done ? T.green : T.surface, boxShadow: `inset 0 0 0 1.5px ${T.green}`, color: T.surface }}>
+                              {done && <span className="material-symbols-rounded" style={{ fontSize: 18 }}>check</span>}
+                            </span>
                           </Pressable>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ overflowWrap: "anywhere", fontSize: 15, fontWeight: 600, lineHeight: 1.35, color: done ? T.subOnBg : T.titleOnBg, textDecoration: done ? "line-through" : "none" }}>{a.omschrijving}</div>
@@ -214,7 +225,7 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
                       );
                     })}
                     <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 14, borderRadius: 12, boxShadow: "inset 0 0 0 1.5px #E1E8E0" }}>
-                      <input value={draft.txt} onChange={(e) => setDraft({ ...draft, txt: e.target.value })} placeholder={vg ? "Nieuw actiepunt, bijv. meetrapport aanleveren" : "Nieuw actiepunt, bijv. aarding opnieuw fotograferen"} style={{ ...veld, fontSize: 15, minHeight: 44 }} />
+                      <input value={draft.txt} onChange={(e) => setDraft({ ...draft, txt: e.target.value })} placeholder={vg ? "Nieuw actiepunt, bijv. meetrapport aanleveren" : "Nieuw actiepunt, bijv. aarding opnieuw fotograferen"} style={{ ...veld, minHeight: 44 }} />
                       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
                         <span style={{ fontSize: 13, fontWeight: 600, marginRight: 4 }}>Bij wie</span>
                         {PARTIJEN.map((p) => (
@@ -238,6 +249,13 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
               )}
             </div>
 
+            {rondes.length > 1 && (
+            <details className="order-3 min-w-0 lg:order-none" style={{ ...card, padding: 0, background: "rgba(255,255,255,0.7)" }}>
+              <summary className="focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1F5C3A] rounded-2xl" style={{ minHeight: 48, padding: "0 22px", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 15, fontWeight: 700, color: T.titleOnBg }}>
+                <span className="material-symbols-rounded" aria-hidden="true" style={{ fontSize: 20 }}>history</span>Eerdere rondes ({rondes.length - 1})
+                <span style={{ fontWeight: 500, fontSize: 13, color: SUB }}>{rondes.slice(0, -1).map((r) => `${r.nummer}: ${TO_STATUS[r.status].label}`).join(" · ")}</span>
+              </summary>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "0 10px 10px" }}>
             {rondes.slice(0, -1).reverse().map((r) => {
               const s = TO_STATUS[r.status];
               return (
@@ -259,10 +277,13 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
                 </div>
               );
             })}
+              </div>
+            </details>
+            )}
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <div style={card}>
+          <div className="flex min-w-0 flex-col gap-4 max-lg:contents">
+            <div className="order-4 min-w-0 lg:order-none" style={card}>
               <div className="font-display" style={{ fontWeight: 700, fontSize: 17, marginBottom: 8 }}>TO-samenvatting</div>
               {facts.map((f) => (
                 <div key={f.k} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "8px 0", borderTop: "1px solid #F0F3EF", fontSize: 14 }}>
@@ -270,15 +291,15 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
                 </div>
               ))}
             </div>
-            <div style={{ ...card, display: "flex", flexDirection: "column", gap: 12 }}>
+            <div className="order-2 min-w-0 lg:order-none" style={{ ...card, display: "flex", flexDirection: "column", gap: 12 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                <div className="font-display" style={{ fontWeight: 700, fontSize: 17 }}>Opleverdossier</div>
+                <div className="font-display" style={{ fontWeight: 700, fontSize: 17 }}>Opleverdossier <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 500, fontSize: 14, color: SUB }}>· {dossierLabel(station.dossier_status as string | null)}</span></div>
                 <div style={{ fontSize: 13, color: SUB }}>bij Van Gelder</div>
               </div>
               {DOSSIER.map((d) => {
                 const on = (station.dossier_status ?? "ingediend") === d.key;
                 return (
-                  <Pressable key={d.key} onClick={() => updStation({ dossier_status: d.key })} scale={0.98} style={{ minHeight: 42, padding: "0 12px", borderRadius: 10, display: "flex", alignItems: "center", gap: 10, fontSize: 14, fontWeight: 600, background: on ? "#E3EFE0" : "#F7FAF6", color: on ? T.green : T.titleOnBg, boxShadow: on ? `inset 0 0 0 2px ${T.green}` : "none", width: "100%", textAlign: "left" }}>
+                  <Pressable key={d.key} onClick={() => updStation({ dossier_status: d.key })} scale={0.98} style={{ minHeight: 48, padding: "0 12px", borderRadius: 10, display: "flex", alignItems: "center", gap: 10, fontSize: 15, fontWeight: 600, background: on ? "#E3EFE0" : "#F7FAF6", color: on ? T.green : T.titleOnBg, boxShadow: on ? `inset 0 0 0 2px ${T.green}` : "none", width: "100%", textAlign: "left" }}>
                     <span className="material-symbols-rounded" style={{ fontSize: 19 }}>{d.icon}</span><span style={{ flex: 1 }}>{d.label}</span>
                     {on && <span className="material-symbols-rounded" style={{ fontSize: 18 }}>check</span>}
                   </Pressable>
@@ -287,7 +308,7 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
               <DossierNotitie key={station.id} id={station.id} tekst={station.dossier_notitie as string | null} versie={Number(station.dossier_notitie_versie ?? 0)} refresh={refresh} />
               {station.hold_periodes?.map((h: any) => <div key={h.id} className="text-sm break-words" style={{ color: SUB }}>On hold {h.begin_op ?? "begin onbekend"} — {h.einde_op ?? "lopend"} · {h.reden} · {h.partij}</div>)}
             </div>
-            <div style={{ ...card, display: "flex", flexDirection: "column", gap: 12 }}>
+            <div className="order-5 min-w-0 lg:order-none" style={{ ...card, display: "flex", flexDirection: "column", gap: 12 }}>
               <div className="font-display" style={{ fontWeight: 700, fontSize: 17 }}>
                 {station.case_verborgen ? "Terugzetten in cases" : "Uit cases-overzicht halen"}
               </div>

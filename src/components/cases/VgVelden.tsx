@@ -8,7 +8,7 @@ import { wijzigCase } from "@/lib/case-service";
 import type { Uitvoerder } from "@/lib/to-rondes";
 
 const ANDERS = "__anders__";
-const sel = { minHeight: 40, maxWidth: "100%", minWidth: 0, borderRadius: 10, border: `1px solid ${T.hairline}`, background: T.surface, padding: "0 10px", fontSize: 16, fontWeight: 600, color: T.titleOnBg } as const;
+const sel = { minHeight: 44, maxWidth: "100%", minWidth: 0, borderRadius: 10, border: `1px solid ${T.hairline}`, background: T.surface, padding: "0 10px", fontSize: 16, fontWeight: 600, color: T.titleOnBg } as const;
 export const OVERSTAP_TEKST = "Deze case wordt een TerreVolt-station en verschijnt dan op de startpagina als station zonder foto's, waar het fotowerk alsnog moet gebeuren. Er gaat niets verloren. Doorgaan?";
 
 /** Inline Uitvoerder + WV (werkverantwoordelijke) op een Van Gelder-casepagina; slaat direct op. */

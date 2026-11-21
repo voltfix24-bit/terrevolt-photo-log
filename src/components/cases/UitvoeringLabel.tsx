@@ -5,11 +5,14 @@ import { T } from "@/components/apple/Primitives";
 export function UitvoeringLabel({ uitvoerder, variant = "lang" }: { uitvoerder: "terrevolt" | "van_gelder"; variant?: "lang" | "kort" | "afk" }) {
   const vg = uitvoerder === "van_gelder";
   const bord = variant !== "lang";
-  const tekst = variant === "afk" ? (vg ? "VG" : "TV") : `${bord ? "" : "Uitvoering "}${vg ? "Van Gelder" : "TerreVolt"}`;
+  const naam = vg ? "Van Gelder" : "TerreVolt";
+  const tekst = variant === "afk" ? (vg ? "VG" : "TV") : variant === "kort" ? `Uitv. ${naam}` : `Uitvoering ${naam}`;
   return (
     <span
+      aria-label={variant === "lang" ? undefined : `Uitvoering ${naam}`}
+      title={`Uitvoering ${naam}`}
       style={{
-        fontSize: bord ? 10.5 : 11,
+        fontSize: bord ? 12 : 12,
         fontWeight: 600,
         color: vg ? "#5B4A1E" : bord ? "#1F5C3A" : T.green,
         background: vg ? "#F3EBD6" : bord ? "#DDF0D6" : T.doneBg,

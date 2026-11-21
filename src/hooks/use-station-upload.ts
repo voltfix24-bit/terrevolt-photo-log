@@ -23,11 +23,7 @@ export function useStationUpload(id: string | undefined, opts: {
 
   const verstuur = async () => {
     const r = await syncPendingPhotos();
-    if (r.gelukt > 0) {
-      void queryClient.invalidateQueries({ queryKey: ["fotos", id] });
-      void queryClient.invalidateQueries({ queryKey: ["stations"] });
-      void queryClient.invalidateQueries({ queryKey: ["categorie-skips", id] });
-    }
+    // Vernieuwen per getroffen station gebeurt centraal via SYNC_RESULTAAT_EVENT (App).
     if (r.mislukt > 0) toast.error(r.fouten.some((f) => /row.level|permission|beheer|42501|pin/i.test(f)) ? `Foto's blijven bewaard op dit toestel. ${BEHEER_NODIG}` : "Versturen mislukt — de foto's blijven bewaard op dit toestel; probeer opnieuw.");
   };
 
@@ -59,8 +55,10 @@ export function useStationUpload(id: string | undefined, opts: {
     } finally {
       setBewaren((b) => { const n = { ...b }; if (!n[categorie]) delete n[categorie]; return n; });
     }
-    if (bewaard > 0 && !online) toast.success(`${bewaard} foto${bewaard > 1 ? "'s" : ""} bewaard op dit toestel — wordt verstuurd zodra je online bent`, { duration: 4000 });
-    if (bewaard > 0 && online) void verstuur();
+    // Actuele verbinding ná de duurzame write: online geworden tijdens voorbereiding verstuurt alsnog.
+    const nuOnline = navigator.onLine;
+    if (bewaard > 0 && !nuOnline) toast.success(`${bewaard} foto${bewaard > 1 ? "'s" : ""} bewaard op dit toestel — wordt verstuurd zodra je online bent`, { duration: 4000 });
+    if (bewaard > 0 && nuOnline) void verstuur();
     return mislukt;
   };
 

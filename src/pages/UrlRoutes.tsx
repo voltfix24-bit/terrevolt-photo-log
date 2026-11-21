@@ -123,7 +123,7 @@ function eigenScherm(soort: "cases" | "beoordelen") {
     if (!s) return isFetching ? <Leeg /> : <NotFound />;
     if (soort === "beoordelen" && isVanGelder(s)) return <Navigate to={casesUrl(s)} replace />;
     const doel = soort === "cases" ? casesUrl(s) : beoordeelUrl(s);
-    return <Canoniek naar={doel}>{soort === "cases" ? <CaseDetail stationId={s.id} /> : <BeoordeelDossier stationId={s.id} />}</Canoniek>;
+    return <Canoniek naar={doel}>{soort === "cases" ? <CaseDetail key={s.id} stationId={s.id} /> : <BeoordeelDossier key={s.id} stationId={s.id} />}</Canoniek>;
   };
 }
 export const CasesSleutelRoute = eigenScherm("cases");

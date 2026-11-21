@@ -78,9 +78,11 @@ describe("beoordelingsregels", () => {
   it("shortcuts ignore inputs, modifiers, IME, repeats and dialogs", () => {
     const input = document.createElement("input"); document.body.append(input);
     const base = { key: "a", repeat: false, isComposing: false, ctrlKey: false, metaKey: false, altKey: false, target: document.body as EventTarget };
-    expect(sneltoetsToegestaan(base, null, false)).toBe(true);
-    for (const p of [{ target: input }, { ctrlKey: true }, { metaKey: true }, { repeat: true }, { isComposing: true }]) expect(sneltoetsToegestaan({ ...base, ...p }, null, false)).toBe(false);
-    expect(sneltoetsToegestaan(base, null, true)).toBe(false);
+    const regio = document.createElement("div"); document.body.append(regio);
+    expect(sneltoetsToegestaan(base, regio, false)).toBe(true);
+    expect(sneltoetsToegestaan(base, null, false)).toBe(false); // review: zonder zichtbare reviewregio nooit
+    for (const p of [{ target: input }, { ctrlKey: true }, { metaKey: true }, { repeat: true }, { isComposing: true }]) expect(sneltoetsToegestaan({ ...base, ...p }, regio, false)).toBe(false);
+    expect(sneltoetsToegestaan(base, regio, true)).toBe(false);
     const buiten = document.createElement("button"); document.body.append(buiten);
     expect(sneltoetsToegestaan({ ...base, target: buiten }, document.createElement("div"), false)).toBe(false);
   });
