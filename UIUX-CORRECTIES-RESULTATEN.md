@@ -24,5 +24,5 @@ Startpunt `c608768`. Geen frontendpublicatie, geen migraties of function-deploym
 
 ## Grenzen
 - De Verder-knop wordt in de wachtrijtest niet apart gerenderd. De test bewijst dat de hook-items (waar de wizard tegel en CTA uit afleidt) blijven bestaan; dezelfde afleiding was eerder in WizardView getest.
-- Een verstuurd item van een station dat niet opnieuw wordt geopend, blijft maximaal 24 uur lokaal bewaard (alleen als navigatiehulp, nooit als serverbewijs).
+- Een verstuurd item van een station dat niet opnieuw wordt geopend, blijft lokaal bewaard tot een volgende synchronisatie het opruimt: 24 uur is daarbij de drempel voor items die dan ouder zijn, geen harde maximale bewaartijd zolang de app gesloten blijft (alleen als navigatiehulp, nooit als serverbewijs).
 - Geen echte multi-tab-, iOS- of Android-test; IndexedDB via fake-indexeddb.
