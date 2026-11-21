@@ -35,13 +35,15 @@ Startpunt: 8651431. Geen database-, function- of publicatiewijzigingen.
 - **Opgeleverd/goedgekeurd**: de dossierstatus blijft leidend; een fotoaantal verschijnt alleen na een geslaagde fotoquery (tijdens laden geen "0 foto's"). Bij een fotoleesfout staat buiten Casegegevens "Foto's konden niet worden geladen" met **Opnieuw laden** (alleen opnieuw lezen).
 - **SharePointStatus**: één label per status. Uitzonderingen — leesfout, mislukt, uitgesteld, vorige rapportversie, actieve sync — staan altijd buiten Casegegevens, ook als er een niet-sync-reden is (dan zonder handmatige syncknop). Alleen "Nog niet naar SharePoint: {reden}", "In SharePoint ✓" en "Nog niet in SharePoint" staan in Casegegevens. Handmatige sync-voortgang wordt per station gedeeld door beide weergaven, zodat feedback tijdens een retry niet verdwijnt. Autorisatie (`zorgVoorBeheer`), de check op een actieve keten en de bescherming tegen parallelle sync zijn ongewijzigd.
 - **OpleverStatus**: een mislukte statusquery toont "Opleverstatus kon niet worden gelezen" met **Opnieuw laden** (query-refetch, geen herstart van de keten). De beveiligde ketenherstelactie is ongewijzigd.
+- **OpleverStatus, navereiscorrectie**: de guard is `if (isError)` in plaats van `if (isError && !w)`. React Query houdt bij een mislukte polling/refetch de eerder geladen run aan, dus met de oude guard kon die leesfout weer verdwijnen — bij een eerder afgeronde run zelfs volledig (`return null`). Nu staat de leesfout bij élke `isError`, ook ná een succesvolle eerste status; de dossierstatus in StationDetail blijft daarvan los.
 
-Controles: `src/test/stationskop-status.test.tsx` met 11 renderregressies:
+Controles: `src/test/stationskop-status.test.tsx` met 13 renderregressies:
 - opgeleverd en goedgekeurd tijdens laden en bij een leesfout, inclusief opnieuw laden;
 - SharePoint: reden + leesfout, reden + mislukt, uitgesteld, vorige versie, gelukt, en de overgang van retry naar actief met beide weergaven;
-- OpleverStatus: leesfout en refetch, waarbij alleen `actie: "status"` wordt gelezen en geen PIN wordt gevraagd.
+- OpleverStatus: leesfout en refetch, waarbij alleen `actie: "status"` wordt gelezen en geen PIN wordt gevraagd;
+- OpleverStatus: eerst een geldige run, daarna een mislukte refetch — voor een actieve run (leesfout vervangt de vorige status) en voor een eerdere afgeronde run (leesfout in plaats van niets), beide met **Opnieuw laden** dat herstelt. Deze twee tests falen met de oude guard `isError && !w` (verifieerd) en slagen met `if (isError)`.
 
-Volledige suite: 33 bestanden / 273 tests geslaagd (5 lokale-PostgreSQL-bestanden overgeslagen). Typecheck en build geslaagd. Preview op 390px met geblokkeerde writes, voor opgeleverd dossier 0320221:
+Volledige suite: 33 bestanden / 275 tests geslaagd (5 lokale-PostgreSQL-bestanden overgeslagen). Typecheck en build geslaagd. Preview op 390px met geblokkeerde writes, voor opgeleverd dossier 0320221:
 - normaal: "Opgeleverd aan van Gelder / Wacht op beoordeling · 103 foto's";
 - met nagebootste leesfouten (foto's, SharePoint, opleverstatus): drie leesfoutregels met opnieuw-knoppen buiten de gesloten Casegegevens, geen fotoaantal en geen horizontale scroll.
 

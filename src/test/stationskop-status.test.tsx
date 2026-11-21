@@ -120,3 +120,50 @@ describe("OpleverStatus: leesfout zichtbaar met alleen opnieuw lezen", () => {
     expect(m.zorg).not.toHaveBeenCalled();
   });
 });
+
+const ketenRun = (x: Record<string, unknown> = {}) => ({
+  id: "R1", station_id: "S1", status: "pdf_bezig", retry_stap: "pdf", poging: 1,
+  volgende_poging_op: null, fout: null, stap_fouten: null,
+  gestart_op: "2026-11-21T10:00:00Z", afgerond_op: null, ...x,
+});
+
+describe("OpleverStatus: leesfout ook bij een eerder geladen run", () => {
+  // Eerste statusreactie is geldig, élke latere reactie faalt ( polling / refetch ).
+  const openMetEersteRun = async (eerste: unknown) => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    m.invoke.mockResolvedValueOnce({ data: { run: eerste }, error: null }).mockResolvedValue({ data: null, error: { message: "netwerk" } });
+    render(<QueryClientProvider client={qc}><OpleverStatus stationId="S1" /></QueryClientProvider>);
+    await waitFor(() => expect(m.invoke).toHaveBeenCalledTimes(1));
+    return qc;
+  };
+  const verstuurtAlleenStatus = () => {
+    expect(m.invoke.mock.calls.every(([, o]) => (o as { body: { actie: string } }).body.actie === "status")).toBe(true);
+    expect(m.zorg).not.toHaveBeenCalled();
+  };
+
+  it("actieve run, daarna mislukte refetch: leesfout met opnieuw laden in plaats van de vorige status", async () => {
+    const qc = await openMetEersteRun(ketenRun());
+    await screen.findByText("Dossier ingediend");
+    await act(async () => { await qc.invalidateQueries({ queryKey: ["opleverketen", "S1"] }); });
+    await screen.findByText("Opleverstatus kon niet worden gelezen");
+    expect(screen.queryByText("Dossier ingediend")).toBeNull();
+    verstuurtAlleenStatus();
+    m.invoke.mockResolvedValue({ data: { run: ketenRun() }, error: null });
+    fireEvent.click(screen.getByText("Opnieuw laden"));
+    await waitFor(() => expect(screen.queryByText("Opleverstatus kon niet worden gelezen")).toBeNull());
+    expect(screen.getByText("Dossier ingediend")).toBeInTheDocument();
+    verstuurtAlleenStatus();
+  });
+
+  it("afgeronde eerdere run, daarna mislukte refetch: leesfout in plaats van niets", async () => {
+    const qc = await openMetEersteRun(ketenRun({ status: "afgerond", retry_stap: null, afgerond_op: "2026-11-21T10:05:00Z" }));
+    expect(screen.queryByText(/Oplevering compleet/)).toBeNull();
+    await act(async () => { await qc.invalidateQueries({ queryKey: ["opleverketen", "S1"] }); });
+    await screen.findByText("Opleverstatus kon niet worden gelezen");
+    verstuurtAlleenStatus();
+    m.invoke.mockResolvedValue({ data: { run: ketenRun({ status: "afgerond", retry_stap: null, afgerond_op: "2026-11-21T10:05:00Z" }) }, error: null });
+    fireEvent.click(screen.getByText("Opnieuw laden"));
+    await waitFor(() => expect(screen.queryByText("Opleverstatus kon niet worden gelezen")).toBeNull());
+    verstuurtAlleenStatus();
+  });
+});
