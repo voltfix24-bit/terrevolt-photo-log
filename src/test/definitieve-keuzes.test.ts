@@ -111,7 +111,7 @@ describe("duurzame fotowachtrij", () => {
     expect(await getPendingPhotos()).toEqual([]);
   });
   it("een mislukte lokale opslag wordt niet als bewaard gemeld", async () => {
-    vi.spyOn(await getDB(), "put").mockRejectedValueOnce(new DOMException("vol", "QuotaExceededError"));
+    await getDB(); vi.spyOn(IDBObjectStore.prototype, "add").mockImplementationOnce(() => { throw new DOMException("vol", "QuotaExceededError"); });
     await expect(queuePhoto("test", "Trafo", new File(["foto"], "f.jpg"))).rejects.toThrow("vol");
     expect(await getPendingPhotos()).toEqual([]);
   });

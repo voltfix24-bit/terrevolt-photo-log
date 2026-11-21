@@ -12,8 +12,9 @@ import * as F from "./pdf-fixture";
 
 vi.mock("@/lib/require-pin", () => ({ fotowerkVoorActie: vi.fn(async () => true), BEHEER_NODIG: "Beheer vergrendeld" }));
 const queuePhoto = vi.fn();
-vi.mock("@/lib/offline-queue", () => ({ queuePhoto: (...a: unknown[]) => queuePhoto(...a) }));
-vi.mock("@/lib/fotos-service", () => ({ nieuwPad: vi.fn(), uploadEnRegistreer: vi.fn(), verwijderFoto: vi.fn() }));
+vi.mock("@/lib/offline-queue", () => ({ queuePhoto: (...a: unknown[]) => queuePhoto(...a), nieuweQueueId: (s: string) => `${s}-${Math.random()}` }));
+vi.mock("@/lib/sync-service", () => ({ bereidFotoVoor: async (f: Blob) => f, syncPendingPhotos: vi.fn(async () => ({ gelukt: 0, mislukt: 0, fouten: [] })) }));
+vi.mock("@/lib/fotos-service", () => ({ nieuwPad: vi.fn(), uploadEnRegistreer: vi.fn(), verwijderFoto: vi.fn(), wachtrijPad: (s: string, c: string, q: string) => `stations/${s}/${c}/q_${q}.jpg` }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 import { useStationUpload } from "@/hooks/use-station-upload";
 

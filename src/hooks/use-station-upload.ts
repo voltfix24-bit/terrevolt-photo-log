@@ -1,21 +1,17 @@
 import { BEHEER_NODIG, fotowerkVoorActie } from "@/lib/require-pin";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import imageCompression from "browser-image-compression";
-import { queuePhoto } from "@/lib/offline-queue";
-import { nieuwPad, uploadEnRegistreer, verwijderFoto } from "@/lib/fotos-service";
+import { nieuweQueueId, queuePhoto } from "@/lib/offline-queue";
+import { verwijderFoto, wachtrijPad } from "@/lib/fotos-service";
+import { bereidFotoVoor, syncPendingPhotos } from "@/lib/sync-service";
 import { fotoFout } from "@/lib/foto-validatie";
 import type { FotoRow } from "@/components/station/types";
 
-const compressImage = async (file: File): Promise<File> => {
-  if (file.type === "image/heic") return file;
-  try {
-    return await imageCompression(file, { maxSizeMB: 2, maxWidthOrHeight: 1920, useWebWorker: true, fileType: "image/jpeg", initialQuality: 0.85 });
-  } catch { return file; }
-};
-
-/** Foto-upload voor een station: offline in de wachtrij, online via fotos-service; één upload per categorie tegelijk. */
+/**
+ * Foto's van een station: iedere geselecteerde foto wordt eerst eenmalig voorbereid en duurzaam op
+ * dit toestel bewaard (vast queue-ID + vast pad), daarna verstuurd door dezelfde wachtrij als offline.
+ */
 export function useStationUpload(id: string | undefined, opts: {
   beschermd?: boolean;
   fotosByCategorie: (cat: string) => FotoRow[];
@@ -23,62 +19,48 @@ export function useStationUpload(id: string | undefined, opts: {
   removeSkip: (cat: string) => void;
 }) {
   const queryClient = useQueryClient();
-  const [uploadingCat, setUploadingCat] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
-  const uploadBezig = useRef<Set<string>>(new Set());
+  const [bewaren, setBewaren] = useState<Record<string, number>>({});
 
-  // Geeft de bestandsnamen terug die NIET zijn opgeslagen, zodat de wizard die previews kan verwijderen.
-  const handleUpload = async (categorie: string, files: FileList): Promise<string[]> => {
-    const mislukt: string[] = [];
-    if (!id) return Array.from(files).map(f => f.name);
-    if (!navigator.onLine && opts.beschermd) { toast.error("Internet en de toegangscode zijn nodig voor dit opgeleverde dossier."); return Array.from(files).map(f => f.name); }
-    if (navigator.onLine && !await fotowerkVoorActie(id)) { toast.error(BEHEER_NODIG); return Array.from(files).map(f => f.name); }
-    if (!navigator.onLine) {
-      let queued = 0;
-      for (const file of Array.from(files)) {
-        const fout = fotoFout(file);
-        if (fout) { toast.error(fout); mislukt.push(file.name); continue; }
-        try { await queuePhoto(id, categorie, file); queued++; }
-        catch { toast.error(`${file.name} niet lokaal bewaard — mogelijk is de opslag vol. Bewaar de originele foto en probeer opnieuw.`); mislukt.push(file.name); }
-      }
-      if (queued > 0) {
-        toast.success(`${queued} foto${queued > 1 ? "'s" : ""} opgeslagen — wordt geüpload zodra je online bent`, { duration: 4000 });
-      }
-      return mislukt;
+  const verstuur = async () => {
+    const r = await syncPendingPhotos();
+    if (r.gelukt > 0) {
+      void queryClient.invalidateQueries({ queryKey: ["fotos", id] });
+      void queryClient.invalidateQueries({ queryKey: ["stations"] });
+      void queryClient.invalidateQueries({ queryKey: ["categorie-skips", id] });
     }
+    if (r.mislukt > 0) toast.error(r.fouten.some((f) => /row.level|permission|beheer|42501|pin/i.test(f)) ? `Foto's blijven bewaard op dit toestel. ${BEHEER_NODIG}` : "Versturen mislukt — de foto's blijven bewaard op dit toestel; probeer opnieuw.");
+  };
 
-    if (uploadBezig.current.has(categorie)) { toast.info("Upload loopt al voor deze categorie"); return Array.from(files).map((f) => f.name); }
-    uploadBezig.current.add(categorie);
-    setUploadingCat(categorie);
-    const total = files.length;
-    let done = 0;
+  /** Bestanden, station en categorie zijn bij aanroep al vastgelegd; de native FileList mag direct leeg. */
+  const handleUpload = async (categorie: string, invoer: FileList | File[]): Promise<string[]> => {
+    const files = Array.from(invoer);
+    const stationId = id;
+    const mislukt: string[] = [];
+    if (!stationId) return files.map((f) => f.name);
+    const online = navigator.onLine;
+    if (!online && opts.beschermd) { toast.error("Internet en de toegangscode zijn nodig voor dit opgeleverde dossier."); return files.map((f) => f.name); }
+    if (online && !await fotowerkVoorActie(stationId)) { toast.error(BEHEER_NODIG); return files.map((f) => f.name); }
+    setBewaren((b) => ({ ...b, [categorie]: (b[categorie] ?? 0) + files.length }));
+    let bewaard = 0;
     try {
-      for (const file of Array.from(files)) {
-        const fout = fotoFout(file);
-        if (fout) { toast.error(fout); mislukt.push(file.name); continue; }
+      for (const file of files) {
         try {
-          const compressed = await compressImage(file);
-          const r = await uploadEnRegistreer(nieuwPad(id, categorie, file.name), compressed, { stationId: id, categorie, volgorde: opts.fotosByCategorie(categorie).length + done });
-          if ("stap" in r) {
-            toast.error(/row.level|permission|beheer|42501/i.test(r.fout) ? BEHEER_NODIG : `${file.name} niet opgeslagen — probeer opnieuw`);
-            mislukt.push(file.name); continue;
-          }
-          done++;
-          setUploadProgress((p) => ({ ...p, [categorie]: Math.round((done / total) * 100) }));
-        } catch (e) {
-          console.error("upload mislukt", e);
-          toast.error(`Upload mislukt: ${file.name}`); mislukt.push(file.name);
+          const fout = fotoFout(file);
+          if (fout) { toast.error(fout); mislukt.push(file.name); continue; }
+          const queueId = nieuweQueueId(stationId);
+          const blob = await bereidFotoVoor(file);
+          const pad = wachtrijPad(stationId, categorie, queueId, blob, file.name);
+          try { await queuePhoto(stationId, categorie, blob, { id: queueId, pad, fileName: file.name }); bewaard++; }
+          catch { toast.error(`${file.name} niet bewaard — de opslag van dit toestel is mogelijk vol. Maak ruimte vrij en kies de foto opnieuw.`); mislukt.push(file.name); }
+        } finally {
+          setBewaren((b) => ({ ...b, [categorie]: Math.max(0, (b[categorie] ?? 1) - 1) }));
         }
       }
     } finally {
-      uploadBezig.current.delete(categorie);
-      queryClient.invalidateQueries({ queryKey: ["fotos", id] });
-      queryClient.invalidateQueries({ queryKey: ["stations"] });
-      setUploadingCat(null);
-      setUploadProgress((p) => { const next = { ...p }; delete next[categorie]; return next; });
+      setBewaren((b) => { const n = { ...b }; if (!n[categorie]) delete n[categorie]; return n; });
     }
-    if (done > 0) toast.success(done === total ? "Foto's geüpload ✓" : `${done} van ${total} foto's geüpload`);
-    if (done > 0 && opts.isSkipped(categorie)) { opts.removeSkip(categorie); toast.info("N.v.t. opgeheven: er is toch een foto"); }
+    if (bewaard > 0 && !online) toast.success(`${bewaard} foto${bewaard > 1 ? "'s" : ""} bewaard op dit toestel — wordt verstuurd zodra je online bent`, { duration: 4000 });
+    if (bewaard > 0 && online) void verstuur();
     return mislukt;
   };
 
@@ -90,5 +72,6 @@ export function useStationUpload(id: string | undefined, opts: {
     toast.success("Foto verwijderd");
   };
 
-  return { uploadingCat, uploadProgress, handleUpload, handleDelete };
+  const uploadingCat = Object.keys(bewaren)[0] ?? null;
+  return { uploadingCat, bewaren, uploadProgress: {} as Record<string, number>, handleUpload, handleDelete, verstuur };
 }

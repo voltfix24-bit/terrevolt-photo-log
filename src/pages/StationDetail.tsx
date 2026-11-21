@@ -125,7 +125,7 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
 
   const filledCount = applicableCategories.filter(catDone).length;
 
-  const { uploadingCat, uploadProgress, handleUpload, handleDelete } = useStationUpload(id, { fotosByCategorie, isSkipped, removeSkip, beschermd: !!station?.submitted_at || station?.status === "opgeleverd" || station?.status === "goedgekeurd" });
+  const { uploadingCat, uploadProgress, bewaren, handleUpload, handleDelete, verstuur } = useStationUpload(id, { fotosByCategorie, isSkipped, removeSkip, beschermd: !!station?.submitted_at || station?.status === "opgeleverd" || station?.status === "goedgekeurd" });
 
   const openLightbox = (cat: string, index: number) => {
     const catFotos = fotosByCategorie(cat);
@@ -276,6 +276,8 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
           isUploading={uploadingCat}
           uploadProgress={uploadProgress}
           onUpload={handleUpload}
+          bewaren={bewaren}
+          onVerstuur={verstuur}
           onDelete={handleDelete}
           onClickThumb={openLightbox}
           onOpenPdf={openPdf}

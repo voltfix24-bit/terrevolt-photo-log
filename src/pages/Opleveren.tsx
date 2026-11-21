@@ -3,7 +3,7 @@ import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { getPendingPhotos } from "@/lib/offline-queue";
+import { getQueueCountVoor, QUEUE_EVENT } from "@/lib/offline-queue";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { GlassBar, Group, Hairline, NavText, PrimaryButton, Row, T, INSET_ROW, ROW_PAD_X } from "@/components/apple/Primitives";
 import { toast } from "sonner";
@@ -67,12 +67,11 @@ export default function Opleveren({ stationId }: { stationId?: string } = {}) {
   useEffect(() => {
     let mounted = true;
     const tel = async () => {
-      const pending = await getPendingPhotos(id);
-      if (mounted) setQueued(pending.length);
+      try { const n = await getQueueCountVoor(id); if (mounted) setQueued(n); } catch { /* telling blijft */ }
     };
-    tel();
-    const interval = window.setInterval(tel, 3000);
-    return () => { mounted = false; window.clearInterval(interval); };
+    void tel();
+    window.addEventListener(QUEUE_EVENT, tel);
+    return () => { mounted = false; window.removeEventListener(QUEUE_EVENT, tel); };
   }, [id]);
 
   const nvt = skips ?? [];
@@ -99,7 +98,7 @@ export default function Opleveren({ stationId }: { stationId?: string } = {}) {
       });
       return;
     }
-    if ((await getPendingPhotos(id)).length > 0 || aantalLokaleNotities(id) > 0) {
+    if ((await getQueueCountVoor(id)) > 0 || aantalLokaleNotities(id) > 0) {
       toast.error("Nog niet alles verstuurd — wacht tot foto's en notities zijn gesynchroniseerd.");
       return;
     }

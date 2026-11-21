@@ -36,6 +36,10 @@ function AppContent() {
           queryClient.invalidateQueries({ queryKey: ["opmerking"] });
         }
       }).catch(() => toast.error("Notities blijven lokaal bewaard — probeer opnieuw"));
+      // Na ontgrendelen dezelfde bewaarde foto's hervatten; nooit een PIN-vraag vanuit achtergrondwerk.
+      void syncPendingPhotos().then(({ gelukt }) => {
+        if (gelukt > 0) { queryClient.invalidateQueries({ queryKey: ["fotos"] }); queryClient.invalidateQueries({ queryKey: ["stations"] }); queryClient.invalidateQueries({ queryKey: ["categorie-skips"] }); }
+      }).catch(() => undefined);
     };
     window.addEventListener("beheer-veranderd", herstel);
     return () => window.removeEventListener("beheer-veranderd", herstel);

@@ -8,7 +8,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { supabase } from "@/integrations/supabase/client";
-import { requirePin } from "@/lib/require-pin";
+import { fotowerkVoorActie, requirePin } from "@/lib/require-pin";
+import { opnieuwKlaarzetten } from "@/lib/offline-queue";
+import { STATUS_TEKST, useWachtrijCategorie } from "@/hooks/use-wachtrij-categorie";
+import { toast } from "sonner";
 import { SECTIONS, type Category } from "@/lib/categories";
 import type { MergedCategory } from "@/hooks/use-categories";
 import { Pressable, R, T } from "@/components/apple/Primitives";
@@ -33,7 +36,6 @@ const W = {
   goldBg: "rgba(252,201,52,0.12)",
   goldBorder: "rgba(252,201,52,0.5)",
 };
-const AUTO_NEXT_MS = 1500;
 
 export interface WizardViewProps {
   startIndex: number;
@@ -43,12 +45,15 @@ export interface WizardViewProps {
   onUnskip: (catName: string) => void;
   skipped: string[];
   skippedReasons: Record<string, string>;
-  station: { vermogensveld: boolean | null; da_kast: boolean | null; naam_msr: string; type_ruimte: string | null; status?: string | null; submitted_at?: string | null };
+  station: { vermogensveld: boolean | null; da_kast: boolean | null; naam_msr: string; behuizingsnummer?: string | null; type_ruimte: string | null; status?: string | null; submitted_at?: string | null };
   fotos: FotoRow[];
   fotosByCategorie: (cat: string) => FotoRow[];
   isUploading: string | null;
   uploadProgress: Record<string, number>;
-  onUpload: (cat: string, files: FileList) => void | string[] | Promise<void | string[]>;
+  onUpload: (cat: string, files: File[]) => void | string[] | Promise<void | string[]>;
+  /** Aantal foto's per categorie dat nu wordt voorbereid/bewaard. */
+  bewaren?: Record<string, number>;
+  onVerstuur?: () => void | Promise<void>;
   onDelete: (id: string, path: string) => void;
   onClickThumb: (cat: string, idx: number) => void;
   onOpenPdf: () => void;
@@ -60,29 +65,20 @@ export interface WizardViewProps {
 function Chip({ icon, label, onClick, disabled }: { icon: string; label: string; onClick: () => void; disabled?: boolean }) {
   return (
     <Pressable onClick={onClick} disabled={disabled} scale={0.97} style={{ flex: 1, minHeight: 48, borderRadius: 13, background: W.chip, color: disabled ? "rgba(255,255,255,0.45)" : W.text, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, fontSize: 15, fontWeight: 600 }}>
-      <span className="material-symbols-rounded" style={{ fontSize: 20 }}>{icon}</span>
+      <span className="material-symbols-rounded" aria-hidden="true" style={{ fontSize: 20 }}>{icon}</span>
       {label}
     </Pressable>
   );
 }
 
-function StatusBadge({ status, pct, groot }: { status: "ok" | "upload" | "wachtrij"; pct?: number; groot?: boolean }) {
-  const cfg = {
-    ok: { bg: T.green, icon: "check_circle", label: "Opgeslagen", fill: true },
-    upload: { bg: "rgba(10,42,24,0.9)", icon: "cloud_upload", label: pct !== undefined ? `Uploaden ${pct}%` : "Uploaden…", fill: false },
-    wachtrij: { bg: T.upload, icon: "cloud_upload", label: "In wachtrij", fill: false },
-  }[status];
-  if (!groot) {
-    return (
-      <span aria-label={cfg.label} style={{ position: "absolute", top: 6, right: 6, width: 24, height: 24, borderRadius: 12, background: cfg.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <span className="material-symbols-rounded" style={{ fontSize: 16, color: W.text }}>{status === "ok" ? "check" : "cloud_upload"}</span>
-      </span>
-    );
-  }
+type TegelStatus = "server" | "pending" | "uploading" | "done" | "error";
+function StatusLabel({ status }: { status: TegelStatus }) {
+  const cfg = STATUS_TEKST[status];
+  const bg = status === "error" ? T.danger : status === "server" || status === "done" ? T.green : status === "uploading" ? "rgba(10,42,24,0.9)" : T.upload;
   return (
-    <span style={{ position: "absolute", left: 12, top: 12, background: cfg.bg, color: W.text, fontSize: 14, fontWeight: 600, padding: "7px 11px", borderRadius: 9, display: "flex", alignItems: "center", gap: 6 }}>
-      <span className="material-symbols-rounded" style={{ fontSize: 18, fontVariationSettings: cfg.fill ? "'FILL' 1" : undefined }}>{cfg.icon}</span>
-      {cfg.label}
+    <span style={{ position: "absolute", left: 4, right: 4, bottom: 4, background: bg, color: W.text, fontSize: 11, fontWeight: 700, lineHeight: 1.2, padding: "4px 6px", borderRadius: 7, display: "flex", alignItems: "center", gap: 4, textAlign: "left" }}>
+      <span className="material-symbols-rounded" aria-hidden="true" style={{ fontSize: 14, flexShrink: 0 }}>{cfg.icoon}</span>
+      <span>{cfg.tekst}</span>
     </span>
   );
 }
@@ -108,7 +104,7 @@ function VoorbeeldKaart({ url, onOpen }: { url?: string; onOpen: () => void }) {
 
 export function WizardView({
   startIndex, stationId, onClose, onSkip, onUnskip, skipped, skippedReasons, station,
-  fotosByCategorie, isUploading, uploadProgress,
+  fotosByCategorie, bewaren = {}, onVerstuur,
   onUpload, onDelete, onOpenPdf, filledCount, voorbeelden,
   applicableCategories,
 }: WizardViewProps) {
@@ -122,11 +118,6 @@ export function WizardView({
   const [sheet, setSheet] = useState<null | "notitie" | "skip">(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; path: string } | null>(null);
   const [photoPreview, setPhotoPreview] = useState<{ foto: FotoRow; index: number } | null>(null);
-  const [armed, setArmed] = useState(false);       // wacht op upload → automatisch door
-  const [autoNext, setAutoNext] = useState(false); // aftellen loopt
-  const [aftel, setAftel] = useState(false);       // start animatie aftelbalk
-  // Direct zichtbare foto's (lokale preview) tot de echte foto binnen is; offline blijven ze als 'wachtrij'
-  const [lokaal, setLokaal] = useState<{ name: string; url: string; wachtrij: boolean }[]>([]);
 
   const cat = applicableCategories[currentIndex];
   const catFotos = cat ? fotosByCategorie(cat.name) : [];
@@ -135,14 +126,35 @@ export function WizardView({
   const section = cat ? SECTIONS.find((s) => s.id === cat.section) : null;
   const catVoorbeelden = cat ? voorbeelden.filter((v) => v.categorie === cat.name) : [];
   const isLast = currentIndex >= applicableCategories.length - 1;
-  const uploading = cat ? isUploading === cat.name : false;
-  const totaal = catFotos.length + lokaal.length;
+  const { items: wachtrij, leesFout: wachtrijFout } = useWachtrijCategorie(stationId, cat?.name);
+  const serverPaden = new Set(catFotos.map((f) => f.storage_path));
+  // Een bevestigde serverfoto vervangt zijn wachtrij-preview (dedup op vast pad, niet op bestandsnaam).
+  const lokaleItems = wachtrij.filter((w) => !(w.pad && serverPaden.has(w.pad)) && w.status !== "done");
+  const bezigMetBewaren = cat ? bewaren[cat.name] ?? 0 : 0;
+  const uploading = false;
+  const totaal = catFotos.length + lokaleItems.length;
   const taakKlaar = totaal >= required;
   const volgendeNaam = applicableCategories[currentIndex + 1]?.effectiveName;
-  const tegels = [
-    ...catFotos.map((f, i) => ({ key: f.id, url: f.url, status: "ok" as const, onClick: () => setPhotoPreview({ foto: f, index: i }) })),
-    ...lokaal.map((l, i) => ({ key: `lokaal-${i}`, url: l.url, status: l.wachtrij ? ("wachtrij" as const) : ("upload" as const), onClick: undefined })),
+  const opnieuw = async (item: (typeof lokaleItems)[number]) => {
+    if (!navigator.onLine) { toast.error("Geen internet — de foto blijft bewaard op dit toestel en wordt later verstuurd."); return; }
+    if (item.beheer && !await fotowerkVoorActie(stationId)) { toast.error("Ontgrendel beheer om deze foto te versturen; hij blijft bewaard op dit toestel."); return; }
+    await opnieuwKlaarzetten(item.id);
+    await onVerstuur?.();
+  };
+  const tegels: { key: string; url: string; status: TegelStatus; onClick?: () => void; label: string }[] = [
+    ...catFotos.map((f, i) => ({ key: f.id, url: f.url, status: "server" as const, onClick: () => setPhotoPreview({ foto: f, index: i }), label: `Foto ${i + 1}: verstuurd. Bekijken` })),
+    ...lokaleItems.map((w, i) => ({ key: w.id, url: w.url, status: w.status as TegelStatus, onClick: w.status === "error" ? () => void opnieuw(w) : undefined,
+      label: `Foto ${catFotos.length + i + 1}: ${STATUS_TEKST[w.status].tekst}${w.status === "error" && w.fout ? ` (${w.fout})` : ""}` })),
   ];
+  const telling = { pending: 0, uploading: 0, error: 0 } as Record<string, number>;
+  for (const w of lokaleItems) telling[w.status] = (telling[w.status] ?? 0) + 1;
+  const statusZin = [
+    bezigMetBewaren ? `${bezigMetBewaren} foto${bezigMetBewaren > 1 ? "'s" : ""} wordt bewaard…` : "",
+    telling.pending ? `${telling.pending} bewaard op dit toestel` : "",
+    telling.uploading ? `${telling.uploading} bezig met versturen` : "",
+    telling.error ? `${telling.error} versturen mislukt — tik op de foto om opnieuw te proberen` : "",
+    catFotos.length ? `${catFotos.length} verstuurd` : "",
+  ].filter(Boolean).join(" · ");
 
   const { data: opmerkingData } = useQuery({
     queryKey: ["opmerking", stationId, cat?.name],
@@ -171,49 +183,16 @@ export function WizardView({
 
   const incompleteCategories = applicableCategories.filter((c) => !categorieKlaar(c.id, fotosByCategorie(c.name).length) && !skipped.includes(c.name));
 
-  const goTo = (index: number) => { setCurrentIndex(index); setArmed(false); setAutoNext(false); setLokaal([]); };
-  const goNext = () => { if (!isLast) goTo(currentIndex + 1); else { setAutoNext(false); setShowComplete(true); } };
+  const goTo = (index: number) => { setCurrentIndex(index); };
+  const goNext = () => { if (!isLast) goTo(currentIndex + 1); else setShowComplete(true); };
   const goPrev = () => { if (currentIndex > 0) goTo(currentIndex - 1); };
 
-  // Automatisch door na de vereiste foto('s). Offline: meteen na in wachtrij zetten.
-  // Echte foto binnen → lokale upload-previews opruimen (wachtrij-previews blijven staan)
-  useEffect(() => { setLokaal((l) => l.filter((x) => x.wachtrij)); }, [catFotos.length]);
-
-  useEffect(() => {
-    if (!armed || uploading) return;
-    const wachtrij = lokaal.filter((x) => x.wachtrij).length;
-    if (catFotos.length + wachtrij >= required) { setArmed(false); setAutoNext(true); }
-  }, [armed, uploading, catFotos.length, lokaal, required]);
-
-  useEffect(() => {
-    if (!autoNext) { setAftel(false); return; }
-    try { navigator.vibrate?.(30); } catch { /* */ }
-    const raf = requestAnimationFrame(() => setAftel(true));
-    const t = window.setTimeout(goNext, AUTO_NEXT_MS);
-    return () => { cancelAnimationFrame(raf); window.clearTimeout(t); };
-  }, [autoNext]); // eslint-disable-line react-hooks/exhaustive-deps
-
+  /** Bestanden, station en categorie synchroon vastleggen vóór de eerste await; de FileList wordt direct gewist. */
   const upload = (files: FileList) => {
     if (!cat) return;
-    const offline = !navigator.onLine;
-    const eerste = totaal < required && totaal + files.length >= required;
-    // Namen direct vastleggen: de FileList wordt leeg zodra het invoerveld gewist is.
-    const entries = Array.from(files).map((f) => ({ name: f.name, url: URL.createObjectURL(f), wachtrij: offline }));
-    setLokaal((l) => [...l, ...entries]);
-    void Promise.resolve(onUpload(cat.name, files)).then((mislukt) => {
-      // Foto's die niet zijn opgeslagen (te groot, ongeldig type of mislukte upload)
-      // verdwijnen weer uit beeld zodat de taak niet als afgerond telt.
-      if (Array.isArray(mislukt) && mislukt.length > 0) {
-        const faalSet = new Set(mislukt);
-        const weg = entries.filter((e) => faalSet.has(e.name)).map((e) => e.url);
-        weg.forEach((u) => URL.revokeObjectURL(u));
-        if (weg.length > 0) {
-          const wegSet = new Set(weg);
-          setLokaal((l) => l.filter((x) => !wegSet.has(x.url)));
-        }
-      }
-      void eerste; // niet meer automatisch door naar de volgende taak
-    });
+    const snapshot = Array.from(files);
+    const categorie = cat.name;
+    if (snapshot.length) void onUpload(categorie, snapshot);
   };
 
   const confirmSkip = async (reason: string) => {
@@ -288,7 +267,7 @@ export function WizardView({
   }
 
   const nvtUit = totaal > 0 || isCatSkipped;
-  const pct = uploadProgress[cat.name];
+  const stationNr = station.behuizingsnummer?.trim();
 
   /* ───────── Wizard stap ───────── */
   return (
@@ -318,6 +297,12 @@ export function WizardView({
       {/* Inhoud */}
       <div className="flex-1 overflow-y-auto" style={{ padding: "16px 16px 0", scrollbarWidth: "none" }}>
         <div style={{ padding: "0 4px", display: "flex", flexDirection: "column", gap: 8 }}>
+          <div data-testid="station-context" style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, fontSize: 14, color: W.body }}>
+            <span className="material-symbols-rounded" aria-hidden="true" style={{ fontSize: 18, flexShrink: 0 }}>location_on</span>
+            <span className="font-mono" style={{ flexShrink: 0, color: stationNr ? W.text : W.body, fontStyle: stationNr ? undefined : "italic" }}>{stationNr || "Geen stationsnummer"}</span>
+            <span aria-hidden="true">·</span>
+            <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: W.text }}>{station.naam_msr || "Naamloos station"}</span>
+          </div>
           <div style={{ fontSize: 13, letterSpacing: "0.04em", fontWeight: 600, color: W.label }}>
             {[
               section?.label.toUpperCase(),
@@ -373,20 +358,20 @@ export function WizardView({
 
         <VoorbeeldKaart url={catVoorbeelden[0]?.url} onOpen={() => setVoorbeeldLightbox(0)} />
         {totaal === 0 ? (
-          <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading} aria-label="Foto toevoegen"
+          <button type="button" onClick={() => cameraRef.current?.click()} disabled={uploading} aria-label="Foto maken"
             style={{ marginTop: 12, width: "100%", aspectRatio: "4 / 3", borderRadius: 18, border: "2px dashed rgba(255,255,255,0.35)", background: "transparent", color: W.body, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
             <span className="material-symbols-rounded" style={{ fontSize: 40 }}>add_a_photo</span>
             <span style={{ fontSize: 16, fontWeight: 600 }}>Jouw foto komt hier</span>
-            <span style={{ fontSize: 14, color: W.body, opacity: 0.85 }}>Camera, fotobibliotheek of bestand</span>
+            <span style={{ fontSize: 14, color: W.body, opacity: 0.85 }}>Tik om de camera te openen</span>
           </button>
         ) : (
           <>
             <div className="grid grid-cols-3 gap-2" style={{ marginTop: 12 }}>
               {tegels.map((t) => (
-                <button key={t.key} type="button" onClick={t.onClick} disabled={!t.onClick} aria-label="Foto bekijken"
-                  style={{ aspectRatio: "3 / 4", borderRadius: 14, border: "none", padding: 0, position: "relative", overflow: "hidden", background: "transparent", boxShadow: autoNext ? `0 0 0 2.5px ${W.label}` : "none" }}>
+                <button key={t.key} type="button" onClick={t.onClick} disabled={!t.onClick} aria-label={t.label}
+                  style={{ aspectRatio: "3 / 4", borderRadius: 14, border: t.status === "error" ? `2px solid ${T.danger}` : "none", padding: 0, position: "relative", overflow: "hidden", background: "transparent" }}>
                   <LaadAfbeelding src={t.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} wrapperStyle={{ position: "absolute", inset: 0 }} />
-                  <StatusBadge status={t.status} />
+                  <StatusLabel status={t.status} />
                 </button>
               ))}
               {Array.from({ length: Math.max(required - totaal, 1) }).map((_, i) => (
@@ -397,22 +382,16 @@ export function WizardView({
                 </button>
               ))}
             </div>
-            {uploading && pct !== undefined && (
-              <div style={{ marginTop: 10, height: 4, borderRadius: 2, overflow: "hidden", background: "rgba(255,255,255,0.16)" }}>
-                <div style={{ height: "100%", width: `${pct}%`, background: W.label, transition: "width 0.2s ease" }} />
-              </div>
-            )}
           </>
         )}
 
-        {required > 1 && totaal > 0 && (
-          <div style={{ display: "flex", gap: 14, marginTop: 12, padding: "0 4px", fontSize: 13, color: W.body }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 5 }}><span style={{ width: 10, height: 10, borderRadius: 5, background: W.label }} />Opgeslagen</span>
-            <span style={{ display: "flex", alignItems: "center", gap: 5 }}><span style={{ width: 10, height: 10, borderRadius: 5, background: T.upload }} />In wachtrij (offline)</span>
-          </div>
-        )}
+        <div role="status" aria-live="polite" data-testid="wachtrij-status" style={{ marginTop: 12, padding: "0 4px", fontSize: 14, color: W.body, display: "flex", alignItems: "center", gap: 8, minHeight: 20 }}>
+          {bezigMetBewaren > 0 && <KnopLader label="Foto bewaren…" />}
+          {statusZin}
+        </div>
+        {wachtrijFout && <div role="alert" style={{ marginTop: 8, padding: "0 4px", fontSize: 14, color: "#FFB4A9" }}>Bewaarde foto's op dit toestel konden niet worden gelezen. Controleer de opslag van dit toestel.</div>}
 
-        <div style={{ height: 180 }} />
+        <div style={{ height: 230 }} />
       </div>
 
       <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/heic,image/webp" multiple className="hidden" onChange={(e) => { if (e.target.files) upload(e.target.files); e.target.value = ""; }} />
@@ -421,33 +400,32 @@ export function WizardView({
       {/* Onderbalk: duimzone */}
       <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, padding: "14px 16px calc(16px + env(safe-area-inset-bottom))", background: `linear-gradient(to top, ${W.bg} 70%, rgba(10,42,24,0))` }}>
         <div style={{ maxWidth: 768, margin: "0 auto", display: "flex", flexDirection: "column", gap: 10 }}>
-          {autoNext ? (
-            <div role="status" style={{ minHeight: 88, borderRadius: 22, background: T.green, position: "relative", overflow: "hidden", display: "flex", alignItems: "center", gap: 12, padding: "0 12px 0 20px" }}>
-              <span aria-hidden="true" style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: aftel ? "100%" : "0%", background: "rgba(255,255,255,0.12)", transition: `width ${AUTO_NEXT_MS}ms linear` }} />
-              <span className="material-symbols-rounded" style={{ fontSize: 30, fontVariationSettings: "'FILL' 1", position: "relative" }}>check_circle</span>
-              <span style={{ flex: 1, minWidth: 0, position: "relative", display: "flex", flexDirection: "column", gap: 2 }}>
-                <span style={{ fontSize: 17, fontWeight: 600 }}>Opgeslagen</span>
-                <span style={{ fontSize: 14, color: W.body, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{isLast || !volgendeNaam ? "Afronden…" : `Volgende: ${volgendeNaam}`}</span>
-              </span>
-              <Pressable onClick={() => setAutoNext(false)} style={{ position: "relative", minHeight: 48, padding: "0 14px", borderRadius: 12, background: "rgba(255,255,255,0.18)", color: W.text, fontSize: 15, fontWeight: 600 }}>Blijf hier</Pressable>
-            </div>
-          ) : (
-            <div style={{ display: "flex", gap: 10 }}>
-              <Pressable onClick={() => cameraRef.current?.click()} disabled={uploading} aria-label="Camera openen"
-                style={{ width: 88, minHeight: 88, borderRadius: 22, background: W.chip, border: `1px solid ${W.chipBorder}`, color: W.text, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                {uploading ? <KnopLader label="Uploaden…" /> : <span className="material-symbols-rounded" style={{ fontSize: 32 }}>photo_camera</span>}
-              </Pressable>
-              <Pressable onClick={goNext} className="font-display"
-                style={{ flex: 1, minHeight: 88, borderRadius: 22, background: W.text, color: T.green, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, fontSize: 21, fontWeight: 700 }}>
-                {isLast ? "Afronden" : "Volgende"}
-                <span className="material-symbols-rounded" style={{ fontSize: 26 }}>arrow_forward</span>
-              </Pressable>
-            </div>
-          )}
-          <div style={{ display: "flex", justifyContent: "space-between", padding: "0 2px" }}>
-            <Pressable onClick={goPrev} disabled={currentIndex === 0} style={{ minHeight: 44, display: "flex", alignItems: "center", gap: 4, fontSize: 15, color: currentIndex === 0 ? "rgba(255,255,255,0.35)" : W.body }}>
-              <span className="material-symbols-rounded" style={{ fontSize: 20 }}>arrow_back</span>Vorige
+          {taakKlaar ? (
+            <Pressable onClick={goNext} className="font-display"
+              style={{ minHeight: 72, borderRadius: 22, background: W.text, color: T.green, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, fontSize: 19, fontWeight: 700, padding: "0 16px" }}>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{isLast || !volgendeNaam ? "Afronden" : `Verder: ${volgendeNaam}`}</span>
+              <span className="material-symbols-rounded" aria-hidden="true" style={{ fontSize: 26 }}>arrow_forward</span>
             </Pressable>
+          ) : (
+            <Pressable onClick={() => cameraRef.current?.click()} className="font-display"
+              style={{ minHeight: 72, borderRadius: 22, background: W.text, color: T.green, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, fontSize: 21, fontWeight: 700 }}>
+              <span className="material-symbols-rounded" aria-hidden="true" style={{ fontSize: 30 }}>photo_camera</span>
+              Foto maken
+            </Pressable>
+          )}
+          <div style={{ display: "flex", gap: 10 }}>
+            {taakKlaar && <Chip icon="add_a_photo" label="Nog een foto" onClick={() => cameraRef.current?.click()} />}
+            <Chip icon="photo_library" label="Uit bibliotheek" onClick={() => fileRef.current?.click()} />
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "0 2px", gap: 8 }}>
+            <Pressable onClick={goPrev} disabled={currentIndex === 0} style={{ minHeight: 48, display: "flex", alignItems: "center", gap: 4, fontSize: 15, color: currentIndex === 0 ? "rgba(255,255,255,0.35)" : W.body }}>
+              <span className="material-symbols-rounded" aria-hidden="true" style={{ fontSize: 20 }}>arrow_back</span>Vorige
+            </Pressable>
+            {!taakKlaar && (
+              <Pressable onClick={goNext} style={{ minHeight: 48, display: "flex", alignItems: "center", gap: 4, fontSize: 15, color: W.body, padding: "0 4px" }}>
+                Later invullen<span className="material-symbols-rounded" aria-hidden="true" style={{ fontSize: 20 }}>arrow_forward</span>
+              </Pressable>
+            )}
           </div>
         </div>
       </div>

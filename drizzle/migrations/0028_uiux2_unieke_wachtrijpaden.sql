@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS fotos_wachtrijpad_uniek ON public.fotos(storage_path) WHERE storage_path ~ '/q_[^/]+$';

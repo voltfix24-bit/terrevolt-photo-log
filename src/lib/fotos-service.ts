@@ -26,34 +26,40 @@ export type UploadResultaat = { ok: true; pad: string; url: string; al: boolean 
 type Registratie = { stationId: string; categorie: string; volgorde: number };
 
 /**
- * Upload naar opslag en registreer in `fotos`. Idempotent: bestaat het bestand of de rij al, dan
- * wordt niets dubbel gemaakt. Mislukt de registratie bij een nieuw bestand, dan wordt dat bestand
- * opgeruimd (alleen als wij het net hebben geplaatst), anders gelogd voor herstel.
+ * Upload naar opslag en registreer in `fotos`. Idempotent per vast pad: bestaat het bestand of de
+ * rij al, dan wordt niets dubbel gemaakt. Een mislukte of onzekere INSERT (verloren response, tweede
+ * tab, unieke-padbotsing) wordt eerst opnieuw gelezen; het bestand wordt nooit verwijderd, omdat het
+ * mogelijk al geregistreerd is. Een retry op hetzelfde pad convergeert naar één rij en één bestand.
  */
 export async function uploadEnRegistreer(pad: string, blob: Blob, reg: Registratie, db: Db = supabase): Promise<UploadResultaat> {
   const opslag = db.storage.from(FOTO_BUCKET);
-  let bestondAl = false;
   const { error: upErr } = await opslag.upload(pad, blob);
   if (upErr) {
     const msg = String(upErr.message ?? upErr);
-    if (/exist|duplicate|409/i.test(msg) || String(upErr.statusCode) === "409") bestondAl = true;
-    else return { ok: false, fout: msg, stap: "opslag" };
+    if (!(/exist|duplicate|409/i.test(msg) || String(upErr.statusCode) === "409")) return { ok: false, fout: msg, stap: "opslag" };
   }
   const url = opslag.getPublicUrl(pad).data.publicUrl as string;
+  const bestaat = async (): Promise<boolean | string> => {
+    const { data, error } = await db.from("fotos").select("id").eq("storage_path", pad).limit(1);
+    if (error) return String(error.message ?? error);
+    return Array.isArray(data) && data.length > 0;
+  };
 
-  const { data: bestaand, error: zoekErr } = await db.from("fotos").select("id").eq("storage_path", pad).limit(1);
-  if (zoekErr) return { ok: false, fout: zoekErr.message, stap: "registratie" };
-  if (bestaand && bestaand.length > 0) return { ok: true, pad, url, al: true };
+  const voor = await bestaat();
+  if (typeof voor === "string") return { ok: false, fout: voor, stap: "registratie" };
+  if (voor) return { ok: true, pad, url, al: true };
 
-  const { error: insErr } = await db.from("fotos").insert({
-    station_id: reg.stationId, categorie: reg.categorie, storage_path: pad, url, volgorde: reg.volgorde, uploaded_at: new Date().toISOString(),
-  });
+  let insErr: { message?: string; code?: string } | null = null;
+  try {
+    ({ error: insErr } = await db.from("fotos").insert({
+      station_id: reg.stationId, categorie: reg.categorie, storage_path: pad, url, volgorde: reg.volgorde, uploaded_at: new Date().toISOString(),
+    }));
+  } catch (e) { insErr = { message: (e as Error)?.message || "Registratie onzeker" }; }
   if (insErr) {
-    if (!bestondAl) {
-      const { error: rmErr } = await opslag.remove([pad]);
-      if (rmErr) console.error("[fotos] bestand zonder registratie, handmatig herstellen:", pad, rmErr.message);
-    }
-    return { ok: false, fout: insErr.message, stap: "registratie" };
+    // Onzekere uitkomst: mogelijk toch geregistreerd. Herlees; bij twijfel blijft het bestand staan.
+    const na = await bestaat();
+    if (na === true) return { ok: true, pad, url, al: true };
+    return { ok: false, fout: String(insErr.message ?? insErr), stap: "registratie" };
   }
   return { ok: true, pad, url, al: false };
 }

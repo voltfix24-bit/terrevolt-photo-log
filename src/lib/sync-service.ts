@@ -1,4 +1,4 @@
-import { getPendingPhotos, markDone, markError, clearDone } from './offline-queue';
+import { getPendingPhotos, markDone, markError, clearDone, claimItem, bevries, type QueueItem } from './offline-queue';
 import imageCompression from 'browser-image-compression';
 import { uploadEnRegistreer, wachtrijPad, type Db } from './fotos-service';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,59 +14,82 @@ export async function ophefSkipNaFoto(stationId: string, categorie: string, db: 
   if (!Array.isArray(check.data) || check.data.length > 0) throw new Error('N.v.t. niet opgeheven — controleer de beheerstatus; foto blijft lokaal bewaard');
 }
 
-type Item = { id: string; stationId: string; categorie: string; file: Blob; fileName: string };
+export const isBeheerFout = (msg: string) => /row.level|permission|beheer|42501|pin nodig|not allowed|unauthori[sz]ed|403/i.test(msg);
+
+/** Eenmalige voorbereiding: compressie naar JPEG; mislukt die, dan het origineel. Het resultaat wordt bevroren. */
+export async function bereidFotoVoor(f: File): Promise<Blob> {
+  if (f.type === 'image/heic' || /\.heic$/i.test(f.name)) return f;
+  try { return await imageCompression(f, { maxSizeMB: 2, maxWidthOrHeight: 1920, useWebWorker: true, fileType: 'image/jpeg', initialQuality: 0.85 }); }
+  catch { return f; }
+}
+
+type Item = Pick<QueueItem, 'id' | 'stationId' | 'categorie' | 'file' | 'fileName'> & Partial<QueueItem>;
 export type SyncDeps = {
   pending: () => Promise<Item[]>;
   klaar: (id: string) => Promise<void>;
-  fout: (id: string, msg: string) => Promise<void>;
+  fout: (id: string, msg: string, soort?: 'beheer' | 'overig') => Promise<void>;
   opruimen: () => Promise<void>;
   comprimeer: (f: File) => Promise<Blob>;
   upload: typeof uploadEnRegistreer;
   ophefSkip?: (stationId: string, categorie: string) => Promise<void>;
+  /** Claimt het item exclusief (lease); null = een andere tab/worker is ermee bezig. */
+  claim?: (id: string, eigenaar: string) => Promise<Item | null>;
+  /** Legt blob+pad vast vóór transport; false = niet vastgelegd, dus niet versturen. */
+  bevries?: (id: string, eigenaar: string, blob: Blob, pad: string) => Promise<boolean>;
 };
 
 const standaard: SyncDeps = {
   pending: getPendingPhotos, klaar: markDone, fout: markError, opruimen: clearDone,
-  comprimeer: async (f) => {
-    if (f.type === 'image/heic' || /\.heic$/i.test(f.name)) return f;
-    try { return await imageCompression(f, { maxSizeMB: 2, maxWidthOrHeight: 1920, useWebWorker: true, fileType: 'image/jpeg', initialQuality: 0.85 }); }
-    catch { return f; }
-  },
-  upload: uploadEnRegistreer,
-  ophefSkip: ophefSkipNaFoto,
+  comprimeer: bereidFotoVoor, upload: uploadEnRegistreer, ophefSkip: ophefSkipNaFoto,
+  claim: claimItem, bevries,
 };
 
+const eigenaar = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : String(Math.random());
 let isSyncing = false;
+let nogEens = false;
 
 /**
- * Uploadt de wachtrij. Een item wordt pas lokaal verwijderd als opslag én registratie gelukt zijn;
- * bij een fout blijft het staan (status 'error') en wordt het bij de volgende sync opnieuw geprobeerd.
- * Het opslagpad is stabiel per item, dus een retry maakt geen dubbele foto.
+ * Verstuurt de wachtrij. Een item wordt pas klaar gemarkeerd na bevestigde opslag, registratie en
+ * opgeheven N.v.t. Elk item heeft één bevroren blob en één vast pad, dus retries convergeren naar
+ * één bestand en één rij. Achtergrondwerk vraagt nooit om de PIN: beheerweigeringen blijven staan
+ * als 'beheer' en worden na "beheer-veranderd" opnieuw geprobeerd.
  */
 export async function syncPendingPhotos(onProgress?: (done: number, total: number) => void, deps: SyncDeps = standaard): Promise<SyncResultaat> {
   const res: SyncResultaat = { gelukt: 0, mislukt: 0, fouten: [] };
-  if (isSyncing || !navigator.onLine) return res;
+  if (isSyncing) { nogEens = true; return res; }
+  if (!navigator.onLine) return res;
   isSyncing = true;
   try {
-    const pending = await deps.pending();
-    for (const item of pending) {
-      if (!navigator.onLine) break; // niets verwijderen wanneer het netwerk onderweg wegvalt
-      try {
-        const blob = await deps.comprimeer(new File([item.file], item.fileName, { type: item.file.type }));
-        const pad = wachtrijPad(item.stationId, item.categorie, item.id, blob, item.fileName);
-        const r = await deps.upload(pad, blob, { stationId: item.stationId, categorie: item.categorie, volgorde: 0 });
-        if ("fout" in r) throw new Error(r.fout);
-        await deps.ophefSkip?.(item.stationId, item.categorie);
-        await deps.klaar(item.id);
-        res.gelukt++;
-      } catch (e) {
-        const msg = (e as Error)?.message || 'Onbekende fout';
-        res.mislukt++; res.fouten.push(`${item.fileName}: ${msg}`);
-        await deps.fout(item.id, msg).catch(() => {});
+    do {
+      nogEens = false;
+      const pending = await deps.pending();
+      let n = 0;
+      for (const kandidaat of pending) {
+        if (!navigator.onLine) break; // niets verwijderen wanneer het netwerk onderweg wegvalt
+        const item = deps.claim ? await deps.claim(kandidaat.id, eigenaar) : kandidaat;
+        if (!item) continue;
+        try {
+          let blob: Blob = item.file; let pad = item.pad;
+          if (!item.voorbereid || !pad) {
+            blob = await deps.comprimeer(new File([item.file], item.fileName, { type: item.file.type }));
+            pad = wachtrijPad(item.stationId, item.categorie, item.id, blob, item.fileName);
+            if (deps.bevries && !await deps.bevries(item.id, eigenaar, blob, pad)) throw new Error('Foto kon niet worden vastgelegd op dit toestel');
+          }
+          const r = await deps.upload(pad, blob, { stationId: item.stationId, categorie: item.categorie, volgorde: 0 });
+          if ("fout" in r) throw new Error(r.fout);
+          await deps.ophefSkip?.(item.stationId, item.categorie);
+          await deps.klaar(item.id);
+          res.gelukt++;
+        } catch (e) {
+          const msg = (e as Error)?.message || 'Onbekende fout';
+          res.mislukt++; res.fouten.push(`${item.fileName}: ${msg}`);
+          await deps.fout(item.id, msg, isBeheerFout(msg) ? 'beheer' : 'overig').catch(() => {});
+        }
+        onProgress?.(res.gelukt + res.mislukt, pending.length);
+        n++;
       }
-      onProgress?.(res.gelukt + res.mislukt, pending.length);
-    }
-    await deps.opruimen();
+      await deps.opruimen();
+    } while (nogEens && navigator.onLine);
     return res;
   } finally {
     isSyncing = false;

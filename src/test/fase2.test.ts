@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
 vi.mock("browser-image-compression", () => ({ default: vi.fn() }));
-vi.mock("@/lib/offline-queue", () => ({ getPendingPhotos: vi.fn(), markDone: vi.fn(), markError: vi.fn(), clearDone: vi.fn() }));
+vi.mock("@/lib/offline-queue", () => ({ getPendingPhotos: vi.fn(), markDone: vi.fn(), markError: vi.fn(), clearDone: vi.fn(), claimItem: vi.fn(), bevries: vi.fn() }));
 vi.mock("file-saver", () => ({ saveAs: vi.fn() }));
 import { uploadEnRegistreer, verwijderFoto, wachtrijPad } from "@/lib/fotos-service";
 import { syncPendingPhotos, type SyncDeps } from "@/lib/sync-service";
@@ -41,9 +41,9 @@ describe("fotos-service", () => {
     const r = await uploadEnRegistreer("a.jpg", blob, reg, db);
     expect(r.ok).toBe(true); expect(db.rijen).toHaveLength(1);
   });
-  it("registratie mislukt: geen succes en nieuw bestand opgeruimd", async () => {
+  it("registratie mislukt: geen succes, bestand blijft voor veilige retry op hetzelfde pad", async () => {
     const db = nepDb({ insertFout: "db stuk" }); const r = await uploadEnRegistreer("a.jpg", blob, reg, db);
-    expect(r).toMatchObject({ ok: false, stap: "registratie" }); expect(db.bestanden.size).toBe(0);
+    expect(r).toMatchObject({ ok: false, stap: "registratie" }); expect(db.rijen).toHaveLength(0); expect(db.bestanden.has("a.jpg")).toBe(true);
   });
   it("opslag mislukt: geen rij", async () => {
     const db = nepDb({ uploadFout: "netwerk" }); const r = await uploadEnRegistreer("a.jpg", blob, reg, db);
@@ -78,7 +78,7 @@ describe("offline sync", () => {
   it("mislukte registratie: item blijft staan met fout", async () => {
     (deps.upload as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: false, fout: "db stuk", stap: "registratie" });
     const r = await syncPendingPhotos(undefined, deps);
-    expect(r.mislukt).toBe(1); expect(deps.klaar).not.toHaveBeenCalled(); expect(deps.fout).toHaveBeenCalledWith("q1", "db stuk");
+    expect(r.mislukt).toBe(1); expect(deps.klaar).not.toHaveBeenCalled(); expect(deps.fout).toHaveBeenCalledWith("q1", "db stuk", "overig");
   });
   it("netwerkfout (throw): item blijft staan", async () => {
     (deps.upload as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("Failed to fetch"));
