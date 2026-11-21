@@ -32,8 +32,9 @@ const inputStyle: React.CSSProperties = { width: "100%", border: 0, outline: "no
 
 function Schakelaar({ aan, onChange, label }: { aan: boolean; onChange: () => void; label: string }) {
   return (
-    <button type="button" role="switch" aria-checked={aan} aria-label={label} onClick={onChange} style={{ width: 52, height: 32, borderRadius: 16, border: 0, padding: 0, position: "relative", flexShrink: 0, background: aan ? T.green : T.softBorder, transition: "background 0.2s ease" }}>
-      <span style={{ position: "absolute", top: 2, left: aan ? 22 : 2, width: 28, height: 28, borderRadius: 14, background: T.surface, boxShadow: "0 1px 3px rgba(0,0,0,0.2)", transition: "left 0.2s ease" }} />
+    <button type="button" role="switch" aria-checked={aan} aria-label={label} onClick={onChange} style={{ width: 52, height: 44, border: 0, padding: 0, position: "relative", flexShrink: 0, background: "transparent" }}>
+      <span aria-hidden style={{ position: "absolute", top: 6, left: 0, width: 52, height: 32, borderRadius: 16, background: aan ? T.green : T.softBorder, transition: "background 0.2s ease" }} />
+      <span aria-hidden style={{ position: "absolute", top: 8, left: aan ? 22 : 2, width: 28, height: 28, borderRadius: 14, background: T.surface, boxShadow: "0 1px 3px rgba(0,0,0,0.2)", transition: "left 0.2s ease" }} />
     </button>
   );
 }

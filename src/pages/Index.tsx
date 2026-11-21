@@ -302,15 +302,15 @@ export default function Dashboard() {
             <div style={{ marginTop: 4, color: SUB, fontSize: 14 }}>{syncLabel}</div>
           </div>
           <div style={{ display: "flex", gap: 4 }}>
-          <Pressable aria-label="Cases & TO" onClick={() => navigate("/cases")} className="border border-transparent bg-white hover:border-[#1F5C3A] transition-colors duration-150" style={{ height: 40, padding: "0 14px 0 10px", borderRadius: 20, display: "flex", alignItems: "center", gap: 6, color: T.green, fontSize: 15, fontWeight: 600, alignSelf: "center" }}>
+          <Pressable aria-label="Cases & TO" onClick={() => navigate("/cases")} className="border border-transparent bg-white hover:border-[#1F5C3A] transition-colors duration-150" style={{ height: 44, minWidth: 44, flexShrink: 0, padding: "0 14px 0 10px", borderRadius: 20, display: "flex", alignItems: "center", gap: 6, color: T.green, fontSize: 15, fontWeight: 600, alignSelf: "center" }}>
             <span className="material-symbols-rounded" style={{ fontSize: 22 }}>assignment</span>
-            Cases
+            <span className="hidden min-[360px]:inline">Cases</span>
           </Pressable>
-          <Pressable aria-label="Fotobeoordeling" onClick={() => navigate("/beoordelen")} className="border border-transparent bg-white hover:border-[#1F5C3A] transition-colors duration-150" style={{ height: 40, padding: "0 12px 0 10px", borderRadius: 20, display: "flex", alignItems: "center", gap: 6, color: T.green, fontSize: 15, fontWeight: 600, alignSelf: "center" }}>
+          <Pressable aria-label="Fotobeoordeling" onClick={() => navigate("/beoordelen")} className="border border-transparent bg-white hover:border-[#1F5C3A] transition-colors duration-150" style={{ height: 44, minWidth: 44, flexShrink: 0, padding: "0 12px 0 10px", borderRadius: 20, display: "flex", alignItems: "center", gap: 6, color: T.green, fontSize: 15, fontWeight: 600, alignSelf: "center" }}>
             <span className="material-symbols-rounded" style={{ fontSize: 22 }}>fact_check</span>
             <span className="hidden min-[400px]:inline">Beoordeling</span>
           </Pressable>
-          <Pressable aria-label="Instellingen" onClick={async () => { if (await requirePin()) navigate("/instellingen"); }} style={{ width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", color: T.green }}>
+          <Pressable aria-label="Instellingen" onClick={async () => { if (await requirePin()) navigate("/instellingen"); }} style={{ width: 44, height: 44, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", color: T.green }}>
             <span className="material-symbols-rounded" style={{ fontSize: 26 }}>settings</span>
           </Pressable>
           </div>

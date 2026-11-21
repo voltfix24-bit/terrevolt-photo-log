@@ -143,7 +143,7 @@ export function NotitieSheet({ soort, titel, begin, stationId, categorie, onClos
           <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 8, scrollbarWidth: "none" }}>
             {chips.map((c) => (
               <button key={c} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => voegIn(c)}
-                style={{ flexShrink: 0, minHeight: 36, padding: "0 13px", borderRadius: 999, border: "none", background: T.soft, color: T.green, fontSize: 15, whiteSpace: "nowrap" }}>{c}</button>
+                style={{ flexShrink: 0, minHeight: 44, padding: "0 13px", borderRadius: 999, border: "none", background: T.soft, color: T.green, fontSize: 15, whiteSpace: "nowrap" }}>{c}</button>
             ))}
           </div>
           <textarea

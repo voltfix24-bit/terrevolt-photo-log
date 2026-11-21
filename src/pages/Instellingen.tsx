@@ -80,7 +80,7 @@ export default function Instellingen() {
         <div className="w-full max-w-sm">
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-primary font-semibold transition-colors mb-8"
+            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-primary font-semibold transition-colors mb-8 min-h-11"
           >
             <span className="material-symbols-rounded text-lg">arrow_back_ios</span>
             Terug
@@ -210,7 +210,7 @@ export default function Instellingen() {
     <div className="min-h-screen bg-background pb-28 md:pb-8">
       <main className="pt-24 pb-8 px-5 max-w-lg mx-auto animate-fade-up">
         {/* Back */}
-        <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-primary font-semibold transition-colors mb-4">
+        <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-primary font-semibold transition-colors mb-4 min-h-11">
           <span className="material-symbols-rounded text-lg">arrow_back_ios</span>
           Terug
         </button>
@@ -293,7 +293,7 @@ export default function Instellingen() {
                 <input
                   value={current?.bedrijfsnaam || ''}
                   onChange={e => updateField('bedrijfsnaam', e.target.value)}
-                  className="w-full px-3 py-2.5 bg-surface-low border border-outline-variant/30 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/25 transition"
+                  className="w-full px-3 py-2.5 min-h-11 bg-surface-low border border-outline-variant/30 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/25 transition"
                 />
               </div>
               <div>
@@ -301,7 +301,7 @@ export default function Instellingen() {
                 <input
                   value={current?.regio || ''}
                   onChange={e => updateField('regio', e.target.value)}
-                  className="w-full px-3 py-2.5 bg-surface-low border border-outline-variant/30 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/25 transition"
+                  className="w-full px-3 py-2.5 min-h-11 bg-surface-low border border-outline-variant/30 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/25 transition"
                 />
               </div>
             </div>
@@ -315,7 +315,7 @@ export default function Instellingen() {
               <h2 className="font-display font-bold text-[15px] text-on-surface">Kleuren</h2>
               <p className="text-xs text-muted-foreground mt-0.5">Pas de huisstijlkleuren aan</p>
             </div>
-            <button onClick={handleReset} className="flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-primary transition-colors active:scale-95">
+            <button onClick={handleReset} className="flex items-center gap-1 min-h-11 px-2 text-xs font-semibold text-muted-foreground hover:text-primary transition-colors active:scale-95">
               <span className="material-symbols-rounded text-sm">restart_alt</span>
               Reset
             </button>
@@ -341,7 +341,7 @@ export default function Instellingen() {
                       setForm(prev => ({ ...prev, ...updated }));
                       applyTheme(updated);
                     }}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-outline-variant/20 bg-surface-low hover:border-primary/40 transition-all active:scale-[0.98]"
+                    className="flex items-center gap-3 px-3 py-2.5 min-h-11 rounded-xl border border-outline-variant/20 bg-surface-low hover:border-primary/40 transition-all active:scale-[0.98]"
                   >
                     <div className="flex -space-x-1">
                       <div className="w-5 h-5 rounded-full border-2 border-card" style={{ background: `hsl(${preset.primary})` }} />
@@ -373,7 +373,7 @@ export default function Instellingen() {
                       value={current?.[key] || ''}
                       onChange={e => updateField(key, e.target.value)}
                       placeholder="150 100% 20%"
-                      className="w-28 px-2.5 py-2 bg-card border border-outline-variant/30 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-primary/25 transition"
+                      className="w-28 px-2.5 py-2 min-h-11 bg-card border border-outline-variant/30 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-primary/25 transition"
                     />
                   </div>
                 ))}

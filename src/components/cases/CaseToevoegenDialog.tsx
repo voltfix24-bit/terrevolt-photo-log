@@ -57,14 +57,14 @@ export function CaseToevoegenDialog({ open, onOpenChange }: { open: boolean; onO
             <Label>Uitvoerder</Label>
             <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
               {([["van_gelder", "Van Gelder"], ["terrevolt", "TerreVolt"]] as const).map(([k, l]) => (
-                <Pressable key={k} onClick={() => setF({ ...f, uitvoerder: k })} style={{ minHeight: 40, padding: "0 14px", borderRadius: 20, fontSize: 15, fontWeight: 600, border: `1px solid ${f.uitvoerder === k ? T.green : T.hairline}`, background: f.uitvoerder === k ? T.green : T.surface, color: f.uitvoerder === k ? T.surface : T.titleOnBg }}>{l}</Pressable>
+                <Pressable key={k} onClick={() => setF({ ...f, uitvoerder: k })} style={{ minHeight: 44, padding: "0 14px", borderRadius: 20, fontSize: 15, fontWeight: 600, border: `1px solid ${f.uitvoerder === k ? T.green : T.hairline}`, background: f.uitvoerder === k ? T.green : T.surface, color: f.uitvoerder === k ? T.surface : T.titleOnBg }}>{l}</Pressable>
               ))}
             </div>
           </div>
           <div><Label>WV (werkverantwoordelijke)</Label><input className={veld} value={f.wv} onChange={(e) => setF({ ...f, wv: e.target.value })} /></div>
           <div><Label>Notitie</Label><textarea className={veld} rows={3} value={f.notitie} onChange={(e) => setF({ ...f, notitie: e.target.value })} /></div>
           {fout && <div role="alert" style={{ color: T.danger, fontSize: 14 }}>{fout}</div>}
-          <Button onClick={opslaan} disabled={bezig} className="w-full bg-primary text-primary-foreground font-bold py-3 rounded-xl active:scale-[0.98] transition-all disabled:opacity-50">
+          <Button onClick={opslaan} disabled={bezig} className="w-full bg-primary text-primary-foreground font-bold py-3 min-h-12 rounded-xl active:scale-[0.98] transition-all disabled:opacity-50">
             {bezig ? <span className="inline-flex items-center justify-center gap-2"><KnopLader />Toevoegen</span> : "Case toevoegen"}
           </Button>
         </fieldset>

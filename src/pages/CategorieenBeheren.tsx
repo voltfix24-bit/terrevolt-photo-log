@@ -209,7 +209,7 @@ export default function CategorieenBeheren() {
     <div className="min-h-screen bg-background pb-28 md:pb-8">
       <main className="pt-24 pb-8 px-4 max-w-2xl mx-auto animate-fade-up">
         {/* Header */}
-        <button onClick={() => navigate("/instellingen")} className="flex items-center gap-1 text-sm text-text-secondary hover:text-primary-hover transition-colors font-semibold mb-4">
+        <button onClick={() => navigate("/instellingen")} className="flex items-center gap-1 text-sm text-text-secondary hover:text-primary-hover transition-colors font-semibold mb-4 min-h-11">
           <span className="material-symbols-rounded text-lg">arrow_back_ios</span> Instellingen
         </button>
 
@@ -222,7 +222,7 @@ export default function CategorieenBeheren() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Zoek categorie..."
-            className="w-full bg-surface-white border border-outline-variant/20 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 focus:outline-none"
+            className="w-full bg-surface-white border border-outline-variant/20 rounded-xl py-3 min-h-11 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 focus:outline-none"
           />
         </div>
 
@@ -260,13 +260,13 @@ export default function CategorieenBeheren() {
 
         {/* Filter tabs */}
         <div className="flex gap-1 bg-surface-high rounded-xl p-1 mb-4">
-          <button onClick={() => setFilter("all")} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${filter === "all" ? "bg-card shadow-sm text-on-surface" : "text-muted-foreground"}`}>
+          <button onClick={() => setFilter("all")} className={`flex-1 py-2 min-h-11 rounded-lg text-xs font-bold transition-all ${filter === "all" ? "bg-card shadow-sm text-on-surface" : "text-muted-foreground"}`}>
             Alle ({CATEGORIES.length})
           </button>
-          <button onClick={() => setFilter("filled")} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${filter === "filled" ? "bg-card shadow-sm text-primary" : "text-muted-foreground"}`}>
+          <button onClick={() => setFilter("filled")} className={`flex-1 py-2 min-h-11 rounded-lg text-xs font-bold transition-all ${filter === "filled" ? "bg-card shadow-sm text-primary" : "text-muted-foreground"}`}>
             ✓ Met foto ({filledCount})
           </button>
-          <button onClick={() => setFilter("empty")} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${filter === "empty" ? "bg-card shadow-sm text-orange-500" : "text-muted-foreground"}`}>
+          <button onClick={() => setFilter("empty")} className={`flex-1 py-2 min-h-11 rounded-lg text-xs font-bold transition-all ${filter === "empty" ? "bg-card shadow-sm text-orange-500" : "text-muted-foreground"}`}>
             Leeg ({CATEGORIES.length - filledCount})
           </button>
         </div>
@@ -421,7 +421,7 @@ export default function CategorieenBeheren() {
                             <div className="flex items-center gap-1.5 flex-shrink-0">
                               <button
                                 onClick={() => setEditingId(isEditing ? null : cat.id)}
-                                className={`flex items-center justify-center w-8 h-8 rounded-xl transition-all active:scale-95 ${
+                                className={`flex items-center justify-center w-11 h-11 rounded-xl transition-all active:scale-95 ${
                                   isEditing
                                     ? "bg-primary text-primary-foreground"
                                     : "bg-surface-high text-text-secondary hover:text-primary-hover hover:bg-surface-default"
@@ -432,7 +432,7 @@ export default function CategorieenBeheren() {
                               <button
                                 onClick={() => { uploadCatRef.current = cat.name; fileRef.current?.click(); }}
                                 disabled={isUploading}
-                                className={`flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl transition-all active:scale-95 disabled:opacity-50 ${
+                                className={`flex items-center gap-1.5 text-xs font-bold px-3 py-2 min-h-11 rounded-xl transition-all active:scale-95 disabled:opacity-50 ${
                                   hasVoorbeeld
                                     ? 'bg-surface-container text-muted-foreground'
                                     : 'bg-primary/10 text-primary'

@@ -119,11 +119,11 @@ export function SharePointBeheer() {
             ))}
           </div>
         )}
-        <div className="flex gap-5">
-        <button onClick={nu} disabled={start || loopt} className="text-primary font-semibold disabled:opacity-50">
+        <div className="flex flex-wrap gap-x-5">
+        <button onClick={nu} disabled={start || loopt} className="min-h-11 text-primary font-semibold disabled:opacity-50">
           {loopt || start ? <span className="inline-flex items-center gap-2"><KnopLader />{loopt ? "Synchronisatie loopt" : "Starten"}</span> : "Nu volledig synchroniseren"}
         </button>
-        <button onClick={controleer} disabled={controle} className="text-primary font-semibold disabled:opacity-50">
+        <button onClick={controleer} disabled={controle} className="min-h-11 text-primary font-semibold disabled:opacity-50">
           {controle ? <span className="inline-flex items-center gap-2"><KnopLader />Controleren</span> : "Opnieuw controleren"}
         </button>
         </div>
