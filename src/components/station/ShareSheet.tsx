@@ -1,20 +1,21 @@
 // Delen-sheet van het rapport (WhatsApp, e-mail, ZIP, systeemdeelmenu)
 export function ShareSheet({ stationNaam: shareStation, onClose, onZip }: { stationNaam: string; onClose: () => void; onZip: () => Promise<void> }) {
   return (
-        <div className="fixed inset-0 z-[80] flex items-end">
+        <div className="fixed inset-x-0 z-[80] flex items-end" style={{ top: "var(--vvt, 0px)", height: "var(--vvh, 100dvh)" }}
+          onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => onClose()} />
-          <div className="relative w-full bg-card rounded-t-3xl p-6 pb-[max(24px,env(safe-area-inset-bottom))] animate-slide-up shadow-2xl">
-            <div className="w-10 h-1 rounded-full bg-outline-variant/40 mx-auto mb-6" />
-            <h3 className="font-display font-extrabold text-lg text-on-surface mb-1">Rapport delen</h3>
-            <p className="text-sm text-muted-foreground mb-6">{shareStation} · TO Fotorapport</p>
-            <div className="grid grid-cols-2 gap-3 mb-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="deel-titel" className="relative w-full bg-card rounded-t-3xl px-4 pt-4 sm:p-6 pb-[max(20px,env(safe-area-inset-bottom))] animate-slide-up shadow-2xl overflow-y-auto overscroll-contain" style={{ maxHeight: "calc(var(--vvh, 100dvh) - 8px)" }}>
+            <div className="w-10 h-1 rounded-full bg-outline-variant/40 mx-auto mb-4" />
+            <h3 id="deel-titel" className="font-display font-extrabold text-lg text-on-surface mb-1">Rapport delen</h3>
+            <p className="text-sm text-muted-foreground mb-4" style={{ overflowWrap: "anywhere" }}>{shareStation} · TO Fotorapport</p>
+            <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-2 mb-2">
               <button
                 onClick={() => {
                   const msg = encodeURIComponent(`TO Fotorapport: ${shareStation}\n\nHet rapport is gegenereerd via TerreVolt TO Foto's app.\n\nOpgeslagen als PDF via de browser.`);
                   window.open(`https://wa.me/?text=${msg}`, '_blank');
                   onClose();
                 }}
-                className="flex items-center gap-3 p-4 rounded-2xl bg-[#25D366]/10 border border-[#25D366]/20 hover:bg-[#25D366]/15 transition-all active:scale-[0.97]"
+                className="flex min-h-12 items-center gap-3 px-3 py-2.5 rounded-2xl bg-[#25D366]/10 border border-[#25D366]/20 hover:bg-[#25D366]/15 transition-all active:scale-[0.97]"
               >
                 <div className="w-10 h-10 rounded-xl bg-[#25D366] flex items-center justify-center flex-shrink-0">
                   <svg viewBox="0 0 24 24" fill="white" width="20" height="20">
@@ -23,7 +24,7 @@ export function ShareSheet({ stationNaam: shareStation, onClose, onZip }: { stat
                 </div>
                 <div className="text-left">
                   <div className="font-bold text-sm text-on-surface">WhatsApp</div>
-                  <div className="text-xs text-muted-foreground">Stuur bericht</div>
+                  <div className="text-sm text-muted-foreground">Stuur bericht</div>
                 </div>
               </button>
               <button
@@ -33,14 +34,14 @@ export function ShareSheet({ stationNaam: shareStation, onClose, onZip }: { stat
                   window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
                   onClose();
                 }}
-                className="flex items-center gap-3 p-4 rounded-2xl bg-primary/5 border border-primary/15 hover:bg-primary/[0.08] transition-all active:scale-[0.97]"
+                className="flex min-h-12 items-center gap-3 px-3 py-2.5 rounded-2xl bg-primary/5 border border-primary/15 hover:bg-primary/[0.08] transition-all active:scale-[0.97]"
               >
                 <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center flex-shrink-0">
                   <span className="material-symbols-rounded text-primary-foreground text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>mail</span>
                 </div>
                 <div className="text-left">
                   <div className="font-bold text-sm text-on-surface">Email</div>
-                  <div className="text-xs text-muted-foreground">Stuur email</div>
+                  <div className="text-sm text-muted-foreground">Stuur email</div>
                 </div>
               </button>
             </div>
@@ -49,14 +50,14 @@ export function ShareSheet({ stationNaam: shareStation, onClose, onZip }: { stat
                 await onZip();
                 onClose();
               }}
-              className="w-full flex items-center gap-3 p-4 rounded-2xl bg-primary/5 border border-primary/15 hover:bg-primary/[0.08] transition-all active:scale-[0.97] mb-3"
+              className="w-full flex min-h-12 items-center gap-3 px-3 py-2.5 rounded-2xl bg-primary/5 border border-primary/15 hover:bg-primary/[0.08] transition-all active:scale-[0.97] mb-2"
             >
               <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center flex-shrink-0">
                 <span className="material-symbols-rounded text-primary-foreground text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>folder_zip</span>
               </div>
               <div className="text-left">
                 <div className="font-bold text-sm text-on-surface">Foto's als ZIP</div>
-                <div className="text-xs text-muted-foreground">Alle foto's van dit station</div>
+                <div className="text-sm text-muted-foreground">Alle foto's van dit station</div>
               </div>
             </button>
             {typeof navigator !== 'undefined' && navigator.share && (
@@ -67,13 +68,13 @@ export function ShareSheet({ stationNaam: shareStation, onClose, onZip }: { stat
                   } catch { /* cancelled */ }
                   onClose();
                 }}
-                className="w-full flex items-center justify-center gap-2.5 p-4 rounded-2xl bg-surface-container border border-outline-variant/20 hover:bg-surface-high transition-all active:scale-[0.97] mb-3"
+                className="w-full flex min-h-12 items-center justify-center gap-2.5 px-3 py-2.5 rounded-2xl bg-surface-container border border-outline-variant/20 hover:bg-surface-high transition-all active:scale-[0.97] mb-2"
               >
                 <span className="material-symbols-rounded text-muted-foreground text-xl">ios_share</span>
                 <span className="font-bold text-sm text-on-surface">Meer opties...</span>
               </button>
             )}
-            <button onClick={() => onClose()} className="w-full py-3.5 rounded-2xl bg-surface-low text-sm font-semibold text-muted-foreground active:scale-[0.98] transition-all">
+            <button autoFocus onClick={() => onClose()} className="w-full min-h-12 py-3 rounded-2xl bg-surface-low text-sm font-semibold text-muted-foreground active:scale-[0.98] transition-all">
               Sluiten
             </button>
           </div>

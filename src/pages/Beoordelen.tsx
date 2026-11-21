@@ -20,10 +20,11 @@ export default function Beoordelen() {
   const navigate = useNavigate();
   const [wie, setWie] = useState<string | null>(getBeoordelaar());
 
-  const { data: opdrachtgevers } = useQuery({
+  const og = useQuery({
     queryKey: ["opdrachtgevers"],
     queryFn: async () => {
-      const { data } = await supabase.from("opdrachtgevers").select("id, naam").order("naam");
+      const { data, error } = await supabase.from("opdrachtgevers").select("id, naam").order("naam");
+      if (error) throw error;
       return data ?? [];
     },
   });
@@ -59,7 +60,14 @@ export default function Beoordelen() {
 
         {!wie ? (
           <Group>
-            {(opdrachtgevers ?? []).map((item, index) => (
+            {og.isLoading ? <BlokLader label="Opdrachtgevers laden…" /> : og.isError ? (
+              <div role="alert" style={{ padding: "24px 20px", textAlign: "center", color: T.subOnBg, fontSize: 15 }}>
+                Opdrachtgevers konden niet worden geladen.
+                <div><button type="button" onClick={() => void og.refetch()} style={{ minHeight: 44, border: 0, background: "none", color: T.green, fontSize: 16, fontWeight: 600, padding: "0 12px" }}>Opnieuw laden</button></div>
+              </div>
+            ) : (og.data ?? []).length === 0 ? (
+              <div style={{ padding: "30px 20px", textAlign: "center", color: T.subOnBg, fontSize: 15 }}>Nog geen opdrachtgevers</div>
+            ) : (og.data ?? []).map((item, index) => (
               <div key={item.id}>
                 {index > 0 && <Hairline inset={INSET_ROW} />}
                 <Row icon="apartment" title={item.naam} onClick={() => kies(item.naam)} />
@@ -71,8 +79,8 @@ export default function Beoordelen() {
             <Group>
               {isLoading ? <BlokLader label="Dossiers laden…" /> : isError ? (
                 <div role="alert" style={{ padding: "30px 20px", textAlign: "center", color: T.subOnBg, fontSize: 15 }}>
-                  Dossiers konden niet worden geladen.{" "}
-                  <button type="button" onClick={() => void refetch()} style={{ border: 0, background: "none", color: T.green, fontSize: 15 }}>Opnieuw proberen</button>
+                  Dossiers konden niet worden geladen.
+                  <div><button type="button" onClick={() => void refetch()} style={{ minHeight: 44, border: 0, background: "none", color: T.green, fontSize: 16, fontWeight: 600, padding: "0 12px" }}>Opnieuw laden</button></div>
                 </div>
               ) : (dossiers ?? []).length === 0 ? (
                 <div style={{ padding: "38px 20px", textAlign: "center", color: T.subOnBg, fontSize: 15 }}>Nog geen opgeleverde dossiers</div>
@@ -94,7 +102,7 @@ export default function Beoordelen() {
             <button
               type="button"
               onClick={() => { try { localStorage.removeItem(KEY); } catch { /* */ } setWie(null); }}
-              style={{ border: 0, background: "none", color: T.green, fontSize: 15, padding: "0 5px" }}
+              style={{ minHeight: 44, marginTop: 8, border: 0, background: "none", color: T.green, fontSize: 16, fontWeight: 600, padding: "0 8px" }}
             >
               Andere opdrachtgever
             </button>

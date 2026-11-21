@@ -13,7 +13,7 @@ import { useVoorbeelden } from "@/components/CategorieSettings";
 import { useMergedCategories, useSaveCategoryOverride, MergedCategory } from "@/hooks/use-categories";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
 const MAX_SIZE = 10 * 1024 * 1024;
@@ -92,14 +92,14 @@ function CategoryEditForm({
       <div className="flex gap-2 justify-end">
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-xl text-xs font-bold text-text-secondary bg-surface-high hover:bg-surface-default transition-colors"
+          className="min-h-12 flex-1 px-4 py-2 rounded-xl text-sm font-bold text-text-secondary bg-surface-high hover:bg-surface-default transition-colors"
         >
           Annuleren
         </button>
         <button
           onClick={handleSave}
           disabled={save.isPending}
-          className="px-4 py-2 rounded-xl text-xs font-bold text-primary-foreground bg-primary hover:bg-primary-hover transition-colors disabled:opacity-50"
+          className="min-h-12 flex-1 px-4 py-2 rounded-xl text-sm font-bold text-primary-foreground bg-primary hover:bg-primary-hover transition-colors disabled:opacity-50"
         >
           {save.isPending ? <span className="inline-flex items-center gap-1.5"><KnopLader />Opslaan</span> : "Opslaan"}
         </button>
@@ -111,13 +111,14 @@ function CategoryEditForm({
 export default function CategorieenBeheren() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data: voorbeelden } = useVoorbeelden();
+  const { data: voorbeelden, isLoading: voorbeeldenLaden, isError: voorbeeldenFout, refetch: voorbeeldenOpnieuw } = useVoorbeelden();
   const { categories: mergedCats } = useMergedCategories();
 
   const [uploading, setUploading] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "filled" | "empty">("all");
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<VoorbeeldFoto | null>(null);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const uploadCatRef = useRef<string>("");
@@ -203,6 +204,24 @@ export default function CategorieenBeheren() {
 
   const visibleSections = SECTIONS.filter(s =>
     getSectionFilteredCats(s.id).length > 0
+  );
+
+  // Onbekende voorbeelden nooit als "0 compleet / geen voorbeeld" tonen.
+  if (voorbeeldenLaden || voorbeeldenFout) return (
+    <div className="min-h-screen bg-background pb-28 md:pb-8">
+      <main className="pt-24 pb-8 px-4 max-w-2xl mx-auto">
+        <button onClick={() => navigate("/instellingen")} className="flex items-center gap-1 text-sm text-text-secondary font-semibold mb-4 min-h-11">
+          <span className="material-symbols-rounded text-lg">arrow_back_ios</span> Instellingen
+        </button>
+        <h1 className="text-2xl font-black text-on-surface mb-4">Categorieën beheren</h1>
+        {voorbeeldenFout ? (
+          <div role="alert" className="rounded-2xl border border-red-200 bg-card p-4">
+            <p className="text-base font-semibold text-red-800">Voorbeeldfoto's konden niet worden geladen.</p>
+            <button onClick={() => void voorbeeldenOpnieuw()} className="mt-3 min-h-12 rounded-xl bg-primary px-5 font-semibold text-primary-foreground">Opnieuw laden</button>
+          </div>
+        ) : <BlokLader />}
+      </main>
+    </div>
   );
 
   return (
@@ -382,25 +401,16 @@ export default function CategorieenBeheren() {
 
                               {/* Voorbeeld thumbnails */}
                               {hasVoorbeeld && (
-                                <div className="flex gap-1.5 mt-1">
+                                <div className="flex flex-wrap gap-2 mt-1">
                                   {examples.map(v => (
-                                    <div key={v.id} className="relative w-14 h-14 rounded-xl overflow-hidden border border-outline-variant/20">
-                                      <LaadAfbeelding src={v.url} alt="" className="w-full h-full object-cover" />
-                                      <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                          <button className="absolute top-0.5 right-0.5 w-4 h-4 bg-red-500/90 rounded-full text-white text-[9px] flex items-center justify-center border border-white">×</button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                          <AlertDialogHeader>
-                                            <AlertDialogTitle>Voorbeeld verwijderen?</AlertDialogTitle>
-                                            <AlertDialogDescription>Dit voorbeeld wordt permanent verwijderd.</AlertDialogDescription>
-                                          </AlertDialogHeader>
-                                          <AlertDialogFooter>
-                                            <AlertDialogCancel>Annuleren</AlertDialogCancel>
-                                            <AlertDialogAction onClick={() => handleDelete(v)}>Verwijderen</AlertDialogAction>
-                                          </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                      </AlertDialog>
+                                    <div key={v.id} className="flex w-14 flex-col items-stretch">
+                                      <div className="w-14 h-14 rounded-xl overflow-hidden border border-outline-variant/20">
+                                        <LaadAfbeelding src={v.url} alt="" className="w-full h-full object-cover" />
+                                      </div>
+                                      <button type="button" onClick={() => setDeleteTarget(v)} aria-label={`Voorbeeld ${cat.effectiveName} verwijderen`}
+                                        className="mt-1 flex h-11 w-14 items-center justify-center rounded-xl text-red-700 bg-red-50 active:scale-95">
+                                        <span className="material-symbols-rounded" aria-hidden style={{ fontSize: 22 }}>delete</span>
+                                      </button>
                                     </div>
                                   ))}
                                 </div>
@@ -411,10 +421,6 @@ export default function CategorieenBeheren() {
                                 </p>
                               )}
 
-                              {/* Inline edit form */}
-                              {isEditing && (
-                                <CategoryEditForm cat={cat} onClose={() => setEditingId(null)} />
-                              )}
                             </div>
 
                             {/* Action buttons */}
@@ -445,6 +451,12 @@ export default function CategorieenBeheren() {
                               </button>
                             </div>
                           </div>
+                          {/* Editor over de volle rijbreedte (middenkolom is mobiel te smal) */}
+                          {isEditing && (
+                            <div className="px-4 pb-4">
+                              <CategoryEditForm cat={cat} onClose={() => setEditingId(null)} />
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -455,6 +467,19 @@ export default function CategorieenBeheren() {
           })}
         </div>
       </main>
+      {/* Eén bevestiging buiten de lijst (geen AlertDialog in loops) */}
+      <AlertDialog open={deleteTarget !== null} onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Voorbeeld verwijderen?</AlertDialogTitle>
+            <AlertDialogDescription>Dit voorbeeld wordt permanent verwijderd.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="min-h-12">Annuleren</AlertDialogCancel>
+            <AlertDialogAction className="min-h-12" onClick={() => { const v = deleteTarget; setDeleteTarget(null); if (v) void handleDelete(v); }}>Verwijderen</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

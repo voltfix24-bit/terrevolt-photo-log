@@ -52,10 +52,12 @@ interface SheetContentProps
     VariantProps<typeof sheetVariants> {}
 
 const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Content>, SheetContentProps>(
-  ({ side = "right", className, children, ...props }, ref) => (
+  ({ side = "right", className, children, style, ...props }, ref) => (
     <SheetPortal>
       <SheetOverlay />
-      <SheetPrimitive.Content ref={ref} className={cn(sheetVariants({ side }), className)} {...props}>
+      <SheetPrimitive.Content ref={ref} className={cn(sheetVariants({ side }), side === "bottom" && "overflow-y-auto overscroll-contain", className)}
+        // Onderste sheet: binnen het zichtbare deel (toetsenbord/korte viewport) en scrollbaar.
+        style={side === "bottom" ? { bottom: "var(--vvb, 0px)", maxHeight: "calc(var(--vvh, 100dvh) - 12px)", ...style } : style} {...props}>
         {children}
         <SheetPrimitive.Close className="absolute right-1.5 top-1.5 flex h-11 w-11 items-center justify-center rounded-lg opacity-80 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none">
           <X className="h-5 w-5" />

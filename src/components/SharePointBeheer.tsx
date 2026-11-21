@@ -30,7 +30,7 @@ const fmt = (d: string | Date) =>
 export function SharePointBeheer() {
   const qc = useQueryClient();
   const [start, setStart] = useState(false);
-  const { data: run } = useQuery({
+  const { data: run, isLoading: runLaden, isError: runFout, refetch: runOpnieuw } = useQuery({
     queryKey: ["sharepoint-runs"],
     queryFn: async () => {
       const { data, error } = await supabase.from("sharepoint_sync_runs").select("*").order("gestart_op", { ascending: false }).limit(1).maybeSingle();
@@ -84,7 +84,11 @@ export function SharePointBeheer() {
       <div className="p-5 space-y-3 text-sm">
         <div>
           <div className="text-muted-foreground text-xs">Laatste run</div>
-          {run ? (
+          {runFout ? (
+            <div role="alert" className="text-on-surface">Laatste run kon niet worden gelezen.{" "}
+              <button onClick={() => void runOpnieuw()} className="min-h-11 text-primary font-semibold">Opnieuw laden</button>
+            </div>
+          ) : runLaden ? <div className="text-muted-foreground">Laden…</div> : run ? (
             <>
               <div className="font-semibold text-on-surface">{fmt(run.gestart_op)}{run.handmatig ? " · handmatig" : ""}{loopt ? " · bezig…" : ""}</div>
               <div className="text-muted-foreground">

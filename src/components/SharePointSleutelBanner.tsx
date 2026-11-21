@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from "react";
 import { useInstellingen } from "@/hooks/use-theme";
 
 // Dagen tot de SharePoint-sleutel verloopt (null = onbekend)
@@ -9,6 +10,15 @@ export function dagenTotVerlopen(datum: string | null | undefined, nu = new Date
 
 export function SharePointSleutelBanner() {
   const { data } = useInstellingen();
+  const ref = useRef<HTMLDivElement>(null);
+  // Werkelijke bannerhoogte als --banner-h, zodat vaste koppen (AppHeader) eronder blijven.
+  useLayoutEffect(() => {
+    const el = ref.current, root = document.documentElement;
+    if (!el) { root.style.setProperty("--banner-h", "0px"); return; }
+    const zet = () => root.style.setProperty("--banner-h", `${el.offsetHeight}px`);
+    zet(); const ro = new ResizeObserver(zet); ro.observe(el);
+    return () => { ro.disconnect(); root.style.setProperty("--banner-h", "0px"); };
+  });
   const inst = data as any;
   if (!inst) return null;
   const dagen = dagenTotVerlopen(inst.sp_sleutel_verloopt_op);
@@ -19,12 +29,13 @@ export function SharePointSleutelBanner() {
     : `De SharePoint-sleutel verloopt over ${dagen} ${dagen === 1 ? "dag" : "dagen"}`;
   return (
     <div
+      ref={ref}
       role="alert"
       style={{
-        position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
+        position: "sticky", top: 0, zIndex: 60,
         paddingTop: "max(env(safe-area-inset-top), 6px)", paddingBottom: 6, paddingLeft: 16, paddingRight: 16,
-        background: kapot ? "#C62828" : "#E8711A", color: "#fff",
-        fontSize: 13, fontWeight: 600, textAlign: "center",
+        background: kapot ? "#B71C1C" : "#9A4300", color: "#fff",
+        fontSize: 14, lineHeight: 1.35, fontWeight: 600, textAlign: "center",
       }}
     >
       {tekst}

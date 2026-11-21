@@ -110,15 +110,15 @@ export function ExcelImportDialog({ open, onOpenChange, bestaand }: { open: bool
             {koppen.map((k, i) => {
               const v = mapping[i];
               if (v) return (
-                <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 4px 3px 10px", borderRadius: 999, fontSize: 13, fontWeight: 600, background: "#E3EFE0", color: T.green }}>
-                  {k || `Kolom ${i + 1}`} → {VELD_LABEL[v]}
-                  <Button aria-label={`${k} ontkoppelen`} disabled={bezig} onClick={() => wijzigMapping(zetMapping(mapping, i, null))} variant="ghost" style={{ padding: 0, width: 44, height: 44, margin: "-8px -2px -8px 0", color: T.green }}>×</Button>
+                <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 4, maxWidth: "100%", padding: "3px 4px 3px 10px", borderRadius: 14, fontSize: 14, fontWeight: 600, background: "#E3EFE0", color: T.green }}>
+                  <span style={{ minWidth: 0, overflowWrap: "anywhere" }}>{k || `Kolom ${i + 1}`} → {VELD_LABEL[v]}</span>
+                  <Button aria-label={`${k} ontkoppelen`} disabled={bezig} onClick={() => wijzigMapping(zetMapping(mapping, i, null))} variant="ghost" style={{ padding: 0, width: 44, minWidth: 44, height: 44, flexShrink: 0, margin: "-8px -2px -8px 0", color: T.green }}>×</Button>
                 </span>
               );
               return (
-                <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 6px 3px 10px", borderRadius: 999, fontSize: 13, fontWeight: 600, background: ORANJE_BG, color: ORANJE }}>
-                  {k || `Kolom ${i + 1}`}{isDubbelHerkend(koppen, mapping, i) ? " (dubbel)" : ""}
-                  <select aria-label={`Kolom ${k} koppelen`} value="" disabled={bezig} onChange={(e) => wijzigMapping(zetMapping(mapping, i, (e.target.value || null) as ImportVeld | null))} style={{ background: "transparent", color: ORANJE, fontWeight: 600, fontSize: 16, minHeight: 44 }}>
+                <span key={i} style={{ display: "inline-flex", flexWrap: "wrap", alignItems: "center", gap: "0 6px", maxWidth: "100%", padding: "3px 6px 3px 10px", borderRadius: 14, fontSize: 14, fontWeight: 600, background: ORANJE_BG, color: ORANJE }}>
+                  <span style={{ minWidth: 0, overflowWrap: "anywhere" }}>{k || `Kolom ${i + 1}`}{isDubbelHerkend(koppen, mapping, i) ? " (dubbel)" : ""}</span>
+                  <select aria-label={`Kolom ${k} koppelen`} value="" disabled={bezig} onChange={(e) => wijzigMapping(zetMapping(mapping, i, (e.target.value || null) as ImportVeld | null))} style={{ background: "transparent", color: ORANJE, fontWeight: 600, fontSize: 16, minHeight: 44, maxWidth: "100%" }}>
                     <option value="">kies kolom…</option>
                     {VELDEN.map((f) => <option key={f} value={f}>{VELD_LABEL[f]}{mapping.includes(f) ? " (vervangt)" : ""}</option>)}
                     <option value="">negeren</option>
@@ -153,9 +153,9 @@ export function ExcelImportDialog({ open, onOpenChange, bestaand }: { open: bool
               </tbody>
             </table>
             <div className="flex items-center justify-between gap-2 py-2">
-              <Button variant="ghost" className="h-11 w-11" aria-label="Vorige previewpagina" disabled={bezig || pagina === 0} onClick={() => setPagina(pagina-1)}>←</Button>
+              <Button variant="ghost" className="h-11 w-11 shrink-0" aria-label="Vorige previewpagina" disabled={bezig || pagina === 0} onClick={() => setPagina(pagina-1)}>←</Button>
               <span>Rijen {pagina*100+1}–{Math.min((pagina+1)*100,preview.length)} van {preview.length}</span>
-              <Button variant="ghost" className="h-11 w-11" aria-label="Volgende previewpagina" disabled={bezig || (pagina+1)*100>=preview.length} onClick={() => setPagina(pagina+1)}>→</Button>
+              <Button variant="ghost" className="h-11 w-11 shrink-0" aria-label="Volgende previewpagina" disabled={bezig || (pagina+1)*100>=preview.length} onClick={() => setPagina(pagina+1)}>→</Button>
             </div>
             {waarschuwingen.length > 0 && <div style={{ fontSize: 13, color: ORANJE, marginTop: 8 }}>{waarschuwingen.length} rij{waarschuwingen.length === 1 ? "" : "en"} met waarschuwing: onbekende status wordt TO open. Controleer dit vóór importeren.</div>}
           </div>

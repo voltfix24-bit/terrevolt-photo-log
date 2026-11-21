@@ -100,9 +100,9 @@ function AppContent() {
 
   return (
     <>
+      <SharePointSleutelBanner />
       <AppHeader />
       <BeheerStatus />
-      <SharePointSleutelBanner />
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/stations/new" element={<NewStation />} />

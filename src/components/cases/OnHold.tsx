@@ -45,14 +45,14 @@ export function OnHoldKnop({ id }: { id: string }) {
             <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 14, fontWeight: 600 }}>Bij wie ligt het
               <div role="radiogroup" style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {HOLD_PARTIJEN.map((p) => (
-                  <Pressable key={p} role="radio" aria-checked={partij === p} onClick={() => setPartij(p)} scale={0.97} style={{ minHeight: 38, padding: "0 12px", borderRadius: 9, fontSize: 14, fontWeight: 600, background: partij === p ? HOLD_KLEUR.fg : T.soft, color: partij === p ? "#fff" : T.titleOnBg }}>{HOLD_PARTIJ_NAAM[p]}</Pressable>
+                  <Pressable key={p} role="radio" aria-checked={partij === p} onClick={() => setPartij(p)} scale={0.97} style={{ minHeight: 44, padding: "0 14px", borderRadius: 10, fontSize: 14, fontWeight: 600, background: partij === p ? HOLD_KLEUR.fg : T.soft, color: partij === p ? "#fff" : T.titleOnBg }}>{HOLD_PARTIJ_NAAM[p]}</Pressable>
                 ))}
               </div>
             </div>
             <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 14, fontWeight: 600 }}>Verwachte hervatting <span style={{ fontWeight: 400, color: T.bodyOnBg }}>(optioneel)</span>
               <input type="date" value={tot} onChange={(e) => setTot(e.target.value)} style={veld} />
             </label>
-            <Pressable onClick={opslaan} disabled={!kan} scale={0.97} style={{ minHeight: 46, borderRadius: 12, fontSize: 16, fontWeight: 700, background: kan ? HOLD_KLEUR.fg : T.soft, color: kan ? "#fff" : T.bodyOnBg, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <Pressable onClick={opslaan} disabled={!kan} scale={0.97} style={{ minHeight: 48, borderRadius: 12, fontSize: 16, fontWeight: 700, background: kan ? HOLD_KLEUR.fg : T.soft, color: kan ? "#fff" : T.bodyOnBg, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
               {bezig ? <KnopLader /> : <PauseCircle size={18} />}On hold zetten
             </Pressable>
           </div>
@@ -79,7 +79,7 @@ export function OnHoldBalk({ id, station }: { id: string; station: HoldVelden & 
     <div role="status" style={{ background: HOLD_KLEUR.bg, color: HOLD_KLEUR.fg, borderRadius: 14, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
       <PauseCircle size={20} style={{ flexShrink: 0 }} />
       <span style={{ flex: 1, minWidth: 0, overflowWrap: "anywhere", fontSize: 15, fontWeight: 600 }}>{delen.filter(Boolean).join(" · ")}</span>
-      <Pressable onClick={go} disabled={bezig} scale={0.97} style={{ minHeight: 38, padding: "0 14px", borderRadius: 19, fontSize: 14, fontWeight: 700, background: HOLD_KLEUR.fg, color: "#fff", display: "flex", alignItems: "center", gap: 6 }}>
+      <Pressable onClick={go} disabled={bezig} scale={0.97} style={{ minHeight: 44, padding: "0 16px", borderRadius: 22, fontSize: 14, fontWeight: 700, background: HOLD_KLEUR.fg, color: "#fff", display: "flex", alignItems: "center", gap: 6 }}>
         {bezig && <KnopLader />}Hervatten
       </Pressable>
     </div>

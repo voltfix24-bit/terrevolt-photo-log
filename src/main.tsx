@@ -21,4 +21,6 @@ document.addEventListener("touchend", (event) => {
   lastTouchEnd = now;
 }, { passive: false });
 
+import { installeerViewportVars } from "./lib/viewport";
+installeerViewportVars();
 createRoot(document.getElementById("root")!).render(<App />);

@@ -214,8 +214,8 @@ export function WizardView({
     return (
       <div className="fixed inset-0 z-[70] bg-background flex flex-col animate-fade-up">
         <div className="shrink-0 px-5 pt-[max(16px,env(safe-area-inset-top))] pb-3 border-b border-outline-variant/10">
-          <button onClick={onClose} className="flex items-center gap-1 text-text-muted hover:text-primary-hover text-[13px] font-medium active:scale-95 transition-all">
-            <span className="material-symbols-rounded text-[20px]">close</span>
+          <button onClick={onClose} aria-label="Sluiten" className="flex h-11 w-11 items-center justify-center -ml-2 text-text-muted hover:text-primary-hover active:scale-95 transition-all">
+            <span className="material-symbols-rounded text-[26px]">close</span>
           </button>
         </div>
         <div className="flex-1 overflow-y-auto px-4 pt-4 pb-8">
@@ -318,10 +318,11 @@ export function WizardView({
             ].filter(Boolean);
             const hasInfo = !!(cat.effectiveInstruction || cat.effectiveTip || extra.length);
             return (
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                <h1 className="font-display" style={{ margin: 0, fontSize: 30, fontWeight: 700, lineHeight: 1.15, flex: 1, minWidth: 0 }}>{cat.effectiveName}</h1>
+              <div style={{ display: "flex", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
+                {/* Titel over de volle breedte; Notitie/Info lopen eronder door als er geen ruimte is */}
+                <h1 className="font-display" style={{ margin: 0, fontSize: "clamp(24px, 7.5vw, 30px)", fontWeight: 700, lineHeight: 1.18, flex: "1 1 220px", minWidth: 0, overflowWrap: "break-word", hyphens: "auto" }} lang="nl">{cat.effectiveName}</h1>
                 {!opmerkingText && (
-                  <button type="button" onClick={() => setSheet("notitie")} style={{ flexShrink: 0, minHeight: 48, padding: "0 13px", borderRadius: 999, border: "none", background: "rgba(252,201,52,0.16)", color: W.gold, fontSize: 15, fontWeight: 600, marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
+                  <button type="button" onClick={() => setSheet("notitie")} style={{ flexShrink: 0, minHeight: 48, padding: "0 13px", borderRadius: 999, border: "none", background: "rgba(252,201,52,0.16)", color: W.gold, fontSize: 15, fontWeight: 600, marginTop: 2, marginLeft: "auto", display: "flex", alignItems: "center", gap: 4 }}>
                     <span className="material-symbols-rounded" style={{ fontSize: 19 }}>add</span>Notitie
                   </button>
                 )}

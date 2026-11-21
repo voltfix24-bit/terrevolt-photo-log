@@ -383,8 +383,8 @@ export default function Instellingen() {
             {/* Live preview strip */}
             <div>
               <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Live preview</div>
-              <div className="flex items-center gap-2 p-3 bg-surface-low rounded-xl">
-                <button type="button" className="px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-bold">
+              <div className="flex items-center gap-2 p-3 bg-surface-low rounded-xl" aria-hidden="true">
+                <button type="button" tabIndex={-1} className="px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-bold">
                   Primaire knop
                 </button>
                 <span className="text-[9px] font-black uppercase tracking-wide px-2 py-1 rounded-full bg-orange/10 text-orange">OPEN</span>

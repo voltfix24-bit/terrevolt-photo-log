@@ -108,16 +108,18 @@ function PinHost() {
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center">
+    <div className="fixed inset-x-0 z-[200] flex items-center justify-center" style={{ top: "var(--vvt, 0px)", height: "var(--vvh, 100dvh)" }}
+      onKeyDown={(e) => { if (e.key === "Escape") { e.preventDefault(); cancel(); } }}>
       <div className="absolute inset-0 bg-foreground/50 backdrop-blur-sm" onClick={cancel} />
-      <div className="relative bg-card rounded-2xl p-6 mx-6 max-w-sm w-full shadow-2xl space-y-4 animate-fade-up">
+      <div role="dialog" aria-modal="true" aria-labelledby="pin-titel" className="relative bg-card rounded-2xl p-5 mx-4 max-w-sm w-full shadow-2xl space-y-4 animate-fade-up overflow-y-auto overscroll-contain"
+        style={{ maxHeight: "calc(var(--vvh, 100dvh) - 16px)" }}>
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center">
             <span className="material-symbols-rounded text-primary text-[24px]">lock</span>
           </div>
           <div>
-            <h3 className="font-display font-extrabold text-lg text-on-surface">{state.title}</h3>
-            {state.description && <p className="text-xs text-muted-foreground">{state.description}</p>}
+            <h3 id="pin-titel" className="font-display font-extrabold text-lg text-on-surface">{state.title}</h3>
+            {state.description && <p className="text-sm text-muted-foreground">{state.description}</p>}
           </div>
         </div>
         <form onSubmit={(e) => { e.preventDefault(); submit(); }}>
@@ -132,19 +134,19 @@ function PinHost() {
               error ? "border-orange ring-orange/25 animate-shake" : "border-outline-variant/30 focus:ring-primary/25"
             }`}
           />
-          {error && <p className="text-sm text-orange font-semibold mt-2 text-center">{error}</p>}
-          <div className="flex gap-3 justify-end mt-4">
+          {error && <p role="alert" className="text-sm text-[#9A4300] font-semibold mt-2 text-center">{error}</p>}
+          <div className="flex flex-wrap gap-3 justify-end mt-4">
             <Button
               type="button"
               onClick={cancel}
-              className="px-4 py-2.5 rounded-xl text-sm font-semibold text-muted-foreground bg-surface-container hover:bg-surface-high transition-all"
+              className="min-h-12 flex-1 px-4 py-2.5 rounded-xl text-base font-semibold text-muted-foreground bg-surface-container hover:bg-surface-high transition-all"
             >
               Annuleren
             </Button>
             <Button
               type="submit"
               disabled={bezig}
-              className="px-4 py-2.5 rounded-xl text-sm font-semibold text-primary-foreground bg-primary hover:bg-primary-hover transition-all"
+              className="min-h-12 flex-1 px-4 py-2.5 rounded-xl text-base font-semibold text-primary-foreground bg-primary hover:bg-primary-hover transition-all"
             >
               {bezig ? "Controleren…" : "Ontgrendelen"}
             </Button>

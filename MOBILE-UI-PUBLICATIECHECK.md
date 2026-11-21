@@ -61,12 +61,42 @@ Alias/korte link: `/stations/{uuid}` en `/c/0295546` gaven het canonieke scherm 
 5. Instellingen: Terug-knoppen, Reset, kleurpresets, tekstvelden, SharePoint "Nu volledig synchroniseren"/"Opnieuw controleren" (nu ook terugloop bij smal scherm), header-logo/instellingenknop → ≥44px.
 6. Categoriebeheer: Terug, zoekveld, filters Alle/Met foto/Leeg, bewerk- en Foto/Meer-knoppen → ≥44px.
 
+## Correctie-/acceptatieronde (op a9b61a8)
+### Opgeloste problemen
+- Dialogen, PIN-venster en onderbladen volgen nu de zichtbare viewport (`--vvh/--vvt/--vvb`, `src/lib/viewport.ts`), zijn begrensd en scrollen intern; PIN-venster heeft `role=dialog`, Escape en 48px-knoppen.
+- SharePoint-sleutelbanner staat bovenaan in de flow (sticky, header schuift eronder), contrast #9A4300/#B71C1C met witte tekst.
+- Leesfout ≠ leeg ≠ laden op Startpagina (stations: was "Geen stations gevonden"), Cases, Beoordelen (opdrachtgevers/dossiers), SharePointBeheer (laatste run), Categoriebeheer (voorbeelden) en Opleveren (station/foto's/N.v.t./wachtrij/opdrachtgever; versturen alleen na bevestigde bronnen).
+- 404 in het Nederlands met knop "Terug naar stations"; resolver-foutknoppen 44px.
+- Wizardtitel breekt af (geen ellipsis), ShareSheet 1 kolom <400px + Escape, lange onbekende Excel-kop breekt af, Excel-ontkoppel- en pagineerknoppen krimpen niet meer onder 44px, select-velden 44px.
+- HTML-rapport (PDF bekijken) heeft `width=820`-viewport: hele A4-pagina past in beeld; print-CSS ongewijzigd.
+- BeoordeelDossier mobiel: hoogte = zichtbare viewport min de beheerbalk erboven, en de inspectie-inhoud (foto-metadata) was onbereikbaar onder de vaste actiebalk → nu scrollbaar tot boven de balk; balkhoogte gemeten i.p.v. vaste 130px.
+- Startpagina 400–479px: "Beoordeling"-label liep buiten beeld → label pas vanaf 480px.
+- Voorbeeldfoto-verwijderen: knop 44px, bevestiging nu één AlertDialog buiten de lijst (`deleteTarget`), ook in CategorieSettings.
+- OnHold-keuzes 44/48px; jaarchips 44px; afrondscherm-sluitknop 44px; kleurvoorbeeld "Primaire knop" is aria-hidden/niet focusbaar.
+
+### Passgates
+- `scripts/mobile-ui-check.py`: route-smoke (159 metingen); exit 1 bij niet-gevonden klikdoel, JS-pagefout, paginaoverflow, invoer <16px, element buiten beeld (behalve in horizontaal scrollbare stroken) of tikvlak <44 (invoer telt via zijn label-tegel). 130% zoom = 246px-viewport (geen CSS-zoom-artefacten meer).
+- `scripts/mobile-ui-acceptatie.py <station|beoordelen|cases|overig>`: gerichte overlays/staten; elke stap faalt hard als titel/overlay ontbreekt. Meet per stap paginaoverflow, materiële clipping (tekst buiten beeld, icon-ligaturen uitgezonderd), tikvlak <44 (exacte allowlist: placeholder "bv. …", kleurvoorbeeld, thumbnails "Foto n: …"), invoer <16px, JS-fouten, dialoogrand binnen zichtbare viewport, titel bereikbaar bovenin, laatste actie bereikbaar na scrollen, en BeoordeelDossier: laatste inhoud boven de actiebalk.
+- Maten: 320×568, 390×844, 430×932, liggend 740×360, 130% zoom (246×437); toetsenbord gesimuleerd met 55% hoogte.
+
+### Resultaat (definitieve run, alle exit 0)
+| Groep | Metingen | Gedekt |
+|---|---|---|
+| station | 58 | EditStationDialog (+toetsenbord), Delen-sheet, PDF/HTML-rapport, NotitieSheet (+toetsenbord), wizard lange titel, deels/afgekeurd-herindiening/goedgekeurd/foto-leesfout, echte IDB-wachtrij open+mislukt, Opleveren onvolledig/gereed/succes(gemockt)/fout/foto- en stationleesfout |
+| beoordelen | 39 | inspectie/raster/onderkant, afkeur-sheet (Anders, toetsenbord), afkeur-afhandelen, eindcontrole, opdrachtgevers-leesfout + herladen |
+| cases | 28 | Case toevoegen, Excel lange kop/120 rijen/pagina 2/import gepauzeerd met per-rijresultaat (gemockt), OnHold-dialoog, CaseDetail on hold + afgekeurde TO-ronde, Cases-leesfout |
+| overig | 51 | PIN-fout (+toetsenbord), Instellingen (+toetsenbord), categorie-editor, voorbeeld-verwijderbevestiging, sleutelbanner bijna/verlopen, stations-/categorie-/SharePoint-run-leesfout, multi-station-keuzelijst, 404, oude alias → canonieke url, categorie-deeplink + sluiten |
+| route-smoke | 159 | alle routes zoals hierboven |
+
+### Databron en blokkering
+- Echte data alleen-lezend. Fictieve toestanden ontstaan uitsluitend in de testbrowser door responses te patchen/vervangen (statussen, afgekeurde foto, hold, afgekeurde ronde, sleuteldatum, extra kandidaat "FICT-2", 120 rijen FICT-1000…, case_aanmaken: rij 2 = fictieve verbindingsfout, pin-sessie 401, beheer_status/heeft_beheer = actief, oplever-rapport 200). Wachtrijtest zet 4-byte nepblobs in IndexedDB van de testbrowser en ruimt ze op.
+- Exacte leesallowlist: GET/HEAD; RPC beheer_status, url_candidates, heeft_beheer, fotowerk_toegestaan, case_wv_suggesties, dossier_eindcontrole; functie sharepoint-documenten; opleverketen alleen `actie=status`. Al het andere → 503 in de browser. Geblokkeerd tijdens de runs: `POST oplever-rapport` (foutpad), storage-uploads `q_…jpg` van de nepblobs. Geen enkel schrijfverzoek bereikte de backend.
+- Tests: `bunx vitest run` 34 bestanden / 286 tests geslaagd (5 lokale-PostgreSQL-bestanden overgeslagen), waaronder `src/test/mobiele-leesfouten.test.tsx` (opleverGereedheid, Opleveren- en Beoordelen-leesfouten). `tsc --noEmit -p tsconfig.app.json` en `vite build` geslaagd.
+- Screenshots + resultaat.json per groep: Files `mobile-ui-acceptatie/` (lokaal `/tmp/browser/acceptatie/`).
+
 ## Resterende meldingen (bewust niet gewijzigd)
 - Nieuw station: invoervelden meten 24px, maar het hele `<label>`-rij (≥60px) is het tikvlak → geen probleem.
 - BeoordeelDossier/NotitieSheet: elementen "buiten viewport" zijn horizontaal scrollbare filter-/thumbnailstroken, geen paginaoverflow.
-- Zoom 130%-variant: "buiten"-meldingen bij menu's zijn een meetartefact van CSS-zoom; screenshots tonen menu's binnen beeld.
-- Instellingen "Primaire knop" 105×28 is een niet-interactief kleurvoorbeeld.
-- Categoriebeheer: verwijderkruisje voorbeeldfoto 16×16 op een 56px-thumbnail; vergroten vergt herontwerp. Bovendien staat die verwijdervraag nog binnen de lijst (afwijking van de afspraak "geen AlertDialog in loops") — niet aangeraakt.
 
 ## Uitgevoerde commando's
 - `python3 scripts/mobile-ui-check.py` (definitieve kandidaat, volledige route-smoke): exit 0, 159 metingen, 0 overflow.
@@ -77,7 +107,7 @@ Alias/korte link: `/stations/{uuid}` en `/c/0295546` gaven het canonieke scherm 
 Lokaal: `/tmp/browser/mobiel/*.png` (+ `resultaat.json`), kopie in Files: `mobiele-ui-check/`.
 
 ## Beperkingen / niet getest
-- Geen fysiek iPhone/Android; toetsenbord gesimuleerd met 55% viewporthoogte; geen echte camera, iOS-tekstgrootte (130% CSS-zoom als benadering) of safe-area-notch.
-- Niet in de browser met specifieke staten: deels ingevuld station, afgekeurd/herindiening, goedgekeurd dossier, multi-station-keuzelijst, upload-/wachtrijfouten, Opleveren-succes/fout, Excel paginering/pauze/retry, BeoordeelDossier afkeurreden/herstel/afronden-dialoog, hold/hervatten-formulieren en TO-ronde-formulieren (wel route geopend). Deze zijn gedekt door bestaande unit-/componenttests, niet door deze meting.
-- Lege/foutstaat startpagina niet nagebootst (echte data heeft stations).
-- Focusterugkeer alleen eerder gecontroleerd (Meer → Escape); hier niet opnieuw per overlay.
+- Geen fysiek iPhone/Android: toetsenbord = 55% viewporthoogte, 130% zoom = 246px-viewport, geen echte camera of safe-area-notch.
+- Fictieve toestanden zijn browser-patches op echte leesresponses, geen databaserijen; RLS/autorisatie is daardoor niet in deze meting getest (wel in eerdere lokale DB-tests).
+- Succespaden van schrijfacties (opleveren, import) zijn alleen met gemockte antwoorden getoond; afkeuren/afhandelen/afronden zijn geopend maar niet verstuurd.
+- Focusterugkeer niet per overlay gemeten; Escape sluit elke geteste overlay.

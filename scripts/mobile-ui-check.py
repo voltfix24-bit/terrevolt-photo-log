@@ -1,3 +1,4 @@
+import sys
 """Herhaalbare mobiele UI-check (TO Foto's).
 Leest echte data alleen-lezend; ALLE schrijfverzoeken worden in de testbrowser geblokkeerd.
 Modus 'beheer' mockt alleen heeft_beheer/beheer_status (UI-ontgrendeld beeld; schrijven blijft geblokkeerd).
@@ -31,14 +32,16 @@ AUDIT = r'''() => {
  const sel = 'button,a[href],input:not([type=hidden]),select,textarea,[role=button],[role=tab],summary,[role=menuitem]';
  const klein = [], font = [], buiten = [];
  for (const el of document.querySelectorAll(sel)) {
-  const r = el.getBoundingClientRect(), cs = getComputedStyle(el);
+  const cs = getComputedStyle(el); const tegel = /INPUT|TEXTAREA|SELECT/.test(el.tagName) && el.closest('label');
+  const r = (tegel && tegel.getBoundingClientRect().height >= 43.5) ? tegel.getBoundingClientRect() : el.getBoundingClientRect();
   if (!r.width || !r.height || cs.visibility === 'hidden' || el.closest('[aria-hidden=true]')) continue;
   if (el.type === 'file' || el.type === 'checkbox' && r.width < 2) continue;
   const t = (el.getAttribute('aria-label') || el.innerText || el.placeholder || el.tagName).trim().slice(0, 40);
   const inline = el.tagName === 'A' && cs.display === 'inline';
   if (!inline && (r.height < 43.5 || r.width < 43.5)) klein.push(`${t} ${Math.round(r.width)}x${Math.round(r.height)}`);
   if (/INPUT|SELECT|TEXTAREA/.test(el.tagName) && parseFloat(cs.fontSize) < 16) font.push(`${t} ${cs.fontSize}`);
-  if (r.right > vw + 1 || r.left < -1) buiten.push(`${t} ${Math.round(r.left)}..${Math.round(r.right)}`);
+  const scrollt = (() => { for (let p = el.parentElement; p; p = p.parentElement) { const o = getComputedStyle(p).overflowX; if ((o === 'auto' || o === 'scroll') && p.scrollWidth > p.clientWidth) return true; } return false; })();
+  if ((r.right > vw + 1 || r.left < -1) && !scrollt) buiten.push(`${t} ${Math.round(r.left)}..${Math.round(r.right)}`);
  }
  return {vw, sw, overflow: sw > vw + 1, klein: [...new Set(klein)], font, buiten};
 }'''
@@ -132,9 +135,13 @@ async def main():
         b = await p.chromium.launch(headless=True)
         for w in (320, 390, 430): await run(b, w)
         await run(b, 390, beheer=True, alleen=['station', 'instellingen', 'cases'])
-        await run(b, 320, zoom=130, alleen=['station', 'nieuw', 'cases', 'ingevuld'])
+        await run(b, 246, h=649, alleen=['station', 'nieuw', 'cases', 'ingevuld'])
         await run(b, 740, h=360, alleen=['station', 'wizard', 'cases'])
         await b.close()
     (OUT / 'resultaat.json').write_text(json.dumps({'resultaten': resultaten, 'geblokkeerd': sorted(set(geblokkeerd))}, indent=1))
     print('geblokkeerde schrijfverzoeken:', sorted(set(geblokkeerd)))
+    falen = [r for r in resultaten if r.get('fout') or r.get('overflow') or r.get('font') or r.get('buiten') or r.get('klein')]
+    for r in falen: print('FOUT', r.get('label'), {k: r.get(k) for k in ('fout', 'overflow', 'font', 'buiten', 'klein') if r.get(k)})
+    print(f'{len(resultaten)} metingen, {len(falen)} fouten')
+    sys.exit(1 if falen else 0)
 asyncio.run(main())

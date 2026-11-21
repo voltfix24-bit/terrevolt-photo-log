@@ -207,7 +207,7 @@ export default function Cases() {
   const mobiel = useIsMobile() ?? false;
   const [params, setParams] = useSearchParams();
   const [toonVerborgen, setToonVerborgen] = useState(false);
-  const { data: alleCases, isLoading } = useCases({ inclVerborgen: toonVerborgen });
+  const { data: alleCases, isLoading, isError, refetch } = useCases({ inclVerborgen: toonVerborgen });
   const [filter, setFilterState] = useState<UitvoerderFilter>(() => leesFilter());
   const setFilter = (f: UitvoerderFilter) => { setFilterState(f); bewaarFilter(f); };
   const [nieuwOpen, setNieuwOpen] = useState(false);
@@ -276,11 +276,11 @@ export default function Cases() {
           <span style={{ fontSize: 14, color: SUB, fontWeight: 600 }}>Uitvoering:</span>
           {FILTER_OPTIES.map((o) => (
             <Pressable key={o.key} aria-pressed={filter === o.key} onClick={() => setFilter(o.key)} scale={0.97} style={{ minHeight: 44, padding: "0 12px", borderRadius: 22, fontSize: 14, fontWeight: 600, background: filter === o.key ? T.green : T.surface, color: filter === o.key ? T.surface : T.titleOnBg, border: `1px solid ${filter === o.key ? T.green : T.hairline}` }}>
-              {o.label} <span>{telling[o.key]}</span>
+              {o.label}{alleCases && <span> {telling[o.key]}</span>}
             </Pressable>
           ))}
         </div>
-        {tab === "bal" && (
+        {tab === "bal" && alleCases && (
           <div role="group" aria-label="Bal bij partij" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
             <span style={{ fontSize: 14, color: SUB, fontWeight: 600 }}>Bal bij:</span>
             {PARTIJ_KEUZES.map((p) => {
@@ -294,8 +294,19 @@ export default function Cases() {
             })}
           </div>
         )}
+        {isError && alleCases && (
+          <div role="alert" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginBottom: 12, padding: "8px 12px", borderRadius: 12, background: T.surface, border: `1px solid ${T.hairline}`, color: T.titleOnBg, fontSize: 15 }}>
+            Bijwerken mislukt — je ziet de laatst geladen cases.
+            <Pressable onClick={() => void refetch()} style={{ minHeight: 44, padding: "0 12px", color: T.green, fontWeight: 600 }}>Opnieuw laden</Pressable>
+          </div>
+        )}
         {isLoading ? (
           <PaginaLader label="Cases laden…" />
+        ) : isError && !alleCases ? (
+          <div role="alert" style={{ padding: "40px 20px", textAlign: "center", color: T.titleOnBg, fontSize: 16 }}>
+            Cases konden niet worden geladen.
+            <div><Pressable onClick={() => void refetch()} style={{ marginTop: 10, minHeight: 48, padding: "0 20px", borderRadius: 12, background: T.green, color: T.surface, fontSize: 16, fontWeight: 600 }}>Opnieuw laden</Pressable></div>
+          </div>
         ) : !cases.length ? (
           <div style={{ padding: "52px 20px", textAlign: "center", color: SUB, fontSize: 15 }}>Geen cases</div>
         ) : tab === "bal" ? <><Aandacht cases={cases} open={open} /><Bord cases={cases} open={open} partij={partij} /></> : <Score cases={cases} open={open} filter={filter} mobiel={mobiel} />}

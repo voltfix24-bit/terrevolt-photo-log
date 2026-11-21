@@ -82,6 +82,28 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
   const [afhandelTekst, setAfhandelTekst] = useState("");
   const [afrondenOpen, setAfrondenOpen] = useState(false);
   const [groot, setGroot] = useState(false);
+  // Werkelijke hoogte van de vaste mobiele actiebalk (grote tekst/meerdere regels), i.p.v. een vaste 130px.
+  const [balkH, setBalkH] = useState(130);
+  // Schermvullende hoogte min wat erboven staat (bv. de globale beheerbalk), zodat niets onder de onderrand valt.
+  const [bovenY, setBovenY] = useState(0);
+  const rootObs = useRef<(() => void) | null>(null);
+  const rootRef = useCallback((el: HTMLDivElement | null) => {
+    rootObs.current?.(); rootObs.current = null;
+    if (!el) return;
+    const meet = () => setBovenY(Math.max(0, Math.round(el.getBoundingClientRect().top + window.scrollY)));
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(meet) : null;
+    ro?.observe(document.body);
+    if (el.parentElement) ro?.observe(el.parentElement);
+    window.addEventListener("resize", meet); meet();
+    rootObs.current = () => { ro?.disconnect(); window.removeEventListener("resize", meet); };
+  }, []);
+  const balkObs = useRef<ResizeObserver | null>(null);
+  const balkRef = useCallback((el: HTMLDivElement | null) => {
+    balkObs.current?.disconnect(); balkObs.current = null;
+    if (!el) return;
+    const zet = () => setBalkH(Math.ceil(el.getBoundingClientRect().height));
+    zet(); balkObs.current = new ResizeObserver(zet); balkObs.current.observe(el);
+  }, []);
   const [bezig, setBezig] = useState<string | null>(null);
   const bezigRef = useRef(false);
   const [laatste, setLaatste] = useState<Laatste | null>(null);
@@ -428,7 +450,7 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
   );
 
   const inspectie = selected ? (
-    <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 16, minHeight: 0, height: "100%" }}>
+    <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 16, ...(isMobile ? {} : { minHeight: 0, height: "100%" }) }}>
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", minHeight: 0 }}>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
           <div style={{ minWidth: 0 }}>
@@ -448,7 +470,7 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
       <div style={{ width: isMobile ? "100%" : 268, flexShrink: 0, display: "flex", flexDirection: "column" }}>
         {meta}
         <div style={{ flex: 1 }} />
-        <div style={isMobile ? { position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 4, padding: "10px 12px calc(10px + env(safe-area-inset-bottom))", borderTop: "0.5px solid rgba(31,92,58,0.14)", ...glass } : undefined}>{actieBlok}</div>
+        <div ref={isMobile ? balkRef : undefined} data-actiebalk style={isMobile ? { position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 4, padding: "10px 12px calc(10px + env(safe-area-inset-bottom))", borderTop: "0.5px solid rgba(31,92,58,0.14)", ...glass } : undefined}>{actieBlok}</div>
       </div>
     </div>
   ) : leeg();
@@ -503,7 +525,7 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
   ];
 
   return (
-    <div style={{ height: "100dvh", background: D.bg, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <div ref={rootRef} style={{ height: `calc(var(--vvh, 100dvh) - ${bovenY}px)`, background: D.bg, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <div style={{ minHeight: 52, borderBottom: "0.5px solid rgba(31,92,58,0.14)", display: "flex", alignItems: "center", padding: "6px 12px", gap: 8, flexShrink: 0, flexWrap: isMobile ? "wrap" : "nowrap", ...glass }}>
         <button onClick={() => navigate("/beoordelen")} aria-label="Terug naar dossiers" className={FOCUS} style={{ border: "none", background: "none", color: D.green, display: "flex", alignItems: "center", gap: 2, fontSize: 13, padding: "0 6px", minHeight: 44 }}>
           <Icon name="chevron_left" size={20} color={D.green} /> Dossiers
@@ -549,8 +571,8 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
             {categorieen.map((naam) => <SidebarItem key={naam} icon="photo" label={naam} count={photos.filter((f) => f.categorie === naam).length} active={filter === `cat:${naam}`} onClick={() => setFilter(`cat:${naam}`)} />)}
           </nav>
         )}
-        <main style={{ flex: 1, background: D.content, padding: isMobile ? `12px 12px ${selected && !toonRaster ? 130 : 16}px` : "16px 18px", minWidth: 0, overflowY: "auto" }}>
-          <div ref={regioRef} tabIndex={-1} data-testid="beoordeel-regio" aria-label="Fotobeoordeling" className="focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1F5C3A] rounded-lg" style={{ height: toonRaster ? undefined : "100%", outlineOffset: 2 }}>
+        <main style={{ flex: 1, background: D.content, padding: isMobile ? `12px 12px ${selected && !toonRaster ? balkH + 16 : 16}px` : "16px 18px", minWidth: 0, overflowY: "auto" }}>
+          <div ref={regioRef} tabIndex={-1} data-testid="beoordeel-regio" aria-label="Fotobeoordeling" className="focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1F5C3A] rounded-lg" style={{ height: toonRaster || isMobile ? undefined : "100%", outlineOffset: 2 }}>
             {toonRaster ? raster : inspectie}
           </div>
         </main>

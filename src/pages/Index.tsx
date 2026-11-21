@@ -169,7 +169,7 @@ export default function Dashboard() {
   const [opgeleverdOpen, setOpgeleverdOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: stations, isLoading } = useQuery({
+  const { data: stations, isLoading, isError: stationsFout, refetch: herlaadStations, isFetching: stationsBezig } = useQuery({
     queryKey: ["stations"],
     queryFn: async () => {
       const { data, error } = await supabase.from("stations").select("*, fotos(categorie, review_status), to_rondes(nummer, status)").eq("uitvoerder", "terrevolt").order("created_at", { ascending: false });
@@ -308,7 +308,7 @@ export default function Dashboard() {
           </Pressable>
           <Pressable aria-label="Fotobeoordeling" onClick={() => navigate("/beoordelen")} className="border border-transparent bg-white hover:border-[#1F5C3A] transition-colors duration-150" style={{ height: 44, minWidth: 44, flexShrink: 0, padding: "0 12px 0 10px", borderRadius: 20, display: "flex", alignItems: "center", gap: 6, color: T.green, fontSize: 15, fontWeight: 600, alignSelf: "center" }}>
             <span className="material-symbols-rounded" style={{ fontSize: 22 }}>fact_check</span>
-            <span className="hidden min-[400px]:inline">Beoordeling</span>
+            <span className="hidden min-[480px]:inline">Beoordeling</span>
           </Pressable>
           <Pressable aria-label="Instellingen" onClick={async () => { if (await requirePin()) navigate("/instellingen"); }} style={{ width: 44, height: 44, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", color: T.green }}>
             <span className="material-symbols-rounded" style={{ fontSize: 26 }}>settings</span>
@@ -318,6 +318,11 @@ export default function Dashboard() {
 
         {isLoading ? (
           <PaginaLader label="Stations laden…" />
+        ) : stationsFout && !stations ? (
+          <div role="alert" style={{ margin: "24px 20px", padding: 16, borderRadius: 14, background: "#FDECEA", color: "#8A1C1C", fontSize: 15, display: "flex", flexDirection: "column", gap: 12 }}>
+            Stations konden niet worden geladen.
+            <button type="button" onClick={() => void herlaadStations()} disabled={stationsBezig} style={{ minHeight: 48, borderRadius: 12, border: "none", background: "#8A1C1C", color: "#fff", fontSize: 16, fontWeight: 600 }}>Opnieuw laden</button>
+          </div>
         ) : filtered.length === 0 ? (
           <div style={{ padding: "52px 20px", textAlign: "center", color: SUB, fontSize: 15 }}>Geen stations gevonden</div>
         ) : (

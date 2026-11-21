@@ -20,7 +20,7 @@ import { Group, Hairline, Pressable, T, ROW_MIN, ROW_PAD_X } from "@/components/
 const Leeg = () => <PaginaLader />;
 function RouteFout({ opnieuw }: { opnieuw: () => unknown }) {
   const navigate = useNavigate();
-  return <main className="mx-auto max-w-3xl space-y-3 p-6"><p role="alert">Deze pagina kon niet worden geladen. Controleer je verbinding en probeer opnieuw.</p><div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => navigate("/")}>Terug naar stations</Button><Button onClick={() => void opnieuw()}>Opnieuw proberen</Button></div></main>;
+  return <main className="mx-auto max-w-3xl space-y-3 p-6"><p role="alert">Deze pagina kon niet worden geladen. Controleer je verbinding en probeer opnieuw.</p><div className="flex flex-wrap gap-2"><Button variant="outline" className="min-h-11" onClick={() => navigate("/")}>Terug naar stations</Button><Button className="min-h-11" onClick={() => void opnieuw()}>Opnieuw proberen</Button></div></main>;
 }
 const pad = (p: string) => decodeURIComponent(p).replace(/\/+$/, "").toLowerCase();
 
@@ -142,8 +142,8 @@ function CaseLijst({ titel, og, jaar, stations, metStation }: { titel: string; o
         <h1 className="font-display" style={{ fontSize: 28, fontWeight: 500, color: T.titleOnBg, margin: "6px 8px 4px" }}>{titel}</h1>
         <p style={{ fontSize: 14, color: T.subOnBg, margin: "0 8px 16px" }}>{lijst.length === 1 ? "1 case" : `${lijst.length} cases`}</p>
         {jaren.length > 1 && (
-          <div style={{ display: "flex", gap: 16, margin: "0 8px 14px" }}>
-            {jaren.map((j) => <Pressable key={j} onClick={() => navigate(`/${slug(og)}/${j}`)} style={{ color: T.green, fontSize: 15 }}>{j}</Pressable>)}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, margin: "0 2px 10px" }}>
+            {jaren.map((j) => <Pressable key={j} onClick={() => navigate(`/${slug(og)}/${j}`)} style={{ minHeight: 44, minWidth: 44, padding: "0 6px", color: T.green, fontSize: 16, fontWeight: 600 }}>{j}</Pressable>)}
           </div>
         )}
         {lijst.length === 0 ? <p style={{ textAlign: "center", color: T.subOnBg, padding: 30 }}>Geen cases</p> : (

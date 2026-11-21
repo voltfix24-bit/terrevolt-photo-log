@@ -11,7 +11,7 @@ import imageCompression from "browser-image-compression";
 import { internetVereist } from "@/lib/internet";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
 const MAX_SIZE = 10 * 1024 * 1024;
@@ -41,6 +41,7 @@ export function CategorieSettingsDialog({ open, onOpenChange }: { open: boolean;
   const queryClient = useQueryClient();
   const { data: voorbeelden } = useVoorbeelden();
   const [uploading, setUploading] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<VoorbeeldFoto | null>(null);
   const [search, setSearch] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const uploadCatRef = useRef<string>("");
@@ -107,6 +108,7 @@ export function CategorieSettingsDialog({ open, onOpenChange }: { open: boolean;
   );
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] flex flex-col p-0 gap-0">
         <DialogHeader className="p-5 pb-3 border-b border-outline-variant/20">
@@ -151,7 +153,7 @@ export function CategorieSettingsDialog({ open, onOpenChange }: { open: boolean;
                   <button
                     onClick={() => { uploadCatRef.current = cat.name; fileRef.current?.click(); }}
                     disabled={isUploading}
-                    className="flex-shrink-0 flex items-center gap-1 text-xs font-semibold text-primary bg-primary-container/30 px-3 py-1.5 rounded-xl hover:bg-primary-container/50 active:scale-95 transition-all disabled:opacity-50"
+                    className="flex-shrink-0 flex items-center gap-1 text-xs font-semibold text-primary bg-primary-container/30 px-3 py-1.5 min-h-11 rounded-xl hover:bg-primary-container/50 active:scale-95 transition-all disabled:opacity-50"
                   >
                     {isUploading ? <KnopLader /> : <span className="material-symbols-rounded text-sm">add_photo_alternate</span>}
                     {isUploading ? "Uploaden" : "Voorbeeld"}
@@ -161,17 +163,14 @@ export function CategorieSettingsDialog({ open, onOpenChange }: { open: boolean;
                 {examples.length > 0 && (
                   <div className="flex gap-1.5 mt-2 overflow-x-auto pb-1">
                     {examples.map((v) => (
-                      <div key={v.id} className="relative flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden bg-surface-container border border-outline-variant/20">
-                        <LaadAfbeelding src={v.url} alt="" className="w-full h-full object-cover" />
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <button className="absolute top-0.5 right-0.5 w-4 h-4 bg-red-500/90 rounded-full text-white text-[9px] flex items-center justify-center border border-white active:scale-90">×</button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader><AlertDialogTitle>Voorbeeld verwijderen?</AlertDialogTitle><AlertDialogDescription>Dit voorbeeld wordt permanent verwijderd.</AlertDialogDescription></AlertDialogHeader>
-                            <AlertDialogFooter><AlertDialogCancel>Annuleren</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(v)}>Verwijderen</AlertDialogAction></AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                      <div key={v.id} className="flex flex-shrink-0 w-16 flex-col">
+                        <div className="w-16 h-16 rounded-xl overflow-hidden bg-surface-container border border-outline-variant/20">
+                          <LaadAfbeelding src={v.url} alt="" className="w-full h-full object-cover" />
+                        </div>
+                        <button type="button" onClick={() => setDeleteTarget(v)} aria-label={`Voorbeeld ${cat.name} verwijderen`}
+                          className="mt-1 flex h-11 w-16 items-center justify-center rounded-xl text-red-700 bg-red-50 active:scale-95">
+                          <span className="material-symbols-rounded" aria-hidden style={{ fontSize: 22 }}>delete</span>
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -182,5 +181,13 @@ export function CategorieSettingsDialog({ open, onOpenChange }: { open: boolean;
         </div>
       </DialogContent>
     </Dialog>
+    {/* Eén bevestiging buiten de lijst (geen AlertDialog in loops) */}
+    <AlertDialog open={deleteTarget !== null} onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader><AlertDialogTitle>Voorbeeld verwijderen?</AlertDialogTitle><AlertDialogDescription>Dit voorbeeld wordt permanent verwijderd.</AlertDialogDescription></AlertDialogHeader>
+        <AlertDialogFooter><AlertDialogCancel className="min-h-12">Annuleren</AlertDialogCancel><AlertDialogAction className="min-h-12" onClick={() => { const v = deleteTarget; setDeleteTarget(null); if (v) void handleDelete(v); }}>Verwijderen</AlertDialogAction></AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
