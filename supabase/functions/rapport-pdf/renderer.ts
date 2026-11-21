@@ -110,6 +110,7 @@ async function volgendeEens(stationId: string, run: string, stap: number, keten:
   const r = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/rapport-pdf`, {
     method: "POST", headers: { Authorization: `Bearer ${Deno.env.get("LOVABLE_CRON_SECRET")}`, "Content-Type": "application/json" },
     body: JSON.stringify({ station_id: stationId, run, stap, keten }),
+    signal: AbortSignal.timeout(20000),
   });
   await r.body?.cancel();
   if (!r.ok) throw new Error(`PDF vervolg geweigerd (${r.status})`);
@@ -142,18 +143,22 @@ async function download(sb: any, bucket: string, pad: string): Promise<Uint8Arra
 const cachePad = (sid: string, run: string, fid: string) => revisiePad(sid, run, `pdf-cache/${fid}.jpg`);
 
 // ---------- Stap 1: één foto voorbereiden ----------
-export async function voorbereiden(sid: string, run: string, stap: number, keten = true) {
-  const sb = db();
+export async function voorbereiden(sid: string, run: string, stap: number, keten = true, adapters?: { sb: any; wakeup: typeof volgende; kick: typeof ketenKick }) {
+  const sb = adapters?.sb ?? db();
   let claim: Claim;
   try { claim = await Claim.neem(sb, sid, run); }
   catch (e) { if (!(e instanceof Bezet)) console.error("PDF claim:", (e as Error).message); return; }
   let next: number | null = null;
+  let started: any = null;
   try {
+    const { data, error } = await sb.rpc("pdf_stap_start",{ ...claim.args(),_run:run });
+    if (error) throw error;
+    if (!data) return;
+    started=data; stap=data.pdf_stap;
+    await claim.save(undefined, { status:"bezig",fout:null,gestart_op:data.pdf_poging_op,klaar_op:null });
     const dossier = await claim.snapshot();
     toetsDossier(dossier);
     const fotos = dossier.fotos;
-    const { data: st } = await sb.from("opleverruns").select("pdf_pad").eq("id", run).single();
-    if (st?.pdf_pad) return;
     if (stap < fotos.length) {
       const f = fotos[stap];
       const cached = await download(sb, BUCKET, cachePad(sid, run, f.id));
@@ -165,17 +170,22 @@ export async function voorbereiden(sid: string, run: string, stap: number, keten
         if (b[0] === 0xff && (b.byteLength > MAX_ORIGINEEL || ori !== 1)) uit = hercomprimeer(b, ori);
         await immutableUpload(sb, cachePad(sid, run, f.id), uit, "image/jpeg", claim);
       }
+      const { data: ok,error } = await sb.rpc("pdf_stap_klaar",{ ...claim.args(),_run:run,_stap:stap });
+      if (error || ok !== true) throw new Error("PDF-vervolgstap niet bevestigd");
       next = stap + 1;
     } else {
       await bouwPdf(sb, sid, fotos, run, dossier, claim);
     }
   } catch (e) {
     console.error("rapport-pdf mislukt:", (e as Error).message);
-    await claim.save(undefined, { status: "mislukt", fout: (e as Error).message.slice(0,1000), klaar_op: new Date().toISOString() }).catch(() => {});
+    if (started) {
+      const now = await claim.current().catch(() => null);
+      if (now?.status === "pdf_bezig" && !now.pdf_pad && now.pdf_stap === started.pdf_stap) await claim.save(undefined, { status: "mislukt", fout: (e as Error).message.slice(0,1000), klaar_op: new Date().toISOString() }).catch(() => {});
+    }
   } finally { await claim.release().catch(() => {}); }
   // No recursive endpoint request while holding the station claim.
-  if (next !== null) await volgende(sid, run, next, keten);
-  else await ketenKick(sid);
+  if (next !== null) await (adapters?.wakeup ?? volgende)(sid, run, next, keten).catch(e => console.error("PDF wakeup uitgesteld; cursor bewaard:",(e as Error).message));
+  else await (adapters?.kick ?? ketenKick)(sid);
 }
 
 // ---------- Stap 2: PDF opbouwen ----------

@@ -4,7 +4,9 @@ import { z } from "npm:zod@3";
 import { authenticateCronRequest } from "../_shared/cron-auth.ts";
 import { isBeheerder } from "../_shared/admin-auth.ts";
 import { Claim, Bezet, stelSyncUit } from "../_shared/verwerking.ts";
-import { context, controleerSleutel, nietSyncReden, syncEnRegistreer, zetStatus, verplaatsVerwijderd } from "../_shared/sharepoint.ts";
+import { context, controleerSleutel, nietSyncReden, syncEnRegistreer, zetStatus, verwijderMapping } from "../_shared/sharepoint.ts";
+
+import { stationOntbreekt } from "../_shared/bron-read.ts";
 
 const Body = z.union([
   z.object({ station_id: z.string().uuid(), alleen_status: z.boolean().optional() }),
@@ -32,18 +34,19 @@ Deno.serve(async (req) => {
     return json({ ok: true, ...data, sleutel });
   }
   const stationId = parsed.data.station_id;
-  const { data: station } = await db.from("stations").select("*").eq("id", stationId).maybeSingle();
+  const { data: station, error: stationError } = await db.from("stations").select("*").eq("id", stationId).maybeSingle();
+  if (stationError) return json({ error:"Station niet gelezen — geen wijzigingen uitgevoerd" },500);
   if (!station) {
-    const { data: old } = await db.from("sharepoint_sync").select("sharepoint_item_id").eq("station_id",stationId).maybeSingle();
+    const { data: old, error: oldError } = await db.from("sharepoint_sync").select("sharepoint_item_id").eq("station_id",stationId).maybeSingle();
+    if (oldError) return json({ error:"SharePoint-koppeling niet gelezen" },500);
     if (!old?.sharepoint_item_id) return json({ error: "Station niet gevonden" },404);
     let deletedClaim: Claim;
     try { deletedClaim = await Claim.neem(db,stationId); }
     catch(e) { await stelSyncUit(db,stationId,false,(e as Error).message); return json({ uitgesteld: true },409); }
     try {
-      await verplaatsVerwijderd(await context(db,true,deletedClaim),old.sharepoint_item_id,stationId);
-      await deletedClaim.check();
-      const { data,error } = await db.from("sharepoint_sync").delete().eq("station_id",stationId).select("station_id");
-      if (error || !data?.length) throw new Error("Verplaatsing niet bevestigd");
+      if (!await stationOntbreekt(db,stationId)) return json({ error:"Station bestaat inmiddels weer" },409);
+      const result = await verwijderMapping(await context(undefined,false,deletedClaim),db,stationId,old.sharepoint_item_id,deletedClaim);
+      if (!result) return json({ error:"Station bestaat inmiddels weer; geen verplaatsing" },409);
       await deletedClaim.queueDone();
       return json({ ok: true });
     } catch(e) { await stelSyncUit(db,stationId,false,(e as Error).message); return json({ error: "Verplaatsing uitgesteld" },500); }
@@ -59,7 +62,8 @@ Deno.serve(async (req) => {
   }
   try {
     if (parsed.data.alleen_status) {
-      const { data: r } = await db.from("sharepoint_sync").select("sharepoint_item_id").eq("station_id",stationId).maybeSingle();
+      const { data: r, error: mappingError } = await db.from("sharepoint_sync").select("sharepoint_item_id").eq("station_id",stationId).maybeSingle();
+      if (mappingError) throw mappingError;
       if (!r?.sharepoint_item_id) { await claim.queueDone(true); return json({ ok: true, overgeslagen: "niet in SharePoint" }); }
       const n = await zetStatus(await context(db,true,claim),r.sharepoint_item_id,station);
       await claim.check();

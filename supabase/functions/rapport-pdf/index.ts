@@ -34,12 +34,11 @@ Deno.serve(async (req) => {
   try { claim = await Claim.neem(sb, station_id, r); }
   catch (e) { return json({ error: (e as Error).message },409); }
   try {
-    const { data: current } = await sb.from("opleverruns").select("gestart_op, pdf_pad").eq("id",r).single();
-    if (!current) return json({ error: "Run ontbreekt" },409);
-    if (stap === undefined && !current.pdf_pad) await claim.save(undefined, { status: "bezig", fout: null, gestart_op: current.gestart_op, klaar_op: null });
+    const current = await claim.current();
+    if (["afgerond","mislukt"].includes(current.status) || current.pdf_pad) return json({ ok:true,status:current.status,run:r });
+    if (current.status !== "pdf_bezig") return json({ error:"PDF-stap is nog niet uitvoerbaar" },409);
   } finally { await claim.release().catch(() => {}); }
   // @ts-ignore EdgeRuntime is available on the hosted runtime
   EdgeRuntime.waitUntil(voorbereiden(station_id, r, stap ?? 0, keten ?? true));
-  const { data: current } = await sb.from("opleverruns").select("gestart_op").eq("id",r).single();
-  return json({ ok: true, status: "bezig", run: current?.gestart_op }, 202);
+  return json({ ok: true, status: "bezig", run: r }, 202);
 });

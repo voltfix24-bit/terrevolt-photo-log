@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { KnopLader } from "@/components/Laden";
 import { Pressable, T } from "@/components/apple/Primitives";
 import { internetVereist } from "@/lib/internet";
+import { Button } from "@/components/ui/button";
 import { maakCase, valideerCase, casePayload } from "@/lib/case-service";
 import { casesUrl } from "@/lib/urls";
 import type { Uitvoerder } from "@/lib/to-rondes";
@@ -27,16 +28,19 @@ export function CaseToevoegenDialog({ open, onOpenChange }: { open: boolean; onO
     const v = valideerCase(f);
     if (v) { setFout(v); return; }
     setBezig(true); setFout(null);
+    try {
     const key = JSON.stringify(casePayload(f));
     if (request.current?.key !== key) request.current = { key, id: crypto.randomUUID() };
     const r = await maakCase(f,request.current.id);
-    setBezig(false);
     if ("fout" in r) { setFout(r.fout); return; }
     await Promise.all([qc.invalidateQueries({ queryKey: ["cases"] }), qc.invalidateQueries({ queryKey: ["url-index"] })]);
     toast.success("Case toegevoegd");
+    request.current = null;
     onOpenChange(false);
     setF({ casenummer: "", casenaam: "", uitvoerder: "van_gelder", wv: "", notitie: "" });
     navigate(casesUrl({ id: (r as { id: string }).id, casenummer: f.casenummer.trim(), casenaam: f.casenaam.trim(), uitvoerder: f.uitvoerder }));
+    } catch { setFout("Opslaan niet bevestigd — je aanvraag blijft bewaard voor opnieuw proberen."); }
+    finally { setBezig(false); }
   };
 
   return (
@@ -60,9 +64,9 @@ export function CaseToevoegenDialog({ open, onOpenChange }: { open: boolean; onO
           <div><Label>WV (werkverantwoordelijke)</Label><input className={veld} value={f.wv} onChange={(e) => setF({ ...f, wv: e.target.value })} /></div>
           <div><Label>Notitie</Label><textarea className={veld} rows={3} value={f.notitie} onChange={(e) => setF({ ...f, notitie: e.target.value })} /></div>
           {fout && <div role="alert" style={{ color: T.danger, fontSize: 14 }}>{fout}</div>}
-          <button onClick={opslaan} disabled={bezig} className="w-full bg-primary text-primary-foreground font-bold py-3 rounded-xl active:scale-[0.98] transition-all disabled:opacity-50">
+          <Button onClick={opslaan} disabled={bezig} className="w-full bg-primary text-primary-foreground font-bold py-3 rounded-xl active:scale-[0.98] transition-all disabled:opacity-50">
             {bezig ? <span className="inline-flex items-center justify-center gap-2"><KnopLader />Toevoegen</span> : "Case toevoegen"}
-          </button>
+          </Button>
         </fieldset>
       </DialogContent>
     </Dialog>

@@ -46,6 +46,6 @@ export function useUrlIndex(key?: string, og?: string) {
         return idx;
       } catch(e) { const idx = lokaal(); if (!navigator.onLine && idx) return idx; throw e; }
     },
-    initialData: lokaal, initialDataUpdatedAt: 0, staleTime: 30_000,
+    initialData: lokaal, initialDataUpdatedAt: 0, staleTime: 30_000, retry: 1, networkMode: "always",
   });
 }

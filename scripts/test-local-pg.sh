@@ -21,7 +21,9 @@ trap cleanup EXIT
 "${as_pg[@]}" pg_ctl -D "$root/data" -l "$root/server.log" -o "-k $root/socket -p 55439 -h ''" -w start >/dev/null
 psql -X -h "$root/socket" -p 55439 -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE phase1_tests' >/dev/null
 psql -X -h "$root/socket" -p 55439 -U postgres -d phase1_tests -v ON_ERROR_STOP=1 -f src/test/fixtures/security-phase1-baseline.sql >/dev/null
-for migration in drizzle/migrations/001[6-9]_*.sql drizzle/migrations/002*.sql; do
+for migration in drizzle/migrations/*.sql; do
+  prefix=$(basename "$migration" | cut -d_ -f1)
+  if [[ "$prefix" < "0016" ]]; then continue; fi
   psql -X -h "$root/socket" -p 55439 -U postgres -d phase1_tests -v ON_ERROR_STOP=1 -f "$migration" >/dev/null
 done
 export PHASE1_TEST_SOCKET="$root/socket"

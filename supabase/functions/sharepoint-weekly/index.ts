@@ -5,7 +5,9 @@ import { z } from "npm:zod@3";
 import { isBeheerder } from "../_shared/admin-auth.ts";
 import { authenticateCronRequest } from "../_shared/cron-auth.ts";
 import { Claim, Bezet, stelSyncUit } from "../_shared/verwerking.ts";
-import { context, syncEnRegistreer, controleerSleutel, nietSyncReden, syncStation, verplaatsVerwijderd, zetStatus } from "../_shared/sharepoint.ts";
+import { context, syncEnRegistreer, controleerSleutel, nietSyncReden, syncStation, verwijderMapping, zetStatus } from "../_shared/sharepoint.ts";
+
+import { verweesdeMappings } from "../_shared/bron-read.ts";
 
 const BATCH = 2;
 const Body = z.union([
@@ -36,15 +38,17 @@ async function volgende(runId: string, offset: number) {
 
 async function batch(runId: string, offset: number) {
   const sb = db();
-  const { data: run } = await sb.from("sharepoint_sync_runs").select("*").eq("id", runId).single();
+  const { data: run, error: runError } = await sb.from("sharepoint_sync_runs").select("*").eq("id", runId).single();
+  if (runError || !run) throw new Error("Weekrun niet gelezen");
   const tel = { toegevoegd: 0, verwijderd: 0, verplaatst: 0, stations: 0 };
   const fouten: unknown[] = [];
   let klaar = false;
   try {
     if (offset === 0) await controleerSleutel(sb);
-    const ctx = await context(sb);
-    const { data: stations } = await sb.from("stations").select("*").neq("uitvoerder", "van_gelder").order("created_at").range(offset, offset + BATCH - 1); // Van Gelder: volledig overslaan
-    for (const st of stations ?? []) {
+    const ctx = await context(undefined,false);
+    const { data: stations, error: batchError } = await sb.from("stations").select("*").neq("uitvoerder", "van_gelder").order("created_at").order("id").range(offset, offset + BATCH - 1); // Van Gelder: volledig overslaan
+    if (batchError || !stations) throw new Error("Stationsbatch niet gelezen");
+    for (const st of stations) {
       let claim: Claim;
       try { claim = await Claim.neem(sb,st.id); }
       catch(e) {
@@ -54,7 +58,8 @@ async function batch(runId: string, offset: number) {
       }
       try {
         if (nietSyncReden(st)) {
-          const { data: vorig } = await sb.from("sharepoint_sync").select("sharepoint_item_id").eq("station_id",st.id).maybeSingle();
+          const { data: vorig, error: vorigError } = await sb.from("sharepoint_sync").select("sharepoint_item_id").eq("station_id",st.id).maybeSingle();
+          if (vorigError) throw vorigError;
           if (vorig?.sharepoint_item_id) await zetStatus(await context(sb,true,claim),vorig.sharepoint_item_id,st);
         } else {
           const res = await syncEnRegistreer(sb,st,claim);
@@ -68,20 +73,15 @@ async function batch(runId: string, offset: number) {
     }
     if ((stations ?? []).length < BATCH) {
       // Laatste batch: mappen van verwijderde stations naar _Verwijderd
-      const { data: rijen } = await sb.from("sharepoint_sync").select("station_id, sharepoint_item_id");
-      const { data: bestaand } = await sb.from("stations").select("id");
-      const ids = new Set((bestaand ?? []).map((s: any) => s.id));
-      for (const r of (rijen ?? []).filter((r: any) => !ids.has(r.station_id))) {
+      const rijen = await verweesdeMappings(sb);
+      for (const r of rijen) {
         let deletionClaim: Claim | undefined;
         try {
           deletionClaim = await Claim.neem(sb,r.station_id);
-          ctx.claim = deletionClaim;
-          if (r.sharepoint_item_id) {
-            const res = await verplaatsVerwijderd(ctx, r.sharepoint_item_id, r.station_id);
+          const res = await verwijderMapping(ctx,sb,r.station_id,r.sharepoint_item_id,deletionClaim);
+          if (res) {
             tel.verplaatst += res.verplaatst.length; tel.verwijderd += res.leegVerwijderd.length;
           }
-          await deletionClaim.check();
-          await sb.from("sharepoint_sync").delete().eq("station_id", r.station_id);
         } catch (e) {
           fouten.push({ station_id: r.station_id, fout: `Verplaatsen naar _Verwijderd: ${(e as Error).message.slice(0, 500)}` });
         } finally { await deletionClaim?.release().catch(() => {}); ctx.claim = undefined; }
@@ -90,20 +90,23 @@ async function batch(runId: string, offset: number) {
     }
   } catch (e) {
     fouten.push({ fout: (e as Error).message.slice(0, 500) });
-    klaar = true;
+    // Abort this batch; never treat a failed inventory as a successful last batch.
+    throw e;
   }
-  await sb.from("sharepoint_sync_runs").update({
+  const { error: updateError } = await sb.from("sharepoint_sync_runs").update({
     stations: run.stations + tel.stations, toegevoegd: run.toegevoegd + tel.toegevoegd,
     verwijderd: run.verwijderd + tel.verwijderd, verplaatst: run.verplaatst + tel.verplaatst,
     fouten: [...(run.fouten ?? []), ...fouten], ...(klaar ? { klaar_op: new Date().toISOString() } : {}),
   }).eq("id", runId);
+  if (updateError) throw updateError;
   if (!klaar) await volgende(runId, offset + BATCH);
 }
 
 async function start(handmatig: boolean) {
   const sb = db();
-  const { data: loopt } = await sb.from("sharepoint_sync_runs").select("id").is("klaar_op", null)
+  const { data: loopt, error: looptError } = await sb.from("sharepoint_sync_runs").select("id").is("klaar_op", null)
     .gte("gestart_op", new Date(Date.now() - 3 * 3600_000).toISOString()).limit(1);
+  if (looptError) return json({ error:"Weekrun kon niet worden gecontroleerd" },500);
   if (loopt?.length) return json({ ok: true, al_bezig: true, run_id: loopt[0].id });
   const { data: run, error } = await sb.from("sharepoint_sync_runs").insert({ handmatig }).select().single();
   if (error) return json({ error: error.message }, 500);

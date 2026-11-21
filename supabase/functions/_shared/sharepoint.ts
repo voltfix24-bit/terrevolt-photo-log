@@ -1,5 +1,6 @@
 // Gedeelde SharePoint-logica voor sharepoint-sync en sharepoint-weekly
-import { Claim, hashBytes } from "./verwerking.ts";
+import { volledigeRead, stationOntbreekt } from "./bron-read.ts";
+import { Claim, hashBytes, toetsDossier } from "./verwerking.ts";
 import { CATEGORIES, SECTIONS } from "./sharepoint-categories.ts";
 
 export const GRAPH = "https://graph.microsoft.com/v1.0";
@@ -292,7 +293,7 @@ export function stationPad(prefix: string[], station: any, meerdere = false) {
 }
 
 async function caseHeeftMeerdere(db: any, station: any) {
-  const { data } = await db.from("stations").select("id, casenummer, casenaam, status").in("status", ["opgeleverd", "goedgekeurd"]);
+  const data = await volledigeRead(db,"stations","id, casenummer, casenaam, status, uitvoerder","id", q => q.in("status", ["opgeleverd", "goedgekeurd"]));
   return (data ?? []).filter((s: any) => !nietSyncReden(s) && caseSleutel(s) === caseSleutel(station)).length > 1;
 }
 
@@ -341,24 +342,46 @@ async function verplaats(ctx: Ctx, id: string, ouderPad: string[], naam: string)
   return await r.json();
 }
 
-/** Synchroniseer één station: hernoemen/verplaatsen, uploaden wat ontbreekt of anders is, en verwijderen wat niet meer in de app staat. */
-export async function syncStation(ctx: Ctx, db: any, station: any, vorigItemId: string | null, dryRun = false): Promise<Resultaat> {
-  const res: Resultaat = { toegevoegd: [], verwijderd: [], verplaatst: [], leegVerwijderd: [], aantal_bestanden: 0, sharepoint_url: null, item_id: vorigItemId };
-  const reden = nietSyncReden(station);
-  if (reden) throw new Error(`Niet naar SharePoint: ${reden}`);
-  await ctx.claim?.check();
+export async function leesSyncBron(db: any, station: any, claim?: Claim) {
+  await claim?.check();
   const { data: pointer, error: pointerError } = await db.from("rapport_pdf").select("geaccepteerde_run, pdf_pad, pdf_hash, status").eq("station_id",station.id).maybeSingle();
   if (pointerError) throw pointerError;
-  if (ctx.claim?.run && pointer?.geaccepteerde_run !== ctx.claim.run) throw new Error("PDF-versie hoort niet bij huidige oplevering");
+  if (claim?.run && pointer?.geaccepteerde_run !== claim.run) throw new Error("PDF-versie hoort niet bij huidige oplevering");
   const { data: rapport, error: downloadError } = await db.storage.from("rapporten").download(pointer?.pdf_pad ?? `${station.id}/rapport.pdf`);
   if (downloadError || !rapport?.size) throw new Error("Geaccepteerde PDF ontbreekt; synchronisatie niet uitgevoerd");
   const rapportBytes = new Uint8Array(await rapport.arrayBuffer());
   const rapportHash = await hashBytes(rapportBytes);
   if (pointer?.pdf_hash && pointer.pdf_hash !== rapportHash) throw new Error("Geaccepteerde PDF is gewijzigd");
-  res.pdf_run = pointer?.geaccepteerde_run ?? null; res.pdf_hash = rapportHash;
-  const { data: previousSync } = await db.from("sharepoint_sync").select("pdf_hash").eq("station_id",station.id).maybeSingle();
-  const { data: acceptedRun } = pointer?.geaccepteerde_run ? await db.from("opleverruns").select("dossier").eq("id",pointer.geaccepteerde_run).maybeSingle() : { data: null };
-  const basis = stationPad(ctx.prefix, station, await caseHeeftMeerdere(db, station));
+  const { data: previousSync, error: previousError } = await db.from("sharepoint_sync").select("pdf_hash, pdf_run").eq("station_id",station.id).maybeSingle();
+  if (previousError) throw previousError;
+  let fotos: any[], opm: any[], skips: any[];
+  if (pointer?.geaccepteerde_run) {
+    const { data: acceptedRun, error } = await db.from("opleverruns").select("station_id, dossier").eq("id",pointer.geaccepteerde_run).maybeSingle();
+    const d = acceptedRun?.dossier;
+    if (error || !d || acceptedRun.station_id !== station.id || d.station?.id !== station.id || !Array.isArray(d.fotos) || !Array.isArray(d.opmerkingen) || !Array.isArray(d.skips) || !Array.isArray(d.vereisten)) throw new Error("Geaccepteerde dossierkopie ontbreekt of is ongeldig; geen livefallback");
+    toetsDossier(d);
+    fotos=d.fotos; opm=d.opmerkingen; skips=d.skips;
+  } else {
+    // Only a legacy PDF without an accepted revision may use live sources.
+    [fotos,opm,skips] = await Promise.all([
+      volledigeRead(db,"fotos","id, categorie, storage_path, uploaded_at, volgorde","id",q => q.eq("station_id",station.id)),
+      volledigeRead(db,"categorie_opmerkingen","id, categorie, opmerking","id",q => q.eq("station_id",station.id)),
+      volledigeRead(db,"categorie_skips","id, categorie, reden, updated_at, created_at","id",q => q.eq("station_id",station.id)),
+    ]);
+  }
+  fotos = [...fotos].sort((a,b) => String(a.categorie).localeCompare(String(b.categorie)) || (a.volgorde ?? 0)-(b.volgorde ?? 0) || String(a.id).localeCompare(String(b.id)));
+  const meerdere = await caseHeeftMeerdere(db,station);
+  const herschrijven = !pointer?.geaccepteerde_run || previousSync?.pdf_run !== pointer.geaccepteerde_run || previousSync?.pdf_hash !== rapportHash;
+  return { rapport, rapportBytes, rapportHash, pdfRun:pointer?.geaccepteerde_run ?? null, previousSync, fotos,opm,skips,meerdere,herschrijven };
+}
+
+/** Read every source before metadata/folder mutations; failures never mean empty. */
+export async function syncStation(ctx: Ctx, db: any, station: any, vorigItemId: string | null, dryRun = false, bron?: Awaited<ReturnType<typeof leesSyncBron>>): Promise<Resultaat> {
+  const reden = nietSyncReden(station);
+  if (reden) throw new Error(`Niet naar SharePoint: ${reden}`);
+  const { rapport,rapportBytes,rapportHash,pdfRun,previousSync,fotos,opm,skips,meerdere,herschrijven } = bron ?? await leesSyncBron(db,station,ctx.claim);
+  const res: Resultaat = { toegevoegd: [], verwijderd: [], verplaatst: [], leegVerwijderd: [], aantal_bestanden: 0, sharepoint_url: null, item_id: vorigItemId, pdf_run:pdfRun,pdf_hash:rapportHash };
+  const basis = stationPad(ctx.prefix, station, meerdere);
   const doel = basis.join("/");
 
   // 1. Hernoemen/verplaatsen van de bestaande stationmap
@@ -390,12 +413,6 @@ export async function syncStation(ctx: Ctx, db: any, station: any, vorigItemId: 
     }
   }
 
-  const [{ data: liveFotos }, { data: liveOpm }, { data: liveSkips }] = await Promise.all([
-    db.from("fotos").select("categorie, storage_path, uploaded_at").eq("station_id", station.id).order("uploaded_at"),
-    db.from("categorie_opmerkingen").select("categorie, opmerking").eq("station_id", station.id),
-    db.from("categorie_skips").select("categorie, reden, updated_at, created_at").eq("station_id", station.id),
-  ]);
-  const fotos = acceptedRun?.dossier?.fotos ?? liveFotos, opm = acceptedRun?.dossier?.opmerkingen ?? liveOpm, skips = acceptedRun?.dossier?.skips ?? liveSkips;
   const opmPer = new Map<string, string>((opm ?? []).filter((o: any) => o.opmerking?.trim()).map((o: any) => [o.categorie, o.opmerking.trim()]));
 
   // Gewenste bestanden per beheerde map
@@ -468,7 +485,7 @@ export async function syncStation(ctx: Ctx, db: any, station: any, vorigItemId: 
     const bytes = new Uint8Array(await data.arrayBuffer());
     res.aantal_bestanden++;
     let id = bestaand(t.map, t.naam)?.id;
-    if (grootte(t.map, t.naam) !== bytes.byteLength) {
+    if (herschrijven || grootte(t.map, t.naam) !== bytes.byteLength) {
       res.toegevoegd.push(`${t.map}/${t.naam}`);
       if (!dryRun) id = (await upload(ctx.tok, ctx.root, [...basis, t.map, t.naam].join("/"), bytes, t.tekst ? "text/plain; charset=utf-8" : "image/jpeg", ctx.claim))?.id;
     }
@@ -484,7 +501,7 @@ export async function syncStation(ctx: Ctx, db: any, station: any, vorigItemId: 
   }
   res.aantal_bestanden++;
   const opmNu = (await kinderen(ctx, `${ctx.root}:/${enc(doel)}:`)).find((x) => x.file && x.name === "opmerkingen.txt");
-  if (opmNu?.size !== opmTekst.byteLength) {
+  if (herschrijven || opmNu?.size !== opmTekst.byteLength) {
     res.toegevoegd.push("opmerkingen.txt");
     if (!dryRun) await zetVelden(ctx, (await upload(ctx.tok, ctx.root, [...basis, "opmerkingen.txt"].join("/"), opmTekst, "text/plain; charset=utf-8", ctx.claim))?.id, sv);
   } else if (!dryRun) await zetVelden(ctx, opmNu?.id, sv);
@@ -520,6 +537,14 @@ export async function verplaatsVerwijderd(ctx: Ctx, itemId: string, stationId: s
   if (it.parentReference?.id) await verwijderAlsLeeg(ctx, it.parentReference.id, itemPad(it).split("/").slice(0, -1).join("/"), false, res);
   return res;
 }
+/** Inventory is only a hint; existence and acknowledgement are rechecked under the claim. */
+export async function verwijderMapping(ctx: Ctx, db: any, stationId: string, itemId: string | null, claim: Claim) {
+  if (!await stationOntbreekt(db,stationId)) return null;
+  await claim.check();
+  const result = itemId ? await verplaatsVerwijderd({ ...ctx,claim },itemId,stationId) : null;
+  await claim.deleteMapping(itemId);
+  return result;
+}
 
 /** Bestanden in "10 Documenten" van de casemap van een station (alleen lezen). */
 export async function documentenMap(ctx: Ctx, itemId: string) {
@@ -550,11 +575,13 @@ export async function downloadUrl(ctx: Ctx, mapId: string, bestandId: string) {
 /** Eén station synchroniseren en de uitkomst in sharepoint_sync vastleggen (gedeeld door sharepoint-sync en opleverketen).
  *  Gooit bij een fout, zodat de aanroeper zelf kan beslissen over opnieuw proberen. */
 export async function syncEnRegistreer(db: any, station: any, claim: Claim) {
-  const { data: vorig } = await db.from("sharepoint_sync").select("sharepoint_item_id").eq("station_id",station.id).maybeSingle();
+  const { data: vorig, error: vorigError } = await db.from("sharepoint_sync").select("sharepoint_item_id").eq("station_id",station.id).maybeSingle();
+  if (vorigError) throw vorigError;
+  const bron = await leesSyncBron(db,station,claim);
   await claim.save(undefined,undefined,{ status: "bezig", fout: null });
   try {
     const ctx = await context(db,true,claim);
-    const res = await syncStation(ctx,db,station,vorig?.sharepoint_item_id ?? null);
+    const res = await syncStation(ctx,db,station,vorig?.sharepoint_item_id ?? null,false,bron);
     await claim.save(undefined,undefined,{ status: "gelukt", aantal_bestanden: res.aantal_bestanden, sharepoint_url: res.sharepoint_url, sharepoint_item_id: res.item_id, pdf_run: res.pdf_run, pdf_hash: res.pdf_hash, fout: null });
     return res;
   } catch(e) {

@@ -53,8 +53,8 @@ Deno.test("different PDFs of equal length update SharePoint using hash; no real 
   let previous = oldHash;
   const station = { id:"station",uitvoerder:"terrevolt",status:"opgeleverd",casenummer:"LOCAL",casenaam:"Test",datum:"2026-11-21" };
   const db = { storage:{ from:() => ({ download:async () => ({ data:new Blob([bytes]),error:null }) }) }, from:(table: string) => {
-    const data = table === "rapport_pdf" ? { geaccepteerde_run:"run",pdf_pad:"immutable",pdf_hash:currentHash } : table === "sharepoint_sync" ? { pdf_hash:previous } : table === "opleverruns" ? { dossier:{ fotos:[],opmerkingen:[],skips:[] } } : [];
-    const q: any = { select:()=>q, eq:()=>q, in:()=>q, order:()=>q, maybeSingle:async () => ({ data,error:null }), then:(resolve:any) => resolve({ data,error:null }) };
+    const data = table === "rapport_pdf" ? { geaccepteerde_run:"run",pdf_pad:"immutable",pdf_hash:currentHash } : table === "sharepoint_sync" ? { pdf_hash:previous,pdf_run:"run" } : table === "opleverruns" ? { station_id:"station", dossier:{ station:{ id:"station",uitvoerder:"terrevolt" },fotos:[],opmerkingen:[],skips:[],vereisten:[] } } : [];
+    const q: any = { select:()=>q, eq:()=>q, in:()=>q, order:()=>q, limit:()=>q, gt:()=>q, maybeSingle:async () => ({ data,error:null }), then:(resolve:any) => resolve({ data,error:null }) };
     return q;
   } };
   const calls: { url:string;method:string }[] = [];

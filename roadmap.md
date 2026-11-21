@@ -1,4 +1,8 @@
 # Werkpunten
+- [x] Correctie fase 3: volledige foutveilige SharePoint-inventaris en bronrevisie; inhoudupdates en fenced cleanup.
+- [x] Correctie fase 3: verse runstaat/CAS en duurzaam hervatbare PDF-stappen met eerlijke selectie.
+- [x] Correctie fase 3: notitieversies/concepten, holdrechten/index, lokale route- en importfouten/tellingen/operatie-ID's.
+- [x] Correctie fase 3: 209 Vitest-tests incl. 33 lokale DB-tests, 19 Deno-adaptertests, mobiel 360/390/428, migraties 0025–0026 en zes deployments; zie CORRECTIE-FASE3-RESULTATEN.md.
 - [x] Fase 3: aanvraagversies SharePoint, verweesde runs, verwijderde importreplays en minimale grants.
 - [x] Fase 3: gedeelde casepresentatie, volledige scores, transactionele holdhistorie en notitie-CAS.
 - [x] Fase 3: compacte gepagineerde overzichten, gerichte detail/URL/WV-reads en blobvrije wachtrijtelling.

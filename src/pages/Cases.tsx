@@ -1,10 +1,11 @@
 // Kantoor: "Wie moet wat doen" (9b) + "TO-score" (9c)
-import { lazy, Suspense, useState } from "react";
+import { useState } from "react";
 import { FileUp, Plus } from "lucide-react";
 import { CaseToevoegenDialog } from "@/components/cases/CaseToevoegenDialog";
 import { Bord } from "@/components/cases/Bord";
 import { OnHoldLabel } from "@/components/cases/OnHoldLabel";
-const ExcelImportDialog = lazy(() => import("@/components/cases/ExcelImportDialog").then(m => ({ default: m.ExcelImportDialog })));
+import { ImportScherm, ImportFoutGrens } from "@/components/cases/ImportScherm";
+import { internetVereist } from "@/lib/internet";
 import { casePresentatie } from "@/lib/case-presentatie";
 import { FILTER_OPTIES, bewaarFilter, filterCases, leesFilter, tellingen, uitvoerderVan, type UitvoerderFilter } from "@/lib/cases-filter";
 import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
@@ -111,6 +112,8 @@ export default function Cases() {
   const setFilter = (f: UitvoerderFilter) => { setFilterState(f); bewaarFilter(f); };
   const [nieuwOpen, setNieuwOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [importPoging, setImportPoging] = useState(0);
+  const startImport = () => { if (internetVereist()) { setImportPoging(p => p+1); setImportOpen(true); } };
   const telling = tellingen(alleCases ?? []);
   const cases = filterCases(alleCases ?? [], filter);
   const [tab, setTab] = useState<"bal" | "score">("bal");
@@ -129,7 +132,7 @@ export default function Cases() {
         </div>
         {tab === "bal" && (
           <div style={{ display: "flex", gap: 8 }}>
-            <Pressable onClick={() => setImportOpen(true)} scale={0.97} className="hover:border-[#1F5C3A]" style={{ minHeight: 40, padding: "0 14px", borderRadius: 20, fontSize: 15, fontWeight: 600, background: T.surface, color: T.titleOnBg, border: `1px solid ${T.hairline}`, display: "flex", alignItems: "center", gap: 6 }}>
+            <Pressable onClick={startImport} scale={0.97} className="hover:border-[#1F5C3A]" style={{ minHeight: 40, padding: "0 14px", borderRadius: 20, fontSize: 15, fontWeight: 600, background: T.surface, color: T.titleOnBg, border: `1px solid ${T.hairline}`, display: "flex", alignItems: "center", gap: 6 }}>
               <FileUp size={17} />Importeren uit Excel
             </Pressable>
             <Pressable onClick={() => setNieuwOpen(true)} scale={0.97} style={{ minHeight: 40, padding: "0 14px", borderRadius: 20, fontSize: 15, fontWeight: 600, background: T.green, color: T.surface, display: "flex", alignItems: "center", gap: 6 }}>
@@ -142,7 +145,7 @@ export default function Cases() {
         </Pressable>
       </div>
       <CaseToevoegenDialog open={nieuwOpen} onOpenChange={setNieuwOpen} />
-      {importOpen && <Suspense fallback={<PaginaLader />}><ExcelImportDialog open={importOpen} onOpenChange={setImportOpen} bestaand={(alleCases ?? []).map((c) => c.station.casenummer ?? "").filter(Boolean)} /></Suspense>}
+      {importOpen && <ImportFoutGrens key={importPoging} sluiten={() => setImportOpen(false)} opnieuw={startImport}><ImportScherm sluiten={() => setImportOpen(false)} opnieuw={startImport} poging={importPoging} bestaand={(alleCases ?? []).map((c) => c.station.casenummer ?? "").filter(Boolean)} /></ImportFoutGrens>}
       <main style={{ padding: 24, paddingBottom: 60 }}>
         <div role="group" aria-label="Uitvoering" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
           <span style={{ fontSize: 14, color: SUB, fontWeight: 600 }}>Uitvoering:</span>

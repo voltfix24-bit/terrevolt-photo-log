@@ -421,7 +421,11 @@ export type Database = {
           lease_tot: string | null
           pdf_hash: string | null
           pdf_pad: string | null
+          pdf_poging_op: string | null
           pdf_run: string | null
+          pdf_stap: number
+          pdf_volgende_op: string | null
+          pdf_voortgang_op: string | null
           poging: number
           retry_stap: string | null
           stap_fouten: Json
@@ -442,7 +446,11 @@ export type Database = {
           lease_tot?: string | null
           pdf_hash?: string | null
           pdf_pad?: string | null
+          pdf_poging_op?: string | null
           pdf_run?: string | null
+          pdf_stap?: number
+          pdf_volgende_op?: string | null
+          pdf_voortgang_op?: string | null
           poging?: number
           retry_stap?: string | null
           stap_fouten?: Json
@@ -463,7 +471,11 @@ export type Database = {
           lease_tot?: string | null
           pdf_hash?: string | null
           pdf_pad?: string | null
+          pdf_poging_op?: string | null
           pdf_run?: string | null
+          pdf_stap?: number
+          pdf_volgende_op?: string | null
+          pdf_voortgang_op?: string | null
           poging?: number
           retry_stap?: string | null
           stap_fouten?: Json
@@ -1017,6 +1029,25 @@ export type Database = {
       }
       opleverrun_retry: { Args: { _id: string }; Returns: boolean }
       opleverrun_verweesd: { Args: { _id: string }; Returns: boolean }
+      pdf_stap_klaar: {
+        Args: {
+          _eigenaar: string
+          _generatie: number
+          _run: string
+          _stap: number
+          _station_id: string
+        }
+        Returns: boolean
+      }
+      pdf_stap_start: {
+        Args: {
+          _eigenaar: string
+          _generatie: number
+          _run: string
+          _station_id: string
+        }
+        Returns: Json
+      }
       sharepoint_uitstellen: {
         Args: { _alleen_status?: boolean; _fout?: string; _station_id: string }
         Returns: undefined
@@ -1054,7 +1085,11 @@ export type Database = {
           lease_tot: string | null
           pdf_hash: string | null
           pdf_pad: string | null
+          pdf_poging_op: string | null
           pdf_run: string | null
+          pdf_stap: number
+          pdf_volgende_op: string | null
+          pdf_voortgang_op: string | null
           poging: number
           retry_stap: string | null
           stap_fouten: Json
@@ -1105,6 +1140,17 @@ export type Database = {
         }
         Returns: boolean
       }
+      verwerking_run_cas: {
+        Args: {
+          _eigenaar: string
+          _generatie: number
+          _patch: Json
+          _run: string
+          _station_id: string
+          _verwacht: Json
+        }
+        Returns: boolean
+      }
       verwerking_snapshot: {
         Args: {
           _eigenaar: string
@@ -1113,6 +1159,15 @@ export type Database = {
           _station_id: string
         }
         Returns: Json
+      }
+      verwerking_sync_verwijderen: {
+        Args: {
+          _eigenaar: string
+          _generatie: number
+          _item_id: string
+          _station_id: string
+        }
+        Returns: boolean
       }
       verwerking_wachtrij_klaar:
         | {

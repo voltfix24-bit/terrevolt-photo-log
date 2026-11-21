@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { useEffect, type ReactNode } from "react";
 import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -17,6 +18,10 @@ import NotFound from "./NotFound";
 import { Group, Hairline, Pressable, T, ROW_MIN, ROW_PAD_X } from "@/components/apple/Primitives";
 
 const Leeg = () => <PaginaLader />;
+function RouteFout({ opnieuw }: { opnieuw: () => unknown }) {
+  const navigate = useNavigate();
+  return <main className="mx-auto max-w-3xl space-y-3 p-6"><p role="alert">Deze pagina kon niet worden geladen. Controleer je verbinding en probeer opnieuw.</p><div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => navigate("/")}>Terug naar stations</Button><Button onClick={() => void opnieuw()}>Opnieuw proberen</Button></div></main>;
+}
 const pad = (p: string) => decodeURIComponent(p).replace(/\/+$/, "").toLowerCase();
 
 /** Zorgt voor een replace-redirect zodra de huidige url niet canoniek is. */
@@ -55,7 +60,8 @@ function RapportOpener({ station }: { station: UrlStation }) {
 /* /c/:casenummer */
 export function KorteLink() {
   const { nr = "" } = useParams();
-  const { data } = useUrlIndex(nr);
+  const { data, isError, refetch } = useUrlIndex(nr);
+  if (isError && !data) return <RouteFout opnieuw={refetch} />;
   if (!data) return <Leeg />;
   const s = data.stations.find((x) => caseNrSlug(x) === slug(nr)) ?? zoekOpCaseSlug(data.stations, nr)[0];
   return s ? <Navigate to={isVanGelder(s) ? casesUrl(s) : caseUrl(s)} replace /> : <NotFound />;
@@ -64,7 +70,8 @@ export function KorteLink() {
 /* /stations/:key/* — uuid (oud) of behuizingsnummer-naam */
 export function StationsRoute() {
   const { key = "", "*": rest = "" } = useParams();
-  const { data, isFetching } = useUrlIndex(key);
+  const { data, isFetching, isError, refetch } = useUrlIndex(key);
+  if (isError && !data) return <RouteFout opnieuw={refetch} />;
   if (!data) return <Leeg />;
   const s = zoekOpStationSlug(data.stations, key);
   if (!s) return isFetching ? <Leeg /> : <NotFound />;
@@ -76,7 +83,8 @@ export function StationsRoute() {
 export function OpdrachtgeverRoute() {
   const { og = "", jaar, case: caseKey, "*": rest = "" } = useParams();
   const [sp] = useSearchParams();
-  const { data, isFetching } = useUrlIndex(caseKey, og);
+  const { data, isFetching, isError, refetch } = useUrlIndex(caseKey, og);
+  if (isError && !data) return <RouteFout opnieuw={refetch} />;
   if (!data) return <Leeg />;
   const ogNaam = data.opdrachtgevers.find((o) => slug(o) === slug(og));
   const bekendInStations = data.stations.some((s) => opdrachtgeverSlug(s) === slug(og));
@@ -108,8 +116,9 @@ export function OpdrachtgeverRoute() {
 function eigenScherm(soort: "cases" | "beoordelen") {
   return function EigenScherm() {
     const { key = "" } = useParams();
-    const { data, isFetching } = useUrlIndex(key);
-    if (!data) return <Leeg />;
+    const { data, isFetching, isError, refetch } = useUrlIndex(key);
+    if (isError && !data) return <RouteFout opnieuw={refetch} />;
+  if (!data) return <Leeg />;
     const s = UUID_RE.test(key) ? data.stations.find((x) => x.id === key) : (zoekOpCaseSlug(data.stations, key)[0] ?? zoekOpStationSlug(data.stations, key));
     if (!s) return isFetching ? <Leeg /> : <NotFound />;
     if (soort === "beoordelen" && isVanGelder(s)) return <Navigate to={casesUrl(s)} replace />;

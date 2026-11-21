@@ -8,7 +8,7 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";
 import { isBeheerder } from "../_shared/admin-auth.ts";
 import { authenticateCronRequest } from "../_shared/cron-auth.ts";
-import { nietSyncReden, syncEnRegistreer } from "../_shared/sharepoint.ts";
+import { verwerk } from "../_shared/keten-worker.ts";
 import { LEASE_SECONDEN, beslis, foutPatch, handmatigOpnieuw, type Run } from "../_shared/opleverketen.ts";
 import { Claim, Bezet } from "../_shared/verwerking.ts";
 import { ketenKick } from "../_shared/keten-kick.ts";
@@ -19,82 +19,6 @@ const db = () => createClient((Deno.env.get("SUPABASE_URL") ?? ""), (Deno.env.ge
 const ACTIEF = "(afgerond,mislukt)";
 const PUBLIEK = "id, station_id, status, retry_stap, poging, volgende_poging_op, fout, stap_fouten, gestart_op, bijgewerkt_op, afgerond_op";
 
-async function observeer(sb: any, run: any) {
-  const { data: station } = await sb.from("stations").select("*").eq("id",run.station_id).maybeSingle();
-  const { data: pdf } = await sb.from("rapport_pdf").select("status, gestart_op, fout, geaccepteerde_run, pdf_pad").eq("station_id",run.station_id).maybeSingle();
-  let bestaat = false;
-  if (pdf?.geaccepteerde_run === run.id && pdf.pdf_pad === run.pdf_pad && run.pdf_pad) {
-    const { data } = await sb.storage.from("rapporten").download(run.pdf_pad);
-    bestaat = !!data?.size;
-  }
-  return { station, obs: {
-    station: station ? { status: station.status, uitvoerder: station.uitvoerder } : null,
-    htmlAanwezig: !!run.html_pad,
-    syncReden: station ? nietSyncReden(station) : null,
-    pdf: pdf ? { ...pdf, gestart_op: new Date(pdf.gestart_op).toISOString(), bestaat } : null,
-  } };
-}
-
-async function startPdf(stationId: string, run: string): Promise<string> {
-  const r = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/rapport-pdf`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("LOVABLE_CRON_SECRET")}` },
-    body: JSON.stringify({ station_id: stationId, run, keten: true }),
-  });
-  const body = await r.json().catch(() => ({}));
-  if (!r.ok || !body.run) throw new Error(`rapport-pdf start mislukt (${r.status})`);
-  return new Date(body.run).toISOString();
-}
-
-/** Verwerkt één run zolang er voortgang is. Geeft false als een ander proces de lease heeft. */
-async function verwerk(sb: any, runId: string): Promise<boolean> {
-  for (let i=0; i<8; i++) {
-    const { data: run } = await sb.from("opleverruns").select("*").eq("id",runId).single();
-    if (!run) return false;
-    const { data: orphan, error: orphanError } = await sb.rpc("opleverrun_verweesd", { _id: runId });
-    if (orphanError) throw orphanError;
-    if (orphan === true) return true;
-    let claim: Claim;
-    try { claim = await Claim.neem(sb, run.station_id, runId); }
-    catch (e) { if (e instanceof Bezet) return false; throw e; }
-    let outside: "html" | "pdf" | null = null;
-    try {
-      if (!run.html_pad && ["aangevraagd","voorbereiden"].includes(run.status)) outside = "html";
-      else {
-        const { station, obs } = await observeer(sb,run);
-        const b = beslis(run,obs,new Date());
-        if (b.actie === "niets" || b.actie === "wachten") return true;
-        if (b.actie === "update") await claim.save(b.patch);
-        if (b.actie === "start_pdf") {
-          await claim.save({ status: "pdf_bezig", pdf_run: new Date(run.gestart_op).toISOString(), fout: null });
-          outside = "pdf";
-        }
-        if (b.actie === "sync_sharepoint") {
-          await claim.save({ status: "sharepoint_bezig" });
-          try {
-            await syncEnRegistreer(sb,station,claim);
-            await claim.save({ status: "afgerond", fout: null, poging: 0, afgerond_op: new Date().toISOString() });
-          } catch(e) { await claim.save(foutPatch(run,"sharepoint",(e as Error).message,new Date())); }
-        }
-      }
-    } finally { await claim.release().catch(() => {}); }
-    // Endpoint steps acquire their own short claim: never hold it over a nested call.
-    if (outside) {
-      try {
-        if (outside === "pdf") { await startPdf(run.station_id,runId); return true; }
-        const response = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/oplever-rapport`, { method: "POST", headers: { Authorization: `Bearer ${Deno.env.get("LOVABLE_CRON_SECRET")}`, "Content-Type": "application/json" }, body: JSON.stringify({ actie: "voorbereiden", station_id: run.station_id }), signal: AbortSignal.timeout(45000) });
-        await response.body?.cancel();
-        if (!response.ok) throw new Error(`Rapport voorbereiden mislukt (${response.status})`);
-      } catch(e) {
-        const c = await Claim.neem(sb,run.station_id,runId);
-        try { await c.save(foutPatch(run,outside === "pdf" ? "pdf" : "voorbereiden",(e as Error).message,new Date())); }
-        finally { await c.release().catch(() => {}); }
-        return true;
-      }
-    }
-  }
-  return true;
-}
 async function actieveRuns(sb: any, stationId?: string) {
   const { data,error } = await sb.rpc("uitvoerbare_opleverruns", { _station_id: stationId ?? null, _limiet: 20 });
   if (error) throw error;
@@ -118,7 +42,8 @@ Deno.serve(async (req) => {
       const nee = authenticateCronRequest(req);
       if (nee) return nee;
       const runs = await actieveRuns(sb, station_id);
-      const { data: deferred } = await sb.from("sharepoint_wachtrij").select("station_id, alleen_status").lte("volgende_poging_op",new Date().toISOString()).order("volgende_poging_op").limit(20);
+      const { data: deferred, error: deferredError } = await sb.from("sharepoint_wachtrij").select("station_id, alleen_status").lte("volgende_poging_op",new Date().toISOString()).order("volgende_poging_op").limit(20);
+      if (deferredError) throw deferredError;
       for (const task of deferred ?? []) {
         const response = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/sharepoint-sync`, { method: "POST", headers: { Authorization: `Bearer ${Deno.env.get("LOVABLE_CRON_SECRET")}`, "Content-Type": "application/json" }, body: JSON.stringify(task), signal: AbortSignal.timeout(45000) }).catch(() => null);
         await response?.body?.cancel();

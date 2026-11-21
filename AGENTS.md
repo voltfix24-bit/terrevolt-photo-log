@@ -28,6 +28,14 @@
 - All progress/completion uses the central photo rule, including category 31. Why: one consistent requirement.
 - Import: case_aanmaken wraps maak_case with own request/payload replay; full-number preview, paged rows, pause/resume remaining work. Why: no false import success.
 - Holds use `hold_periodes`, atomic RPCs and expected period IDs; compatibility fields update together. Notes use their own CAS version, never resume-appends. Why: preserve history and concurrent text.
+<!-- LOVABLE:BEGIN -->
+- Weekly inventories use complete keyset reads and fail closed; cleanup rechecks existence and deletes only its mapping through the locked owner/generation/deadline RPC. Why: errors and stale workers must not archive living stations.
+- SharePoint preflights accepted snapshots (no live fallback) or complete legacy sources before Graph mutations; changed revision/hash rewrites all managed content. Why: size equality does not establish content equality.
+- Persist PDF cursor, attempt and progress clocks separately; scheduler filters healthy steps before limits, wakeups are optional, workers reread under claims and late errors use run CAS. Why: interrupted steps resume without terminal rollback.
+- Local dossier drafts carry unique tokens; acknowledgements affect only their own token and failed saves stop. Why: navigation cannot erase newer drafts.
+- Uncertain operation UUIDs survive retries; completed creates and closed import batches reset them. Why: new operations cannot reuse tombstones.
+- Catch import-download rejection before React.lazy sees it; cold resolver errors terminate while cached offline routes remain available. Why: network errors must not blank the office or break opened photo work.
+<!-- LOVABLE:END -->
 
 - PIN grants bind real session_id and user_id for eight fixed server hours; unlock never resets the shared password, refresh never extends, lock revokes only this grant. Why: device independence.
 - Field triggers check OLD/NEW; immutable photo sources/linkage and no storage overwrite prevent delivered-dossier bypasses.

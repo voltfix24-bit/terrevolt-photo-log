@@ -25,6 +25,21 @@ export class Claim {
     const { data, error } = await this.db.rpc("verwerking_opslaan", { ...this.args(), _run: this.run, _run_patch: run ?? null, _pdf_patch: pdf ?? null, _sync_patch: sync ?? null });
     if (error || data !== true) throw new Error("Verwerking niet bevestigd: claim of doelrij ontbreekt");
   }
+  async current() {
+    if (!this.run) throw new Error("Geen run");
+    const { data,error } = await this.db.from("opleverruns").select("*").eq("id",this.run).single();
+    if (error || !data) throw new Error("Runstaat niet bevestigd");
+    return data;
+  }
+  async cas(expected: any, patch: Record<string,unknown>) {
+    const { data,error } = await this.db.rpc("verwerking_run_cas",{ ...this.args(),_run:this.run,_verwacht:{ status:expected.status,pdf_pad:expected.pdf_pad ?? null,bijgewerkt_op:expected.bijgewerkt_op },_patch:patch });
+    if (error) throw error;
+    return data === true;
+  }
+  async deleteMapping(itemId: string | null) {
+    const { data,error } = await this.db.rpc("verwerking_sync_verwijderen",{ ...this.args(),_item_id:itemId });
+    if (error || data !== true) throw new Error("Verwijderde koppeling niet bevestigd");
+  }
   async snapshot() {
     if (!this.run) throw new Error("Geen rapportrevisie");
     const { data, error } = await this.db.rpc("verwerking_snapshot", { ...this.args(), _run: this.run });

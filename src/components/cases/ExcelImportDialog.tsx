@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { readSheet } from "read-excel-file/browser";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -9,7 +9,7 @@ import { internetVereist } from "@/lib/internet";
 import { importCase, alleCaseNummers, casePayload } from "@/lib/case-service";
 import { zorgVoorBeheer } from "@/lib/require-pin";
 import { Button } from "@/components/ui/button";
-import { importBatch, resterendeImport, previewPagina, type RijUitkomst } from "@/lib/import-batch";
+import { importBatch, importTellingen, resterendeImport, previewPagina, type RijUitkomst } from "@/lib/import-batch";
 import { TO_STATUS } from "@/lib/to-rondes";
 import {
   VELDEN, VELD_LABEL, bouwPreview, celTekst, importeerbaar, isDubbelHerkend, ontbrekendeVerplicht, parseTsv, startMapping, zetMapping,
@@ -31,6 +31,8 @@ export function ExcelImportDialog({ open, onOpenChange, bestaand }: { open: bool
   const [res, setRes] = useState<Resultaat>({});
   const [pagina, setPagina] = useState(0);
   const requests = useRef(new Map<string,string>());
+  const vorigeOpen = useRef(open);
+  useEffect(() => { if (vorigeOpen.current && !open) { requests.current.clear(); setTekst(""); setGrid([]); setMapping([]); setRes({}); setFout(null); setPagina(0); } vorigeOpen.current=open; },[open]);
   const { data: nummers, isPending: nummersLaden, error: nummersFout } = useQuery({ queryKey: ["alle-case-nummers"], queryFn: () => alleCaseNummers(), enabled: open });
 
   const laad = (g: string[][], xlsx: boolean) => { setGrid(g); setSerial(xlsx); setMapping(g.length ? startMapping(g[0]) : []); setRes({}); setPagina(0); setFout(null); };
@@ -41,7 +43,7 @@ export function ExcelImportDialog({ open, onOpenChange, bestaand }: { open: bool
     try { const rows = (await readSheet(file)) as unknown[][]; const g = rows.map((r) => r.map(celTekst)).filter((r) => r.some(Boolean)); setTekst(""); laad(g, true); }
     catch { setFout("Bestand kon niet gelezen worden"); }
   };
-  const reset = () => { setTekst(""); laad([], false); };
+  const reset = () => { requests.current.clear(); setTekst(""); laad([], false); };
 
   const koppen = grid[0] ?? [];
   const mist = ontbrekendeVerplicht(mapping);
@@ -49,7 +51,7 @@ export function ExcelImportDialog({ open, onOpenChange, bestaand }: { open: bool
   const payloadVan = (r: ImportPreviewRij) => ({ casenummer: r.casenummer, casenaam: r.casenaam, wv: r.wv, notitie: r.notitie, uitvoerder: "van_gelder" as const, ronde: r.ronde, toStatus: r.status, ingediendOp: r.ingediend_op, onHold: r.on_hold, onHoldReden: r.on_hold_reden });
   const requestKey = (r: ImportPreviewRij) => JSON.stringify([mapping,r.regel,casePayload(payloadVan(r))]);
   const teDoen = resterendeImport(preview,res,r => requests.current.has(requestKey(r)));
-  const tel = { nieuw: importeerbaar(preview).length, bestaat: preview.filter((r) => r.klasse === "bestaat").length, fout: preview.filter((r) => r.klasse === "fout").length };
+  const tel = importTellingen(preview,res);
   const waarschuwingen = preview.filter((r) => r.klasse === "waarschuwing");
   const dubbelKolom = koppen.some((_, i) => isDubbelHerkend(koppen, mapping, i));
 
@@ -161,7 +163,7 @@ export function ExcelImportDialog({ open, onOpenChange, bestaand }: { open: bool
         {fout && <div role="alert" style={{ overflowWrap: "anywhere", color: T.danger, fontSize: 14 }}>{fout}</div>}
 
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", borderTop: `1px solid ${T.hairline}`, paddingTop: 12 }}>
-          <span style={{ flex: "1 1 220px", fontSize: 14, fontWeight: 600 }}>{Object.values(res).filter(x => x.status === "aangemaakt" || x.status === "replay").length} opgeslagen · {teDoen.length} resterend · {tel.bestaat + Object.values(res).filter(x => x.status === "bestaat").length} bestaat al · {tel.fout + Object.values(res).filter(x => x.status === "mislukt").length} fout</span>
+          <span style={{ flex: "1 1 220px", fontSize: 14, fontWeight: 600 }}>{tel.opgeslagen} opgeslagen · {teDoen.length} resterend · {tel.bestaat} bestaat al · {tel.fout} fout</span>
           <Button onClick={() => { if (!bezig) { reset(); onOpenChange(false); } }} disabled={bezig} className="px-4 py-2.5 rounded-xl font-semibold" style={{ border: `1px solid ${T.hairline}` }}>Annuleren</Button>
           <Button onClick={importeer} disabled={bezig || !teDoen.length || !nummers || !!nummersFout} className="bg-primary text-primary-foreground font-bold px-4 py-2.5 rounded-xl disabled:opacity-50">
             {bezig ? <span className="inline-flex items-center gap-2"><KnopLader />Importeren</span> : `${teDoen.length} case${teDoen.length === 1 ? "" : "s"} importeren`}
