@@ -21,7 +21,7 @@ export function ketenWeergave(run: KetenRun | null | undefined): KetenWeergave |
     case "sharepoint_bezig":
       return { titel: "Rapport klaar", tekst: "SharePoint wordt bijgewerkt.", toon: "bezig", retry: false, actief: true };
     case "wacht_op_retry":
-      return { titel: `${stap} lukte niet`, tekst: `Wordt automatisch opnieuw geprobeerd${run.volgende_poging_op ? ` om ${new Date(run.volgende_poging_op).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}` : ""} (poging ${run.poging}).`, toon: "wacht", retry: true, actief: true };
+      return { titel: `${stap} lukte niet`, tekst: `Wordt automatisch opnieuw geprobeerd${run.volgende_poging_op ? ` om ${new Date(run.volgende_poging_op).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}` : ""} (poging ${run.poging}).${run.fout ? ` ${run.fout}.` : ""}`, toon: "wacht", retry: true, actief: true };
     case "wacht_op_casegegevens":
       return { titel: "Rapport klaar", tekst: "Wacht op casenummer en casenaam voordat het naar SharePoint kan.", toon: "wacht", retry: true, actief: true };
     case "mislukt":

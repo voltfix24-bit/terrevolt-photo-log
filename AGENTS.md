@@ -1,8 +1,8 @@
-- Delivery chain: `opleverketen`+`opleverruns` (1 active run/station, lease, pure machine `_shared/opleverketen.ts`), 10-min cron. Why: durable delivery.
+- Delivery: one active opleverrun with snapshot; all workers use station_claim owner/generation/server deadline and fenced acknowledgements; 10-min cron. Why: concurrency safety.
 - `stations.uitvoerder` van_gelder = Cases & TO only: hidden from station lists/routes/PDF/SharePoint; created via RPC `maak_case`. Why: hard separation.
 - SharePoint only syncs stations with status opgeleverd/goedgekeurd and trimmed casenummer+casenaam (`nietSyncReden`, mirrored in SharePointStatus.tsx); target is the case folder, a station subfolder only when a case has several stations; old {case}/{station} folders are flattened automatically on next sync. Why: one station per case, no half-finished data in SharePoint.
 - SharePoint "10 Documenten" is never written by sync; app reads it via `sharepoint-documenten`. Metadata columns skip silently on 403; missing permissions/key expiry stored on `instellingen` (sp_*). Why: sync works without extra permissions.
-- `rapport-pdf` (pdf-lib) recompresses one photo per call into `rapporten/{id}/pdf-cache/` (self-chaining), then writes `{id}/rapport.pdf` + `rapport_pdf` status, then triggers `sharepoint-sync`. Why: edge CPU limit; SharePoint gets the finished PDF.
+- PDF/cache use immutable revisies/{run}; exact photo IDs required; conditional pointer preserves last good PDF; resolver supports legacy links; sync records hash. Why: no mixed/stale success.
 - SharePoint "00 Rapport" holds only `Opleverrapport {casenummer} - {casenaam}.pdf`; rapport.html is an app-only fallback. Why: one report.
 - App urls mirror SharePoint folders (`/{opdrachtgever}/{jaar}/{casenummer-casenaam}/…`); all links come from `src/lib/urls.ts`, routes resolve via `src/pages/UrlRoutes.tsx` by casenummer and `replace`-redirect to the canonical url. Why: shared/old links keep working when names change.
 - `/:og` routes come after all fixed routes and only accept opdrachtgevers from the table (or used on stations); `/cases/:key` and `/beoordelen/:key` keep their own screens with readable slugs. Why: no collisions with fixed pages.
@@ -26,7 +26,7 @@
 - Keep `to-fotos` public and existing direct URLs; do not broaden permissions or backfill signed URLs. Why: preserve shared links.
 - Queue only photos and notes offline; reject all other mutations without internet, and surface local persistence failures. Why: prevent false success and data loss.
 - All progress/completion uses the central photo rule, including category 31. Why: one consistent requirement.
-- Case import: logic in `src/lib/case-import.ts`, writes only via RPC `maak_case`; indieningen = rondes ≠ open, score per uitvoerder. Why: atomic retry-safe import, VG must not skew TerreVolt FTR.
+- Import: case_aanmaken wraps maak_case with own request/payload replay; full-number preview, paged rows, pause/resume remaining work. Why: no false import success.
 - On hold: `stations.on_hold*` + `src/lib/on-hold.ts`; resume appends to `dossier_notitie`, only the current hold is stored and subtracted from wait time. Why: history without extra table.
 
 - PIN grants bind real session_id and user_id for eight fixed server hours; unlock never resets the shared password, refresh never extends, lock revokes only this grant. Why: device independence.

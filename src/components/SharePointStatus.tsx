@@ -36,12 +36,17 @@ export function SharePointStatus({ station }: { station: StationInfo }) {
   const { data: run } = useQuery({
     queryKey: ["opleverrun-actief", stationId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("opleverruns").select("status").eq("station_id", stationId).order("gestart_op", { ascending: false }).limit(1).maybeSingle();
+      const { data, error } = await supabase.from("opleverruns").select("id, status").eq("station_id", stationId).order("gestart_op", { ascending: false }).limit(1).maybeSingle();
       if (error) throw error;
-      return data as Pick<KetenRun, "status"> | null;
+      return data as Pick<KetenRun, "id" | "status"> | null;
     },
     refetchInterval: (q) => (handmatigeSyncToegestaan(q.state.data) ? false : 5000),
   });
+  const { data: wachtrij } = useQuery({ queryKey:["sharepoint-wachtrij",stationId], queryFn:async () => {
+    const { data,error } = await supabase.from("sharepoint_wachtrij").select("fout").eq("station_id",stationId).maybeSingle();
+    if (error) throw error; return data;
+  }, refetchInterval: 10000 });
+  const vorigeVersie = !!run?.id && sync?.status === "gelukt" && sync.pdf_run !== run.id;
   const ketenActief = !handmatigeSyncToegestaan(run);
 
   if (reden) {
@@ -70,6 +75,8 @@ export function SharePointStatus({ station }: { station: StationInfo }) {
   const loopt = bezig || sync?.status === "bezig";
   const label = loopt
     ? { icon: "cloud_sync", tekst: "Bezig met SharePoint…", kleur: T.subOnBg }
+    : wachtrij ? { icon: "schedule", tekst: "SharePoint uitgesteld — wordt opnieuw geprobeerd", kleur: T.subOnBg }
+    : vorigeVersie ? { icon: "history", tekst: "Vorige rapportversie in SharePoint", kleur: T.subOnBg }
     : sync?.status === "gelukt"
       ? { icon: "cloud_done", tekst: "In SharePoint ✓", kleur: T.green }
       : sync?.status === "mislukt"

@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.58.0";
 import { z } from "npm:zod@3";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { authenticateCronRequest } from "../_shared/cron-auth.ts";
+import { Claim, Bezet, revisiePad, immutableUpload, toetsDossier } from "../_shared/verwerking.ts";
 import { ketenKick } from "../_shared/keten-kick.ts";
 
 const Body = z.object({
@@ -38,11 +39,13 @@ Deno.serve(async (req) => {
       const { data: station } = await supabase.from("stations").select("id, uitvoerder").eq("id", stationId).single();
       if (!station) throw new Error("Station niet gevonden");
       if (station.uitvoerder === "van_gelder") return fout(409, "Geen rapport voor uitvoering Van Gelder");
-      const { data: pdf } = await supabase.from("rapport_pdf").select("status").eq("station_id", stationId).maybeSingle();
-      const pad = pdf?.status === "klaar" ? `${stationId}/rapport.pdf` : `${stationId}/rapport.html`;
+      const { data: pdf } = await supabase.from("rapport_pdf").select("status, pdf_pad, geaccepteerde_run").eq("station_id", stationId).maybeSingle();
+      const { data: latest } = await supabase.from("opleverruns").select("id,html_pad").eq("station_id",stationId).order("gestart_op",{ ascending:false }).limit(1).maybeSingle();
+      const { data: legacy } = !pdf?.pdf_pad ? await supabase.storage.from("rapporten").download(`${stationId}/rapport.pdf`) : { data:null };
+      const pad = pdf?.pdf_pad ?? (legacy?.size ? `${stationId}/rapport.pdf` : latest?.html_pad ?? `${stationId}/rapport.html`);
       const { data: signed, error } = await supabase.storage.from("rapporten").createSignedUrl(pad, 60 * 60);
       if (error) throw error;
-      return new Response(JSON.stringify({ rapport_url: signed?.signedUrl, pdf_status: pdf?.status ?? null, type: pad.endsWith(".pdf") ? "pdf" : "html" }), {
+      return new Response(JSON.stringify({ rapport_url: signed?.signedUrl, pdf_status: pdf?.status ?? null, vorig_rapport: !!pdf?.pdf_pad && pdf.geaccepteerde_run !== latest?.id, type: pad.endsWith(".pdf") ? "pdf" : "html" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -75,15 +78,18 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true, al_ingediend: true, run }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const [{ data: station }, { data: fotos }, { data: opmerkingen }, { data: skips }, { data: instellingen }] = await Promise.all([
-      supabase.from("stations").select("*").eq("id", stationId).single(),
-      supabase.from("fotos").select("*").eq("station_id", stationId).order("categorie"),
-      supabase.from("categorie_opmerkingen").select("categorie, opmerking").eq("station_id", stationId),
-      supabase.from("categorie_skips").select("categorie, reden").eq("station_id", stationId),
-      supabase.from("instellingen").select("bedrijfsnaam, regio, logo_url").limit(1).maybeSingle(),
-    ]);
-
-    if (!station) throw new Error("Station niet gevonden");
+    // Public submission reserves only; all preparation is driven by the durable run.
+    if (actie !== "voorbereiden") {
+      ketenKick(stationId);
+      return new Response(JSON.stringify({ ok: true, run }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    let claim: Claim;
+    try { claim = await Claim.neem(supabase, stationId, aanvraag.id); }
+    catch (e) { if (e instanceof Bezet) return fout(409, e.message); throw e; }
+    try {
+    const dossier = await claim.snapshot();
+    toetsDossier(dossier);
+    const { station, fotos, opmerkingen, skips, instellingen } = dossier;
 
     const opdrachtgever = station.opdrachtgever ?? "van Gelder";
     const submittedBy = station.submitted_by ?? station.ingevuld_door ?? "Onbekend";
@@ -95,7 +101,7 @@ Deno.serve(async (req) => {
       lijst.push({ url: foto.url });
       perCategorie.set(foto.categorie, lijst);
     }
-    const opmerkingPer = new Map((opmerkingen ?? []).map((item) => [item.categorie, item.opmerking]));
+    const opmerkingPer = new Map((opmerkingen ?? []).map((item: { categorie: string; opmerking: string }) => [item.categorie, item.opmerking]));
 
     const html = `<!doctype html>
 <html lang="nl"><head><meta charset="utf-8"><title>TO Fotorapport — ${escape(station.naam_msr)}</title>
@@ -116,23 +122,19 @@ ${[...perCategorie.entries()].map(([categorie, items]) => `
 <h2>${escape(categorie)}</h2>
 <div class="grid">${items.map((item) => `<img src="${escape(item.url)}" alt="${escape(categorie)}">`).join("")}</div>
 ${opmerkingPer.get(categorie) ? `<div class="note">${escape(opmerkingPer.get(categorie))}</div>` : ""}`).join("")}
-${(skips ?? []).length ? `<h2>Niet van toepassing</h2>${(skips ?? []).map((skip) => `<div class="nvt"><strong>${escape(skip.categorie)}</strong> — ${escape(skip.reden)}</div>`).join("")}` : ""}
+${(skips ?? []).length ? `<h2>Niet van toepassing</h2>${(skips ?? []).map((skip: { categorie: string; reden: string }) => `<div class="nvt"><strong>${escape(skip.categorie)}</strong> — ${escape(skip.reden)}</div>`).join("")}` : ""}
 </body></html>`;
 
-    const pad = `${stationId}/rapport.html`;
-    const { error: uploadError } = await supabase.storage
-      .from("rapporten")
-      .upload(pad, new Blob([html], { type: "text/html" }), { upsert: true, contentType: "text/html" });
-    if (uploadError) throw uploadError;
-
+    const pad = revisiePad(stationId, aanvraag.id, "rapport.html");
+    await immutableUpload(supabase, pad, new TextEncoder().encode(html), "text/html", claim);
+    await claim.save({ html_pad: pad });
     // Station transition/review reset/run creation were atomically committed by SQL.
-    ketenKick(stationId);
-
     const { data: signed } = await supabase.storage.from("rapporten").createSignedUrl(pad, 60 * 60);
 
     return new Response(JSON.stringify({ ok: true, run, rapport_url: signed?.signedUrl, submitted_at: submittedAt }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+    } finally { await claim.release().catch(() => {}); }
   } catch (error) {
     const msg = (error as Error).message;
     console.error("oplever-rapport mislukt:", msg);

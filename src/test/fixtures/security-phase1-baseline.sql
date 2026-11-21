@@ -85,7 +85,7 @@ CREATE UNIQUE INDEX ON public.categorie_skips(station_id,categorie);
 CREATE UNIQUE INDEX ON public.user_roles(user_id,role);
 CREATE UNIQUE INDEX ON public.fotos(storage_path);
 CREATE UNIQUE INDEX ON public.opleverruns(station_id) WHERE status NOT IN ('afgerond','mislukt');
-CREATE TABLE storage.objects(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),bucket_id text,name text);
+CREATE TABLE storage.objects(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),bucket_id text NOT NULL,name text NOT NULL, UNIQUE(bucket_id,name));
 ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
 GRANT ALL ON storage.objects TO anon,authenticated,service_role;
 CREATE POLICY fixture_read ON storage.objects FOR SELECT TO anon,authenticated USING(bucket_id IN ('to-fotos','branding'));

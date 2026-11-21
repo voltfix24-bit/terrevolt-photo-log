@@ -27,9 +27,9 @@ export function OpleverStatus({ stationId }: { stationId: string }) {
   const opnieuw = async () => {
     if (!internetVereist() || !await zorgVoorBeheer()) return;
     setBezig(true);
-    const { error } = await supabase.functions.invoke("opleverketen", { body: { actie: "retry", station_id: stationId } });
+    const { data, error } = await supabase.functions.invoke("opleverketen", { body: { actie: "retry", station_id: stationId } });
     setBezig(false);
-    if (error) toast.error("Opnieuw proberen lukte niet");
+    if (error || data?.ok !== true) toast.error("Opnieuw proberen lukte niet");
     qc.invalidateQueries({ queryKey: ["opleverketen", stationId] });
     qc.invalidateQueries({ queryKey: ["sharepoint-sync", stationId] });
   };

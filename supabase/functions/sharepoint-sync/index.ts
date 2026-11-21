@@ -3,7 +3,8 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";
 import { authenticateCronRequest } from "../_shared/cron-auth.ts";
 import { isBeheerder } from "../_shared/admin-auth.ts";
-import { context, controleerSleutel, nietSyncReden, syncEnRegistreer, zetStatus } from "../_shared/sharepoint.ts";
+import { Claim, Bezet, stelSyncUit } from "../_shared/verwerking.ts";
+import { context, controleerSleutel, nietSyncReden, syncEnRegistreer, zetStatus, verplaatsVerwijderd } from "../_shared/sharepoint.ts";
 
 const Body = z.union([
   z.object({ station_id: z.string().uuid(), alleen_status: z.boolean().optional() }),
@@ -32,23 +33,48 @@ Deno.serve(async (req) => {
   }
   const stationId = parsed.data.station_id;
   const { data: station } = await db.from("stations").select("*").eq("id", stationId).maybeSingle();
-  if (!station) return json({ error: "Station niet gevonden" }, 404);
-  if (parsed.data.alleen_status) {
-    // Goed- of afgekeurd: alleen de Status-kolom op bestaande bestanden bijwerken
-    const { data: r } = await db.from("sharepoint_sync").select("sharepoint_item_id").eq("station_id", stationId).maybeSingle();
-    if (!r?.sharepoint_item_id) return json({ ok: true, overgeslagen: "niet in SharePoint" });
-    try { return json({ ok: true, bijgewerkt: await zetStatus(await context(db), r.sharepoint_item_id, station) }); }
-    catch (e) { console.error("status bijwerken mislukt:", (e as Error).message); return json({ error: "Status bijwerken mislukt" }, 500); }
+  if (!station) {
+    const { data: old } = await db.from("sharepoint_sync").select("sharepoint_item_id").eq("station_id",stationId).maybeSingle();
+    if (!old?.sharepoint_item_id) return json({ error: "Station niet gevonden" },404);
+    let deletedClaim: Claim;
+    try { deletedClaim = await Claim.neem(db,stationId); }
+    catch(e) { await stelSyncUit(db,stationId,false,(e as Error).message); return json({ uitgesteld: true },409); }
+    try {
+      await verplaatsVerwijderd(await context(db,true,deletedClaim),old.sharepoint_item_id,stationId);
+      await deletedClaim.check();
+      const { data,error } = await db.from("sharepoint_sync").delete().eq("station_id",stationId).select("station_id");
+      if (error || !data?.length) throw new Error("Verplaatsing niet bevestigd");
+      await deletedClaim.queueDone();
+      return json({ ok: true });
+    } catch(e) { await stelSyncUit(db,stationId,false,(e as Error).message); return json({ error: "Verplaatsing uitgesteld" },500); }
+    finally { await deletedClaim.release().catch(() => {}); }
   }
-  const reden = nietSyncReden(station);
-  if (reden) return json({ ok: true, overgeslagen: reden });
-  // Lopende opleverketen werkt SharePoint zelf bij: geen parallelle sync (voorkomt dubbele mappen)
-  const { data: actief } = await db.from("opleverruns").select("id").eq("station_id", stationId).not("status", "in", "(afgerond,mislukt)").limit(1).maybeSingle();
-  if (actief) return json({ error: "Oplevering loopt nog" }, 409);
+  if (station.uitvoerder !== "terrevolt") return json({ ok: true, overgeslagen: "uitvoering Van Gelder" });
+  let claim: Claim;
+  try { claim = await Claim.neem(db,stationId); }
+  catch(e) {
+    if (!(e instanceof Bezet)) throw e;
+    await stelSyncUit(db,stationId,parsed.data.alleen_status ?? false);
+    return json({ ok: false, uitgesteld: true, error: "Station wordt verwerkt; synchronisatie staat in de wachtrij" },409);
+  }
   try {
-    return json({ ok: true, ...(await syncEnRegistreer(db, station)) });
-  } catch (e) {
-    console.error("sharepoint-sync mislukt:", (e as Error).message);
-    return json({ error: "Synchronisatie mislukt" }, 500);
-  }
+    if (parsed.data.alleen_status) {
+      const { data: r } = await db.from("sharepoint_sync").select("sharepoint_item_id").eq("station_id",stationId).maybeSingle();
+      if (!r?.sharepoint_item_id) { await claim.queueDone(); return json({ ok: true, overgeslagen: "niet in SharePoint" }); }
+      const n = await zetStatus(await context(db,true,claim),r.sharepoint_item_id,station);
+      await claim.check();
+      await claim.queueDone();
+      return json({ ok: true, bijgewerkt: n });
+    }
+    const reden = nietSyncReden(station);
+    if (reden) { await claim.queueDone(); return json({ ok: true, overgeslagen: reden }); }
+    const res = await syncEnRegistreer(db,station,claim);
+    await claim.check();
+    await claim.queueDone();
+    return json({ ok: true, ...res });
+  } catch(e) {
+    await stelSyncUit(db,stationId,parsed.data.alleen_status ?? false,(e as Error).message);
+    console.error("sharepoint-sync mislukt:",(e as Error).message);
+    return json({ error: "Synchronisatie mislukt; opnieuw proberen staat in de wachtrij" },500);
+  } finally { await claim.release().catch(() => {}); }
 });

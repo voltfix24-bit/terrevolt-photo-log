@@ -141,6 +141,27 @@
       "when": 1795260878474,
       "tag": "0019_revoke_direct_pin_session_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1795262147926,
+      "tag": "0020_delivery_claims_and_import_requests",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1795262251384,
+      "tag": "0021_delivery_retry_and_deferred_sync",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1795262544402,
+      "tag": "0022_fence_latest_report_revision",
+      "breakpoints": true
     }
   ]
 }

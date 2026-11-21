@@ -1,44 +1,52 @@
 import { supabase } from "@/integrations/supabase/client";
-import { eisBeheer } from "@/lib/require-pin";
+import { eisBeheer, heeftBeheerSessie, BEHEER_NODIG } from "@/lib/require-pin";
 import type { ToStatus, Uitvoerder } from "@/lib/to-rondes";
 
+import { normaliseer, nrSleutel, valideerCase } from "./case-validatie";
+export { normaliseer, nrSleutel, valideerCase };
+import type { RijUitkomst } from "./import-batch";
+
 export type NieuweCase = { casenummer: string; casenaam: string; uitvoerder: Uitvoerder; wv?: string; notitie?: string; ronde?: number; toStatus?: ToStatus; ingediendOp?: string | null; onHold?: boolean; onHoldReden?: string };
-export type CaseResultaat = { ok: true; id: string } | { ok: false; fout: string; bestaat?: boolean };
+export type CaseResultaat = { ok: true; id: string; uitkomst: "aangemaakt" | "replay" } | { ok: false; fout: string; bestaat?: boolean; pauze?: boolean };
 
-export const normaliseer = (v?: string | null) => (v ?? "").replace(/\s+/g, " ").trim();
-export const nrSleutel = (v?: string | null) => normaliseer(v).toLowerCase();
-
-export function valideerCase(c: NieuweCase): string | null {
-  if (!normaliseer(c.casenummer)) return "Casenummer is verplicht";
-  if (!normaliseer(c.casenaam)) return "Casenaam is verplicht";
-  if (normaliseer(c.casenummer).length > 100 || normaliseer(c.casenaam).length > 300) return "Invoer te lang";
-  return null;
+export function casePayload(c: NieuweCase) {
+  return { casenummer: normaliseer(c.casenummer), casenaam: normaliseer(c.casenaam), uitvoerder: c.uitvoerder, wv: normaliseer(c.wv), notitie: (c.notitie ?? "").trim(), ronde: c.ronde ?? 1, toStatus: c.toStatus ?? "open", ingediendOp: c.ingediendOp ?? null, onHold: c.onHold ?? false, onHoldReden: normaliseer(c.onHoldReden) };
 }
-
-/** Maakt case + TO-ronde 1 in één databasetransactie (maak_case); bij een fout wordt niets opgeslagen. Geen foto's, geen SharePoint. */
-export async function maakCase(c: NieuweCase): Promise<CaseResultaat> {
+/** Stable request identity belongs to the caller, not to a transient network attempt. */
+export async function maakCase(c: NieuweCase, requestId: string = crypto.randomUUID(), batch = false): Promise<CaseResultaat> {
   const fout = valideerCase(c);
   if (fout) return { ok: false, fout };
-  try { await eisBeheer(); } catch (e) { return { ok: false, fout: (e as Error).message }; }
-  const { data, error } = await supabase.rpc("maak_case", {
-    _casenummer: normaliseer(c.casenummer),
-    _casenaam: normaliseer(c.casenaam),
-    _uitvoerder: c.uitvoerder,
-    _wv: normaliseer(c.wv) || undefined,
-    _notitie: (c.notitie ?? "").trim() || undefined,
-    ...(c.ronde && c.ronde !== 1 ? { _ronde: c.ronde } : {}),
-    ...(c.toStatus && c.toStatus !== "open" ? { _to_status: c.toStatus } : {}),
-    ...(c.ingediendOp ? { _ingediend_op: c.ingediendOp } : {}),
-    // On hold uit import: partij onbekend → TerreVolt (in maak_case)
-    ...(c.onHold ? { _on_hold: true, _on_hold_reden: normaliseer(c.onHoldReden) || undefined } : {}),
-  });
-  if (error) {
-    if (error.code === "23505") return { ok: false, fout: `Casenummer ${normaliseer(c.casenummer)} bestaat al`, bestaat: true };
-    if (error.code === "22023") return { ok: false, fout: error.message };
-    return { ok: false, fout: "Case aanmaken mislukt — probeer opnieuw" };
+  try {
+    if (batch) { if (!navigator.onLine || !await heeftBeheerSessie()) return { ok: false, fout: BEHEER_NODIG, pauze: true }; }
+    else await eisBeheer();
+    const { data, error } = await supabase.rpc("case_aanmaken", { _request_id: requestId, _payload: casePayload(c) });
+    if (error) {
+      if (error.code === "23505") return { ok: false, fout: `Casenummer ${normaliseer(c.casenummer)} bestaat al`, bestaat: true };
+      if (error.code === "42501") return { ok: false, fout: BEHEER_NODIG, pauze: true };
+      if (error.code === "22023") return { ok: false, fout: error.message };
+      return { ok: false, fout: "Case aanmaken mislukt — probeer opnieuw", pauze: true };
+    }
+    if (data && typeof data === "object" && !Array.isArray(data)) {
+      if (data.uitkomst === "bestaat") return { ok: false, fout: `Casenummer ${normaliseer(c.casenummer)} bestaat al`, bestaat: true };
+      if ((data.uitkomst === "aangemaakt" || data.uitkomst === "replay") && typeof data.id === "string") return { ok: true, id: data.id, uitkomst: data.uitkomst };
+    }
+    return { ok: false, fout: "Case aanmaken niet bevestigd — probeer opnieuw", pauze: true };
+  } catch { return { ok: false, fout: "Verbinding of beheer onderbroken — ontgrendel en probeer opnieuw", pauze: true }; }
+}
+export async function importCase(c: NieuweCase, requestId: string): Promise<RijUitkomst> {
+  const r = await maakCase(c,requestId,true);
+  if ("fout" in r) return { status: r.bestaat ? "bestaat" : "mislukt", fout: r.fout, pauze: r.pauze };
+  return { status: r.uitkomst, id: r.id };
+}
+/** Fetch all numbers, including hidden cases and records beyond the API page limit. */
+export async function alleCaseNummers(db = supabase): Promise<string[]> {
+  const nummers: string[] = [];
+  for (let offset=0; ; offset+=1000) {
+    const { data,error } = await db.from("stations").select("casenummer").order("id").range(offset,offset+999);
+    if (error) throw error;
+    nummers.push(...(data ?? []).flatMap(r => r.casenummer ? [r.casenummer] : []));
+    if ((data?.length ?? 0)<1000) return nummers;
   }
-  if (typeof data !== "string") return { ok: false, fout: "Case aanmaken mislukt — probeer opnieuw" };
-  return { ok: true, id: data };
 }
 
 /** Wijzigt uitvoerder/WV van een case; geeft een foutmelding terug of null. */

@@ -38,6 +38,30 @@ export type Database = {
         }
         Relationships: []
       }
+      case_aanvragen: {
+        Row: {
+          payload: Json
+          request_id: string
+          session_id: string
+          station_id: string
+          user_id: string
+        }
+        Insert: {
+          payload: Json
+          request_id: string
+          session_id: string
+          station_id: string
+          user_id: string
+        }
+        Update: {
+          payload?: Json
+          request_id?: string
+          session_id?: string
+          station_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       categorie_instellingen: {
         Row: {
           categorie_id: number
@@ -322,11 +346,15 @@ export type Database = {
           aangevraagd_door: string | null
           afgerond_op: string | null
           bijgewerkt_op: string
+          dossier: Json | null
           fout: string | null
           gestart_op: string
+          html_pad: string | null
           id: string
           lease_id: string | null
           lease_tot: string | null
+          pdf_hash: string | null
+          pdf_pad: string | null
           pdf_run: string | null
           poging: number
           retry_stap: string | null
@@ -339,11 +367,15 @@ export type Database = {
           aangevraagd_door?: string | null
           afgerond_op?: string | null
           bijgewerkt_op?: string
+          dossier?: Json | null
           fout?: string | null
           gestart_op?: string
+          html_pad?: string | null
           id?: string
           lease_id?: string | null
           lease_tot?: string | null
+          pdf_hash?: string | null
+          pdf_pad?: string | null
           pdf_run?: string | null
           poging?: number
           retry_stap?: string | null
@@ -356,11 +388,15 @@ export type Database = {
           aangevraagd_door?: string | null
           afgerond_op?: string | null
           bijgewerkt_op?: string
+          dossier?: Json | null
           fout?: string | null
           gestart_op?: string
+          html_pad?: string | null
           id?: string
           lease_id?: string | null
           lease_tot?: string | null
+          pdf_hash?: string | null
+          pdf_pad?: string | null
           pdf_run?: string | null
           poging?: number
           retry_stap?: string | null
@@ -424,9 +460,12 @@ export type Database = {
           bytes: number | null
           fotos: number | null
           fout: string | null
+          geaccepteerde_run: string | null
           gestart_op: string
           klaar_op: string | null
           paginas: number | null
+          pdf_hash: string | null
+          pdf_pad: string | null
           station_id: string
           status: string
         }
@@ -434,9 +473,12 @@ export type Database = {
           bytes?: number | null
           fotos?: number | null
           fout?: string | null
+          geaccepteerde_run?: string | null
           gestart_op?: string
           klaar_op?: string | null
           paginas?: number | null
+          pdf_hash?: string | null
+          pdf_pad?: string | null
           station_id: string
           status?: string
         }
@@ -444,9 +486,12 @@ export type Database = {
           bytes?: number | null
           fotos?: number | null
           fout?: string | null
+          geaccepteerde_run?: string | null
           gestart_op?: string
           klaar_op?: string | null
           paginas?: number | null
+          pdf_hash?: string | null
+          pdf_pad?: string | null
           station_id?: string
           status?: string
         }
@@ -457,6 +502,8 @@ export type Database = {
           aantal_bestanden: number
           fout: string | null
           gesynct_op: string
+          pdf_hash: string | null
+          pdf_run: string | null
           sharepoint_item_id: string | null
           sharepoint_url: string | null
           station_id: string
@@ -466,6 +513,8 @@ export type Database = {
           aantal_bestanden?: number
           fout?: string | null
           gesynct_op?: string
+          pdf_hash?: string | null
+          pdf_run?: string | null
           sharepoint_item_id?: string | null
           sharepoint_url?: string | null
           station_id: string
@@ -475,6 +524,8 @@ export type Database = {
           aantal_bestanden?: number
           fout?: string | null
           gesynct_op?: string
+          pdf_hash?: string | null
+          pdf_run?: string | null
           sharepoint_item_id?: string | null
           sharepoint_url?: string | null
           station_id?: string
@@ -515,6 +566,51 @@ export type Database = {
           toegevoegd?: number
           verplaatst?: number
           verwijderd?: number
+        }
+        Relationships: []
+      }
+      sharepoint_wachtrij: {
+        Row: {
+          alleen_status: boolean
+          fout: string | null
+          poging: number
+          station_id: string
+          volgende_poging_op: string
+        }
+        Insert: {
+          alleen_status?: boolean
+          fout?: string | null
+          poging?: number
+          station_id: string
+          volgende_poging_op?: string
+        }
+        Update: {
+          alleen_status?: boolean
+          fout?: string | null
+          poging?: number
+          station_id?: string
+          volgende_poging_op?: string
+        }
+        Relationships: []
+      }
+      station_verwerking: {
+        Row: {
+          eigenaar: string | null
+          geldig_tot: string | null
+          generatie: number
+          station_id: string
+        }
+        Insert: {
+          eigenaar?: string | null
+          geldig_tot?: string | null
+          generatie?: number
+          station_id: string
+        }
+        Update: {
+          eigenaar?: string | null
+          geldig_tot?: string | null
+          generatie?: number
+          station_id?: string
         }
         Relationships: []
       }
@@ -745,10 +841,15 @@ export type Database = {
         Returns: string
       }
       beheer_vergrendelen: { Args: never; Returns: boolean }
+      case_aanmaken: {
+        Args: { _payload: Json; _request_id: string }
+        Returns: Json
+      }
       categorienotitie_opslaan: {
         Args: { _categorie: string; _station_id: string; _tekst: string }
         Returns: boolean
       }
+      dossier_snapshot: { Args: { _station_id: string }; Returns: Json }
       foto_pad_toegestaan: { Args: { _pad: string }; Returns: boolean }
       fotodossier_aanbieden: {
         Args: {
@@ -787,6 +888,59 @@ export type Database = {
         Args: { _id: string; _seconden: number }
         Returns: string
       }
+      opleverrun_retry: { Args: { _id: string }; Returns: boolean }
+      sharepoint_uitstellen: {
+        Args: { _alleen_status?: boolean; _fout?: string; _station_id: string }
+        Returns: undefined
+      }
+      station_claim: {
+        Args: {
+          _eigenaar: string
+          _run?: string
+          _seconden?: number
+          _station_id: string
+        }
+        Returns: number
+      }
+      station_claim_check: {
+        Args: {
+          _eigenaar: string
+          _generatie: number
+          _station_id: string
+          _vrijgeven?: boolean
+        }
+        Returns: boolean
+      }
+      uitvoerbare_opleverruns: {
+        Args: { _limiet?: number; _station_id?: string }
+        Returns: {
+          aangevraagd_door: string | null
+          afgerond_op: string | null
+          bijgewerkt_op: string
+          dossier: Json | null
+          fout: string | null
+          gestart_op: string
+          html_pad: string | null
+          id: string
+          lease_id: string | null
+          lease_tot: string | null
+          pdf_hash: string | null
+          pdf_pad: string | null
+          pdf_run: string | null
+          poging: number
+          retry_stap: string | null
+          stap_fouten: Json
+          station_id: string
+          status: string
+          volgende_poging_op: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "opleverruns"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       vereiste_fotocategorieen: {
         Args: { _station: Database["public"]["Tables"]["stations"]["Row"] }
         Returns: {
@@ -794,6 +948,31 @@ export type Database = {
           minimum: number
           naam: string
         }[]
+      }
+      verwerking_opslaan: {
+        Args: {
+          _eigenaar: string
+          _generatie: number
+          _pdf_patch?: Json
+          _run?: string
+          _run_patch?: Json
+          _station_id: string
+          _sync_patch?: Json
+        }
+        Returns: boolean
+      }
+      verwerking_snapshot: {
+        Args: {
+          _eigenaar: string
+          _generatie: number
+          _run: string
+          _station_id: string
+        }
+        Returns: Json
+      }
+      verwerking_wachtrij_klaar: {
+        Args: { _eigenaar: string; _generatie: number; _station_id: string }
+        Returns: boolean
       }
     }
     Enums: {

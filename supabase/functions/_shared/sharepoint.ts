@@ -1,4 +1,5 @@
 // Gedeelde SharePoint-logica voor sharepoint-sync en sharepoint-weekly
+import { Claim, hashBytes } from "./verwerking.ts";
 import { CATEGORIES, SECTIONS } from "./sharepoint-categories.ts";
 
 export const GRAPH = "https://graph.microsoft.com/v1.0";
@@ -13,7 +14,7 @@ export async function token() {
   const tenant = Deno.env.get("MS_TENANT_ID"), id = Deno.env.get("MS_CLIENT_ID"), secret = Deno.env.get("MS_CLIENT_SECRET");
   if (!tenant || !id || !secret) throw new Error("SharePoint-gegevens ontbreken (MS_TENANT_ID, MS_CLIENT_ID, MS_CLIENT_SECRET)");
   const r = await fetch(`https://login.microsoftonline.com/${tenant}/oauth2/v2.0/token`, {
-    method: "POST",
+    method: "POST", signal: AbortSignal.timeout(20000),
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ client_id: id, client_secret: secret, grant_type: "client_credentials", scope: "https://graph.microsoft.com/.default" }),
   });
@@ -22,16 +23,18 @@ export async function token() {
 }
 
 // Graph-aanroep met retry op 429/503 (Retry-After)
-export async function graph(tok: string, url: string, init: RequestInit = {}, okStatus: number[] = []): Promise<Response> {
+export async function graph(tok: string, url: string, init: RequestInit = {}, okStatus: number[] = [], claim?: Claim): Promise<Response> {
   for (let poging = 0; poging < 6; poging++) {
+    await claim?.check();
     const r = await fetch(url.startsWith("http") ? url : GRAPH + url, {
-      ...init,
+      ...init, signal: AbortSignal.timeout(20000),
       headers: { Authorization: `Bearer ${tok}`, ...(init.headers ?? {}) },
     });
+    await claim?.check();
     if (r.status === 429 || r.status === 503) {
       const wacht = Number(r.headers.get("Retry-After") ?? 2 ** poging);
       await r.body?.cancel();
-      await sleep(Math.min(wacht, 30) * 1000);
+      await sleep(Math.min(wacht, 10) * 1000);
       continue;
     }
     if (!r.ok && !okStatus.includes(r.status)) throw new Error(`Graph ${init.method ?? "GET"} ${url} [${r.status}]: ${await r.text()}`);
@@ -42,7 +45,7 @@ export async function graph(tok: string, url: string, init: RequestInit = {}, ok
 
 export const enc = (pad: string) => pad.split("/").map(encodeURIComponent).join("/");
 
-export async function mapMaken(tok: string, root: string, pad: string[], cache: Set<string>) {
+export async function mapMaken(tok: string, root: string, pad: string[], cache: Set<string>, claim?: Claim) {
   for (let i = 0; i < pad.length; i++) {
     const huidig = pad.slice(0, i + 1).join("/");
     if (cache.has(huidig)) continue;
@@ -52,39 +55,46 @@ export async function mapMaken(tok: string, root: string, pad: string[], cache: 
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: pad[i], folder: {}, "@microsoft.graph.conflictBehavior": "fail" }),
-    }, [409]);
+    }, [409], claim);
     await r.body?.cancel();
     cache.add(huidig);
   }
 }
 
-export async function upload(tok: string, root: string, pad: string, data: Uint8Array, type: string) {
+export async function upload(tok: string, root: string, pad: string, data: Uint8Array, type: string, claim?: Claim) {
   const basis = `${root}:/${enc(pad)}`;
   if (data.byteLength <= 4 * 1024 * 1024) {
-    const r = await graph(tok, `${basis}:/content?@microsoft.graph.conflictBehavior=replace`, { method: "PUT", headers: { "Content-Type": type }, body: data });
-    return await r.json();
+    const r = await graph(tok, `${basis}:/content?@microsoft.graph.conflictBehavior=replace`, { method: "PUT", headers: { "Content-Type": type }, body: new Uint8Array(data) }, [], claim);
+    const item = await r.json();
+    if (!item?.id) throw new Error("SharePoint-upload niet bevestigd");
+    return item;
   }
   const s = await graph(tok, `${basis}:/createUploadSession`, {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ item: { "@microsoft.graph.conflictBehavior": "replace" } }),
-  });
+  }, [], claim);
   const { uploadUrl } = await s.json();
+  await claim?.check();
   const blok = 320 * 1024 * 10; // 3,2 MB, veelvoud van 320 KiB
   let laatste: any = null;
   for (let start = 0; start < data.byteLength; start += blok) {
     const eind = Math.min(start + blok, data.byteLength);
     for (let poging = 0; ; poging++) {
+      await claim?.check();
       const r = await fetch(uploadUrl, {
+        signal: AbortSignal.timeout(20000),
         method: "PUT",
         headers: { "Content-Length": String(eind - start), "Content-Range": `bytes ${start}-${eind - 1}/${data.byteLength}` },
         body: data.slice(start, eind),
       });
-      if ((r.status === 429 || r.status === 503) && poging < 5) { await sleep(Number(r.headers.get("Retry-After") ?? 2) * 1000); continue; }
+      await claim?.check();
+      if ((r.status === 429 || r.status === 503) && poging < 5) { await sleep(Math.min(10, Number(r.headers.get("Retry-After") ?? 2)) * 1000); continue; }
       if (!r.ok) throw new Error(`Upload sessie [${r.status}]: ${await r.text()}`);
       laatste = await r.json();
       break;
     }
   }
+  if (!laatste?.id) throw new Error("SharePoint-upload niet bevestigd");
   return laatste;
 }
 
@@ -93,24 +103,26 @@ export async function parallel<T>(items: T[], n: number, fn: (t: T) => Promise<v
   await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => { while (i < items.length) await fn(items[i++]); }));
 }
 
-export async function bepaalRoot() {
+export async function bepaalRoot(claim?: Claim) {
     const siteUrl = Deno.env.get("SHAREPOINT_SITE_URL");
     if (!siteUrl) throw new Error("SHAREPOINT_SITE_URL ontbreekt");
     const u = new URL(siteUrl);
+    await claim?.check();
     const tok = await token();
+    await claim?.check();
     // Ondersteunt een site-URL (…/sites/Naam) of een deellink naar een map (…/:f:/…)
     let root: string;
     let prefix: string[];
     if (/^\/:[a-z]:\//i.test(u.pathname)) {
       const b64 = btoa(siteUrl).replace(/=+$/, "").replace(/\//g, "_").replace(/\+/g, "-");
-      const item = await (await graph(tok, `/shares/u!${b64}/driveItem`)).json();
+      const item = await (await graph(tok, `/shares/u!${b64}/driveItem`, {}, [], claim)).json();
       root = `/drives/${item.parentReference.driveId}/items/${item.id}`;
       prefix = [];
     } else {
       // Pak alleen /sites/Naam of /teams/Naam uit het adres; anders de hoofdsite van de tenant
       const m = decodeURIComponent(u.pathname).match(/^\/(sites|teams)\/[^/]+/i);
-      const site = await (await graph(tok, m ? `/sites/${u.hostname}:${encodeURI(m[0])}` : `/sites/${u.hostname}`)).json();
-      const drive = await (await graph(tok, `/sites/${site.id}/drive`)).json();
+      const site = await (await graph(tok, m ? `/sites/${u.hostname}:${encodeURI(m[0])}` : `/sites/${u.hostname}`, {}, [], claim)).json();
+      const drive = await (await graph(tok, `/sites/${site.id}/drive`, {}, [], claim)).json();
       root = `/drives/${drive.id}/root`;
       prefix = ["Opleveringen"];
     }
@@ -119,14 +131,18 @@ export async function bepaalRoot() {
 }
 
 
-export type Ctx = { tok: string; root: string; prefix: string[]; driveId: string; metadata: boolean };
-export async function context(db?: any, metadataSchrijven = true): Promise<Ctx> {
-  const { tok, root, prefix } = await bepaalRoot();
-  const ctx: Ctx = { tok, root, prefix, driveId: root.split("/")[2], metadata: false };
+export type Ctx = { tok: string; root: string; prefix: string[]; driveId: string; metadata: boolean; claim?: Claim };
+export async function context(db?: any, metadataSchrijven = true, claim?: Claim): Promise<Ctx> {
+  const { tok, root, prefix } = await bepaalRoot(claim);
+  const ctx: Ctx = { tok, root, prefix, driveId: root.split("/")[2], metadata: false, claim };
   // Public document reads must never create metadata columns in SharePoint.
   ctx.metadata = metadataSchrijven ? await zorgKolommen(ctx) : false;
   if (db) await machtiging(db, "Sites.Manage.All", !ctx.metadata);
   return ctx;
+}
+
+async function ctxGraph(ctx: Ctx, url: string, init: RequestInit = {}, statuses: number[] = []) {
+  return graph(ctx.tok, url, init, statuses, ctx.claim);
 }
 
 // ---------- Metadata-kolommen ----------
@@ -149,14 +165,14 @@ const KOLOMMEN: Record<string, unknown>[] = [
 /** Maakt ontbrekende kolommen aan. false = geen rechten (403), sync gaat dan door zonder metadata. */
 async function zorgKolommen(ctx: Ctx): Promise<boolean> {
   try {
-    const lijst = await (await graph(ctx.tok, `/drives/${ctx.driveId}/list?$select=id,parentReference`)).json();
+    const lijst = await (await ctxGraph(ctx, `/drives/${ctx.driveId}/list?$select=id,parentReference`)).json();
     const basis = `/sites/${lijst.parentReference.siteId}/lists/${lijst.id}/columns`;
-    const r = await graph(ctx.tok, `${basis}?$select=name`, {}, [403]);
+    const r = await ctxGraph(ctx, `${basis}?$select=name`, {}, [403]);
     if (r.status === 403) { await r.body?.cancel(); return false; }
     const namen = new Set(((await r.json()).value ?? []).map((c: any) => String(c.name).toLowerCase()));
     for (const k of KOLOMMEN) {
       if (namen.has(String(k.name).toLowerCase())) continue;
-      const c = await graph(ctx.tok, basis, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ displayName: k.name, ...k }) }, [403, 409]);
+      const c = await ctxGraph(ctx, basis, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ displayName: k.name, ...k }) }, [403, 409]);
       await c.body?.cancel();
       if (c.status === 403) return false;
     }
@@ -170,7 +186,7 @@ async function zorgKolommen(ctx: Ctx): Promise<boolean> {
 async function zetVelden(ctx: Ctx, itemId: string | undefined, velden: Record<string, unknown>) {
   if (!ctx.metadata || !itemId) return;
   const schoon = Object.fromEntries(Object.entries(velden).filter(([k, v]) => k === "Opmerking" || (v !== null && v !== undefined && v !== "")).map(([k, v]) => [k, v === "" ? null : v]));
-  const r = await graph(ctx.tok, `/drives/${ctx.driveId}/items/${itemId}/listItem/fields`, {
+  const r = await ctxGraph(ctx, `/drives/${ctx.driveId}/items/${itemId}/listItem/fields`, {
     method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(schoon),
   }, [400, 403, 404]);
   if (!r.ok) console.error(`velden [${r.status}]: ${await r.text()}`); else await r.body?.cancel();
@@ -244,7 +260,7 @@ export async function controleerSleutel(db: any) {
 
 export type Resultaat = {
   toegevoegd: string[]; verwijderd: string[]; verplaatst: string[]; leegVerwijderd: string[];
-  aantal_bestanden: number; sharepoint_url: string | null; item_id: string | null;
+  aantal_bestanden: number; sharepoint_url: string | null; item_id: string | null; pdf_run?: string | null; pdf_hash?: string | null;
 };
 
 const sectieMap = (sid: string) => {
@@ -287,7 +303,7 @@ const itemPad = (it: any) => {
 };
 
 async function getItem(ctx: Ctx, url: string) {
-  const r = await graph(ctx.tok, url, {}, [404]);
+  const r = await ctxGraph(ctx, url, {}, [404]);
   if (r.status === 404) { await r.body?.cancel(); return null; }
   return await r.json();
 }
@@ -298,7 +314,7 @@ async function kinderen(ctx: Ctx, url: string): Promise<any[]> {
   const uit: any[] = [];
   let next: string | null = `${url}/children?$top=999&$select=id,name,size,file,folder`;
   while (next) {
-    const r = await graph(ctx.tok, next, {}, [404]);
+    const r = await ctxGraph(ctx, next, {}, [404]);
     if (r.status === 404) { await r.body?.cancel(); return uit; }
     const j = await r.json();
     uit.push(...(j.value ?? []));
@@ -311,14 +327,14 @@ async function verwijderAlsLeeg(ctx: Ctx, id: string, naam: string, dryRun: bool
   const k = await kinderen(ctx, `/drives/${ctx.driveId}/items/${id}`);
   if (k.length > nogBezet) return;
   res.leegVerwijderd.push(naam);
-  if (!dryRun) await (await graph(ctx.tok, `/drives/${ctx.driveId}/items/${id}`, { method: "DELETE" }, [404])).body?.cancel();
+  if (!dryRun) await (await ctxGraph(ctx, `/drives/${ctx.driveId}/items/${id}`, { method: "DELETE" }, [404])).body?.cancel();
 }
 
 async function verplaats(ctx: Ctx, id: string, ouderPad: string[], naam: string) {
   const cache = new Set<string>();
-  await mapMaken(ctx.tok, ctx.root, ouderPad, cache);
+  await mapMaken(ctx.tok, ctx.root, ouderPad, cache, ctx.claim);
   const ouder = await opPad(ctx, ouderPad);
-  const r = await graph(ctx.tok, `/drives/${ctx.driveId}/items/${id}`, {
+  const r = await ctxGraph(ctx, `/drives/${ctx.driveId}/items/${id}`, {
     method: "PATCH", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ parentReference: { id: ouder.id }, name: naam }),
   });
@@ -330,6 +346,18 @@ export async function syncStation(ctx: Ctx, db: any, station: any, vorigItemId: 
   const res: Resultaat = { toegevoegd: [], verwijderd: [], verplaatst: [], leegVerwijderd: [], aantal_bestanden: 0, sharepoint_url: null, item_id: vorigItemId };
   const reden = nietSyncReden(station);
   if (reden) throw new Error(`Niet naar SharePoint: ${reden}`);
+  await ctx.claim?.check();
+  const { data: pointer, error: pointerError } = await db.from("rapport_pdf").select("geaccepteerde_run, pdf_pad, pdf_hash, status").eq("station_id",station.id).maybeSingle();
+  if (pointerError) throw pointerError;
+  if (ctx.claim?.run && pointer?.geaccepteerde_run !== ctx.claim.run) throw new Error("PDF-versie hoort niet bij huidige oplevering");
+  const { data: rapport, error: downloadError } = await db.storage.from("rapporten").download(pointer?.pdf_pad ?? `${station.id}/rapport.pdf`);
+  if (downloadError || !rapport?.size) throw new Error("Geaccepteerde PDF ontbreekt; synchronisatie niet uitgevoerd");
+  const rapportBytes = new Uint8Array(await rapport.arrayBuffer());
+  const rapportHash = await hashBytes(rapportBytes);
+  if (pointer?.pdf_hash && pointer.pdf_hash !== rapportHash) throw new Error("Geaccepteerde PDF is gewijzigd");
+  res.pdf_run = pointer?.geaccepteerde_run ?? null; res.pdf_hash = rapportHash;
+  const { data: previousSync } = await db.from("sharepoint_sync").select("pdf_hash").eq("station_id",station.id).maybeSingle();
+  const { data: acceptedRun } = pointer?.geaccepteerde_run ? await db.from("opleverruns").select("dossier").eq("id",pointer.geaccepteerde_run).maybeSingle() : { data: null };
   const basis = stationPad(ctx.prefix, station, await caseHeeftMeerdere(db, station));
   const doel = basis.join("/");
 
@@ -342,7 +370,7 @@ export async function syncStation(ctx: Ctx, db: any, station: any, vorigItemId: 
       res.verplaatst.push(`${itemPad(it)} → ${doel}`);
       if (!dryRun) {
         for (const k of await kinderen(ctx, `/drives/${ctx.driveId}/items/${it.id}`)) {
-          await (await graph(ctx.tok, `/drives/${ctx.driveId}/items/${k.id}`, {
+          await (await ctxGraph(ctx, `/drives/${ctx.driveId}/items/${k.id}`, {
             method: "PATCH", headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ parentReference: { id: it.parentReference.id } }),
           })).body?.cancel();
@@ -362,11 +390,12 @@ export async function syncStation(ctx: Ctx, db: any, station: any, vorigItemId: 
     }
   }
 
-  const [{ data: fotos }, { data: opm }, { data: skips }] = await Promise.all([
+  const [{ data: liveFotos }, { data: liveOpm }, { data: liveSkips }] = await Promise.all([
     db.from("fotos").select("categorie, storage_path, uploaded_at").eq("station_id", station.id).order("uploaded_at"),
     db.from("categorie_opmerkingen").select("categorie, opmerking").eq("station_id", station.id),
     db.from("categorie_skips").select("categorie, reden, updated_at, created_at").eq("station_id", station.id),
   ]);
+  const fotos = acceptedRun?.dossier?.fotos ?? liveFotos, opm = acceptedRun?.dossier?.opmerkingen ?? liveOpm, skips = acceptedRun?.dossier?.skips ?? liveSkips;
   const opmPer = new Map<string, string>((opm ?? []).filter((o: any) => o.opmerking?.trim()).map((o: any) => [o.categorie, o.opmerking.trim()]));
 
   // Gewenste bestanden per beheerde map
@@ -398,7 +427,6 @@ export async function syncStation(ctx: Ctx, db: any, station: any, vorigItemId: 
     taken.push({ map, naam: `${veilig(`${nr}_${sk.categorie}_NIET GEMAAKT`)}.txt`, tekst: new TextEncoder().encode(txt),
       velden: { ...sv, Sectie: sectie, Categorie: sk.categorie, CategorieNr: c?.id ?? null, Opmerking: `N.v.t.: ${reden}${notitie ? `\n${notitie}` : ""}` } });
   }
-  const { data: rapport } = await db.storage.from("rapporten").download(`${station.id}/rapport.pdf`);
   // rapport.html staat niet meer in SharePoint (wordt door de opruimstap verwijderd); de PDF vervangt hem
   const rapportNaam = `${veilig(`Opleverrapport ${String(station.casenummer ?? "").trim()} - ${String(station.casenaam ?? "").trim()}`, 120)}.pdf`;
 
@@ -414,16 +442,16 @@ export async function syncStation(ctx: Ctx, db: any, station: any, vorigItemId: 
   const nuInMap = new Map<string, any[]>();
   for (const m of BEHEERDE_MAPPEN) nuInMap.set(m, await kinderen(ctx, `${ctx.root}:/${enc([...basis, m].join("/"))}:`));
   const gewenst = new Map<string, Set<string>>(BEHEERDE_MAPPEN.map((m) => [m, new Set<string>()]));
-  for (const t of taken) gewenst.get(t.map)!.add(t.naam.toLowerCase());
-  if (rapport) gewenst.get("00 Rapport")!.add(rapportNaam.toLowerCase());
+  for (const t of taken) gewenst.get(t.map)?.add(t.naam.toLowerCase());
+  if (rapport) gewenst.get("00 Rapport")?.add(rapportNaam.toLowerCase());
 
   if (!dryRun) {
     const cache = new Set<string>();
-    await mapMaken(ctx.tok, ctx.root, [...basis, "00 Rapport"], cache);
+    await mapMaken(ctx.tok, ctx.root, [...basis, "00 Rapport"], cache, ctx.claim);
     // Map voor documenten van ons of de opdrachtgever: de app schrijft of verwijdert hier nooit iets
-    await mapMaken(ctx.tok, ctx.root, [...(basis.length > ctx.prefix.length + 3 ? basis.slice(0, -1) : basis), DOCUMENTEN_MAP], cache);
-    for (const s of SECTIONS) await mapMaken(ctx.tok, ctx.root, [...basis, sectieMap(s.id)], cache);
-    if (taken.some((t) => t.map === "99 Overig")) await mapMaken(ctx.tok, ctx.root, [...basis, "99 Overig"], cache);
+    // "10 Documenten" remains read-only; even creating it is not part of sync.
+    for (const s of SECTIONS) await mapMaken(ctx.tok, ctx.root, [...basis, sectieMap(s.id)], cache, ctx.claim);
+    if (taken.some((t) => t.map === "99 Overig")) await mapMaken(ctx.tok, ctx.root, [...basis, "99 Overig"], cache, ctx.claim);
   }
 
   // 3. Uploaden wat ontbreekt of een andere grootte heeft
@@ -431,9 +459,9 @@ export async function syncStation(ctx: Ctx, db: any, station: any, vorigItemId: 
   const grootte = (map: string, naam: string) => bestaand(map, naam)?.size;
   await parallel(taken, 4, async (t) => {
     let data: Blob | null = null, error: any = null;
-    if (t.tekst) data = new Blob([t.tekst]);
+    if (t.tekst) data = new Blob([new Uint8Array(t.tekst)]);
     for (let p = 0; p < 4 && !data; p++) {
-      ({ data, error } = await db.storage.from("to-fotos").download(t.storage!));
+      ({ data, error } = await db.storage.from("to-fotos").download((t.storage ?? "")));
       if (!data) await sleep(1000 * (p + 1));
     }
     if (error || !data) throw new Error(`Foto niet opgehaald uit opslag (${error?.message ?? "onbekend"}): ${t.storage}`);
@@ -442,37 +470,38 @@ export async function syncStation(ctx: Ctx, db: any, station: any, vorigItemId: 
     let id = bestaand(t.map, t.naam)?.id;
     if (grootte(t.map, t.naam) !== bytes.byteLength) {
       res.toegevoegd.push(`${t.map}/${t.naam}`);
-      if (!dryRun) id = (await upload(ctx.tok, ctx.root, [...basis, t.map, t.naam].join("/"), bytes, t.tekst ? "text/plain; charset=utf-8" : "image/jpeg"))?.id;
+      if (!dryRun) id = (await upload(ctx.tok, ctx.root, [...basis, t.map, t.naam].join("/"), bytes, t.tekst ? "text/plain; charset=utf-8" : "image/jpeg", ctx.claim))?.id;
     }
     if (!dryRun) await zetVelden(ctx, id, t.velden);
   });
   if (rapport) {
-    const b = new Uint8Array(await rapport.arrayBuffer());
+    const b = rapportBytes;
     res.aantal_bestanden++;
-    if (grootte("00 Rapport", rapportNaam) !== b.byteLength) {
+    if (!bestaand("00 Rapport",rapportNaam) || previousSync?.pdf_hash !== rapportHash) {
       res.toegevoegd.push(`00 Rapport/${rapportNaam}`);
-      if (!dryRun) await zetVelden(ctx, (await upload(ctx.tok, ctx.root, [...basis, "00 Rapport", rapportNaam].join("/"), b, "application/pdf"))?.id, sv);
+      if (!dryRun) await zetVelden(ctx, (await upload(ctx.tok, ctx.root, [...basis, "00 Rapport", rapportNaam].join("/"), b, "application/pdf", ctx.claim))?.id, sv);
     } else if (!dryRun) await zetVelden(ctx, bestaand("00 Rapport", rapportNaam)?.id, sv);
   }
   res.aantal_bestanden++;
   const opmNu = (await kinderen(ctx, `${ctx.root}:/${enc(doel)}:`)).find((x) => x.file && x.name === "opmerkingen.txt");
   if (opmNu?.size !== opmTekst.byteLength) {
     res.toegevoegd.push("opmerkingen.txt");
-    if (!dryRun) await zetVelden(ctx, (await upload(ctx.tok, ctx.root, [...basis, "opmerkingen.txt"].join("/"), opmTekst, "text/plain; charset=utf-8"))?.id, sv);
+    if (!dryRun) await zetVelden(ctx, (await upload(ctx.tok, ctx.root, [...basis, "opmerkingen.txt"].join("/"), opmTekst, "text/plain; charset=utf-8", ctx.claim))?.id, sv);
   } else if (!dryRun) await zetVelden(ctx, opmNu?.id, sv);
 
   // 4. Verwijderen: alleen bestanden in beheerde mappen die niet meer bij de app horen
   for (const [map, items] of nuInMap) {
     for (const it of items) {
-      if (!it.file || gewenst.get(map)!.has(it.name.toLowerCase())) continue;
+      if (!it.file || gewenst.get(map)?.has(it.name.toLowerCase())) continue;
       res.verwijderd.push(`${map}/${it.name}`);
-      if (!dryRun) await (await graph(ctx.tok, `/drives/${ctx.driveId}/items/${it.id}`, { method: "DELETE" }, [404])).body?.cancel();
+      if (!dryRun) await (await ctxGraph(ctx, `/drives/${ctx.driveId}/items/${it.id}`, { method: "DELETE" }, [404])).body?.cancel();
     }
   }
 
   const map = await opPad(ctx, basis);
   res.sharepoint_url = map?.webUrl ?? null;
   res.item_id = map?.id ?? res.item_id;
+  if (!dryRun && (!res.item_id || !res.sharepoint_url)) throw new Error("SharePoint-doelmap niet bevestigd");
   return res;
 }
 
@@ -506,36 +535,30 @@ export async function documentenLijst(ctx: Ctx, mapId: string) {
   const uit: any[] = [];
   let next: string | null = `/drives/${ctx.driveId}/items/${mapId}/children?$top=200&$select=id,name,size,file,lastModifiedDateTime`;
   while (next) {
-    const j = await (await graph(ctx.tok, next)).json();
+    const j = await (await ctxGraph(ctx, next)).json();
     uit.push(...(j.value ?? []).filter((x: any) => x.file).map((x: any) => ({ id: x.id, naam: x.name, grootte: x.size, type: x.file?.mimeType ?? null, gewijzigd: x.lastModifiedDateTime })));
     next = j["@odata.nextLink"] ?? null;
   }
   return uit.sort((a, b) => String(b.gewijzigd).localeCompare(String(a.gewijzigd)));
 }
 export async function downloadUrl(ctx: Ctx, mapId: string, bestandId: string) {
-  const it = await (await graph(ctx.tok, `/drives/${ctx.driveId}/items/${bestandId}?$select=id,name,parentReference,@microsoft.graph.downloadUrl`)).json();
+  const it = await (await ctxGraph(ctx, `/drives/${ctx.driveId}/items/${bestandId}?$select=id,name,parentReference,@microsoft.graph.downloadUrl`)).json();
   if (it.parentReference?.id !== mapId) throw new Error("Bestand hoort niet bij deze case");
   return it["@microsoft.graph.downloadUrl"] as string;
 }
 
 /** Eén station synchroniseren en de uitkomst in sharepoint_sync vastleggen (gedeeld door sharepoint-sync en opleverketen).
  *  Gooit bij een fout, zodat de aanroeper zelf kan beslissen over opnieuw proberen. */
-export async function syncEnRegistreer(db: any, station: any) {
-  const stationId = station.id;
-  const { data: vorig } = await db.from("sharepoint_sync").select("sharepoint_item_id").eq("station_id", stationId).maybeSingle();
-  const status = async (v: Record<string, unknown>) => {
-    const { error } = await db.from("sharepoint_sync").upsert({ station_id: stationId, gesynct_op: new Date().toISOString(), ...v });
-    if (error) throw new Error(`sharepoint_sync opslaan mislukt: ${error.message}`);
-  };
-  await status({ status: "bezig", fout: null });
+export async function syncEnRegistreer(db: any, station: any, claim: Claim) {
+  const { data: vorig } = await db.from("sharepoint_sync").select("sharepoint_item_id").eq("station_id",station.id).maybeSingle();
+  await claim.save(undefined,undefined,{ status: "bezig", fout: null });
   try {
-    const ctx = await context(db);
-    const res = await syncStation(ctx, db, station, vorig?.sharepoint_item_id ?? null);
-    await status({ status: "gelukt", aantal_bestanden: res.aantal_bestanden, sharepoint_url: res.sharepoint_url, sharepoint_item_id: res.item_id, fout: null });
+    const ctx = await context(db,true,claim);
+    const res = await syncStation(ctx,db,station,vorig?.sharepoint_item_id ?? null);
+    await claim.save(undefined,undefined,{ status: "gelukt", aantal_bestanden: res.aantal_bestanden, sharepoint_url: res.sharepoint_url, sharepoint_item_id: res.item_id, pdf_run: res.pdf_run, pdf_hash: res.pdf_hash, fout: null });
     return res;
-  } catch (e) {
-    const fout = (e as Error).message;
-    await status({ status: "mislukt", fout: fout.slice(0, 1000) }).catch(() => {});
+  } catch(e) {
+    await claim.save(undefined,undefined,{ status: "mislukt", fout: (e as Error).message.slice(0,1000) }).catch(() => {});
     throw e;
   }
 }

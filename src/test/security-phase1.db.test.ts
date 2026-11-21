@@ -147,7 +147,9 @@ describe.skipIf(!socket)("phase 1 real isolated PostgreSQL permissions", () => {
   }));
   it("open storage supports stable insert retries but never overwrite or source changes", () => fixture(async tx => {
     await as(tx, "anon");
-    await tx`INSERT INTO storage.objects(bucket_id,name) VALUES('to-fotos',${pad})`;
+    await tx.savepoint(async sp => { await sp`INSERT INTO storage.objects(bucket_id,name) VALUES('to-fotos',${pad})`; })
+      .then(() => { throw new Error("Duplicate storage name accepted"); }, e => expect(e.code).toBe("23505"));
+    expect((await tx`SELECT id FROM storage.objects WHERE bucket_id='to-fotos' AND name=${pad}`).length).toBe(1);
     await denied(tx, `UPDATE storage.objects SET name='stations/${other}/x.jpg' WHERE name='${pad}' RETURNING id`);
     await denied(tx, `UPDATE public.fotos SET review_status='approved' WHERE id='${photo}' RETURNING id`);
     await denied(tx, `INSERT INTO public.stations(naam_msr,uitvoerder) VALUES('VG','van_gelder')`);

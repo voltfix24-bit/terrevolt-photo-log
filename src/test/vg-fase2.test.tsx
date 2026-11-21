@@ -96,12 +96,12 @@ describe("status, ronde en datum", () => {
 describe("import via maak_case", () => {
   beforeEach(() => rpc.mockReset());
   it("stuurt ronde, status en datum mee; ronde 1/open blijft fase-1-aanroep", async () => {
-    rpc.mockResolvedValue({ data: "id", error: null });
+    rpc.mockResolvedValue({ data: { id: "id", uitkomst: "aangemaakt" }, error: null });
     await maakCase({ casenummer: "1", casenaam: "a", uitvoerder: "van_gelder", ronde: 3, toStatus: "goedgekeurd", ingediendOp: null });
-    expect(rpc.mock.calls[0][1]).toMatchObject({ _ronde: 3, _to_status: "goedgekeurd" });
+    expect(rpc.mock.calls[0][1]._payload).toMatchObject({ ronde: 3, toStatus: "goedgekeurd", ingediendOp: null });
     expect(rpc.mock.calls[0][1]).not.toHaveProperty("_ingediend_op");
     await maakCase({ casenummer: "2", casenaam: "b", uitvoerder: "van_gelder" });
-    expect(Object.keys(rpc.mock.calls[1][1]).sort()).toEqual(["_casenaam", "_casenummer", "_notitie", "_uitvoerder", "_wv"]);
+    expect(rpc.mock.calls[1][1]._payload).toMatchObject({ ronde: 1, toStatus: "open", ingediendOp: null });
   });
   it("bestaand casenummer is herkenbaar (retry zonder dubbel aanmaken)", async () => {
     rpc.mockResolvedValue({ data: null, error: { code: "23505", message: "" } });

@@ -1,4 +1,5 @@
-import { normaliseer, nrSleutel } from "@/lib/case-service";
+import { normaliseer, nrSleutel, valideerCase } from "@/lib/case-validatie";
+import Papa from "papaparse";
 import type { ToStatus } from "@/lib/to-rondes";
 
 export type ImportVeld = "casenummer" | "casenaam" | "status" | "ronde" | "wv" | "ingediend_op" | "notitie" | "on_hold" | "on_hold_reden";
@@ -27,22 +28,10 @@ export function herkenKop(k: string): ImportVeld | null {
 
 /** TSV zoals Excel het op het klembord zet: tabs, CRLF, BOM, velden tussen aanhalingstekens (met "" en regeleinden). */
 export function parseTsv(tekst: string): string[][] {
-  const t = tekst.replace(/^\uFEFF/, "");
-  const rijen: string[][] = [];
-  let rij: string[] = [], veld = "", i = 0, quoted = false;
-  while (i < t.length) {
-    const c = t[i];
-    if (quoted) {
-      if (c === '"') { if (t[i + 1] === '"') { veld += '"'; i += 2; continue; } quoted = false; i++; continue; }
-      veld += c; i++; continue;
-    }
-    if (c === '"' && veld === "") { quoted = true; i++; continue; }
-    if (c === "\t") { rij.push(veld); veld = ""; i++; continue; }
-    if (c === "\r" || c === "\n") { rij.push(veld); rijen.push(rij); rij = []; veld = ""; i += c === "\r" && t[i + 1] === "\n" ? 2 : 1; continue; }
-    veld += c; i++;
-  }
-  if (veld !== "" || rij.length) { rij.push(veld); rijen.push(rij); }
-  return rijen.map((r) => r.map((v) => v.trim())).filter((r) => r.some((v) => v !== ""));
+  const result = Papa.parse<string[]>(tekst.replace(/^\uFEFF/, ""), { delimiter: "\t", dynamicTyping: false, skipEmptyLines: "greedy" });
+  const error = result.errors.find(issue => issue.code !== "UndetectableDelimiter");
+  if (error) throw new Error(`Plaksel kon niet worden gelezen: ${error.message}`);
+  return result.data.map(r => r.map(v => v.trim())).filter(r => r.some(Boolean));
 }
 
 /** Herkent koppen; een tweede kolom voor hetzelfde veld blijft ongekoppeld (conflict). */
@@ -125,8 +114,11 @@ export function bouwPreview(grid: string[][], m: Mapping, bestaand: Iterable<str
       if (al.has(k)) { klasse = "bestaat"; redenen.unshift("Bestaat al"); }
       else if (gezien.has(k)) { klasse = "bestaat"; redenen.unshift("Dubbel in plaksel"); }
     }
-    if (casenummer) gezien.add(k);
-    return { regel: idx + 2, klasse, redenen, casenummer, casenaam, status, ronde, wv: lees(r, "wv"), ingediend_op, notitie: kol("notitie") >= 0 ? (r[kol("notitie")] ?? "").trim() : "", on_hold, on_hold_reden: on_hold ? lees(r, "on_hold_reden") : "" };
+    const wv = lees(r,"wv"), notitie = kol("notitie") >= 0 ? (r[kol("notitie")] ?? "").trim() : "", on_hold_reden = on_hold ? lees(r,"on_hold_reden") : "";
+    const validation = valideerCase({ casenummer, casenaam, wv, notitie, ronde, toStatus: status, ingediendOp: ingediend_op, onHoldReden: on_hold_reden });
+    if (validation && klasse !== "fout") { klasse = "fout"; redenen.unshift(validation); }
+    if (casenummer && klasse !== "fout") gezien.add(k);
+    return { regel: idx + 2, klasse, redenen, casenummer, casenaam, status, ronde, wv, ingediend_op, notitie, on_hold, on_hold_reden };
   });
 }
 export const importeerbaar = (rijen: ImportPreviewRij[]) => rijen.filter((r) => r.klasse === "nieuw" || r.klasse === "waarschuwing");

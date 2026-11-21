@@ -101,14 +101,14 @@ describe("case aanmaken", () => {
     expect(rpc).not.toHaveBeenCalled();
   });
   it("normaliseert witruimte en geeft id terug", async () => {
-    rpc.mockResolvedValue({ data: "id-1", error: null });
-    expect(await maakCase({ casenummer: " 03  08 ", casenaam: " Graaf   Hendrik ", uitvoerder: "van_gelder", wv: " Piet " })).toEqual({ ok: true, id: "id-1" });
-    expect(rpc).toHaveBeenCalledWith("maak_case", expect.objectContaining({ _casenummer: "03 08", _casenaam: "Graaf Hendrik", _wv: "Piet", _uitvoerder: "van_gelder" }));
+    rpc.mockResolvedValue({ data: { id: "id-1", uitkomst: "aangemaakt" }, error: null });
+    expect(await maakCase({ casenummer: " 03  08 ", casenaam: " Graaf   Hendrik ", uitvoerder: "van_gelder", wv: " Piet " })).toEqual({ ok: true, id: "id-1", uitkomst: "aangemaakt" });
+    expect(rpc).toHaveBeenCalledWith("case_aanmaken", expect.objectContaining({ _request_id: expect.any(String), _payload: expect.objectContaining({ casenummer: "03 08", casenaam: "Graaf Hendrik", wv: "Piet", uitvoerder: "van_gelder" }) }));
   });
   it("dubbel casenummer en serverfout geven duidelijke melding", async () => {
     rpc.mockResolvedValueOnce({ data: null, error: { code: "23505", message: "x" } });
     expect(await maakCase({ casenummer: "0308029", casenaam: "a", uitvoerder: "van_gelder" })).toEqual({ ok: false, fout: "Casenummer 0308029 bestaat al", bestaat: true });
     rpc.mockResolvedValueOnce({ data: null, error: { code: "XX000", message: "intern" } });
-    expect(await maakCase({ casenummer: "1", casenaam: "a", uitvoerder: "van_gelder" })).toEqual({ ok: false, fout: "Case aanmaken mislukt — probeer opnieuw" });
+    expect(await maakCase({ casenummer: "1", casenaam: "a", uitvoerder: "van_gelder" })).toEqual({ ok: false, fout: "Case aanmaken mislukt — probeer opnieuw", pauze: true });
   });
 });

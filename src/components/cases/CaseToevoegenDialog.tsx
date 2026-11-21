@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { KnopLader } from "@/components/Laden";
 import { Pressable, T } from "@/components/apple/Primitives";
 import { internetVereist } from "@/lib/internet";
-import { maakCase, valideerCase } from "@/lib/case-service";
+import { maakCase, valideerCase, casePayload } from "@/lib/case-service";
 import { casesUrl } from "@/lib/urls";
 import type { Uitvoerder } from "@/lib/to-rondes";
 
@@ -18,6 +18,7 @@ export function CaseToevoegenDialog({ open, onOpenChange }: { open: boolean; onO
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [f, setF] = useState({ casenummer: "", casenaam: "", uitvoerder: "van_gelder" as Uitvoerder, wv: "", notitie: "" });
+  const request = useRef<{ key: string; id: string } | null>(null);
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
 
@@ -26,7 +27,9 @@ export function CaseToevoegenDialog({ open, onOpenChange }: { open: boolean; onO
     const v = valideerCase(f);
     if (v) { setFout(v); return; }
     setBezig(true); setFout(null);
-    const r = await maakCase(f);
+    const key = JSON.stringify(casePayload(f));
+    if (request.current?.key !== key) request.current = { key, id: crypto.randomUUID() };
+    const r = await maakCase(f,request.current.id);
     setBezig(false);
     if ("fout" in r) { setFout(r.fout); return; }
     await Promise.all([qc.invalidateQueries({ queryKey: ["cases"] }), qc.invalidateQueries({ queryKey: ["url-index"] })]);
@@ -37,13 +40,13 @@ export function CaseToevoegenDialog({ open, onOpenChange }: { open: boolean; onO
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={o => { if (!bezig) onOpenChange(o); }}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Case toevoegen</DialogTitle>
           <DialogDescription>Alleen voor Cases &amp; TO — zonder foto's, rapport of SharePoint. Voor fotowerk gebruik je "Nieuw station".</DialogDescription>
         </DialogHeader>
-        <div className="space-y-3">
+        <fieldset disabled={bezig} className="space-y-3">
           <div><Label>Casenummer *</Label><input className={veld} value={f.casenummer} onChange={(e) => setF({ ...f, casenummer: e.target.value })} /></div>
           <div><Label>Casenaam *</Label><input className={veld} value={f.casenaam} onChange={(e) => setF({ ...f, casenaam: e.target.value })} /></div>
           <div>
@@ -60,7 +63,7 @@ export function CaseToevoegenDialog({ open, onOpenChange }: { open: boolean; onO
           <button onClick={opslaan} disabled={bezig} className="w-full bg-primary text-primary-foreground font-bold py-3 rounded-xl active:scale-[0.98] transition-all disabled:opacity-50">
             {bezig ? <span className="inline-flex items-center justify-center gap-2"><KnopLader />Toevoegen</span> : "Case toevoegen"}
           </button>
-        </div>
+        </fieldset>
       </DialogContent>
     </Dialog>
   );

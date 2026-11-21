@@ -1,4 +1,8 @@
 # Werkpunten
+- [x] Fase 2: atomaire stationclaims, vast rapportdossier, onveranderlijke PDF-versies en eerlijke wachtrij/retry.
+- [x] Fase 2: claimbeveiligde SharePoint-ingangen en duurzame hervatting van bezet werk.
+- [x] Fase 2: server-idempotente import, volledige preview, hervatbare batches en gedeelde validatie.
+- [x] Fase 2: lokale PostgreSQL-runner; 166 tests incl. 18 lokale DB-tests; 5 Deno/PDF/SharePoint-adaptertests; migraties 0020–0022 en zes deployments; read-only schemacontrole.
 - [x] Flow-sweep fase 1: opslag-/wachtrijregels gecontroleerd; voorbeeldverwijdering, foto-sync, opleverscherm, expliciete SharePoint-ack en serverretry hersteld; 153 tests geslaagd.
 - Buiten deze correctieronde: PDF-/wekelijkse SharePoint-resultaatbevestiging voor fase 2; voorbeeld-dialoogpatroon wacht op antwoord.
 - [x] Correctieronde fase 1: beheerstatus uit CTA-zone; sessietabelgrants intrekken.

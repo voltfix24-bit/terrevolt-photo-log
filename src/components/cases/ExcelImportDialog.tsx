@@ -1,12 +1,15 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import { readSheet } from "read-excel-file/browser";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { KnopLader } from "@/components/Laden";
 import { T } from "@/components/apple/Primitives";
 import { internetVereist } from "@/lib/internet";
-import { maakCase } from "@/lib/case-service";
+import { importCase, alleCaseNummers, casePayload } from "@/lib/case-service";
+import { zorgVoorBeheer } from "@/lib/require-pin";
+import { Button } from "@/components/ui/button";
+import { importBatch, afgerond, previewPagina, type RijUitkomst } from "@/lib/import-batch";
 import { TO_STATUS } from "@/lib/to-rondes";
 import {
   VELDEN, VELD_LABEL, bouwPreview, celTekst, importeerbaar, isDubbelHerkend, ontbrekendeVerplicht, parseTsv, startMapping, zetMapping,
@@ -14,7 +17,7 @@ import {
 } from "@/lib/case-import";
 
 const ORANJE = "#B5541A", ORANJE_BG = "#FDEFE4";
-type Resultaat = Record<number, { ok: boolean; fout?: string }>;
+type Resultaat = Record<number, RijUitkomst>;
 
 /** Van Gelder-cases plakken uit Excel (TSV, primair) of optioneel .xlsx; elke case + rondes via maak_case (atomair). Niets wordt lokaal bewaard. */
 export function ExcelImportDialog({ open, onOpenChange, bestaand }: { open: boolean; onOpenChange: (o: boolean) => void; bestaand: string[] }) {
@@ -26,11 +29,15 @@ export function ExcelImportDialog({ open, onOpenChange, bestaand }: { open: bool
   const [fout, setFout] = useState<string | null>(null);
   const [bezig, setBezig] = useState(false);
   const [res, setRes] = useState<Resultaat>({});
+  const [pagina, setPagina] = useState(0);
+  const requests = useRef(new Map<string,string>());
+  const { data: nummers, isPending: nummersLaden, error: nummersFout } = useQuery({ queryKey: ["alle-case-nummers"], queryFn: () => alleCaseNummers(), enabled: open });
 
-  const laad = (g: string[][], xlsx: boolean) => { setGrid(g); setSerial(xlsx); setMapping(g.length ? startMapping(g[0]) : []); setRes({}); setFout(null); };
-  const plak = (t: string) => { setTekst(t); laad(parseTsv(t), false); };
+  const laad = (g: string[][], xlsx: boolean) => { setGrid(g); setSerial(xlsx); setMapping(g.length ? startMapping(g[0]) : []); setRes({}); setPagina(0); setFout(null); };
+  const plak = (t: string) => { setTekst(t); try { laad(parseTsv(t),false); } catch(e) { laad([],false); setFout((e as Error).message); } };
   const kiesBestand = async (file?: File) => {
-    if (!file) return;
+    if (!file || bezig) return;
+    if (file.size > 10*1024*1024) { setFout("Bestand is groter dan 10 MB"); return; }
     try { const rows = (await readSheet(file)) as unknown[][]; const g = rows.map((r) => r.map(celTekst)).filter((r) => r.some(Boolean)); setTekst(""); laad(g, true); }
     catch { setFout("Bestand kon niet gelezen worden"); }
   };
@@ -38,35 +45,40 @@ export function ExcelImportDialog({ open, onOpenChange, bestaand }: { open: bool
 
   const koppen = grid[0] ?? [];
   const mist = ontbrekendeVerplicht(mapping);
-  const preview = useMemo(() => (grid.length > 1 && !mist.length ? bouwPreview(grid, mapping, bestaand, { excelSerial: serial }) : []), [grid, mapping, bestaand, serial, mist.length]);
-  const teDoen = importeerbaar(preview).filter((r) => !res[r.regel]?.ok);
+  const preview = useMemo(() => (grid.length > 1 && !mist.length ? bouwPreview(grid, mapping, nummers ?? bestaand, { excelSerial: serial }) : []), [grid, mapping, bestaand, nummers, serial, mist.length]);
+  const teDoen = importeerbaar(preview).filter((r) => !afgerond(res[r.regel]));
   const tel = { nieuw: importeerbaar(preview).length, bestaat: preview.filter((r) => r.klasse === "bestaat").length, fout: preview.filter((r) => r.klasse === "fout").length };
   const waarschuwingen = preview.filter((r) => r.klasse === "waarschuwing");
   const dubbelKolom = koppen.some((_, i) => isDubbelHerkend(koppen, mapping, i));
 
   const importeer = async () => {
-    if (!internetVereist() || !teDoen.length) return;
+    if (bezig || !internetVereist() || !teDoen.length || !nummers || nummersFout) return;
     setBezig(true); setFout(null);
-    const nieuw: Resultaat = { ...res };
-    for (const r of teDoen) {
-      const x = await maakCase({ casenummer: r.casenummer, casenaam: r.casenaam, wv: r.wv, notitie: r.notitie, uitvoerder: "van_gelder", ronde: r.ronde, toStatus: r.status, ingediendOp: r.ingediend_op, onHold: r.on_hold, onHoldReden: r.on_hold_reden });
-      // "bestaat al" bij een herhaalde poging = eerder al aangemaakt: niet dubbel, telt als klaar
-      nieuw[r.regel] = x.ok || ("bestaat" in x && x.bestaat && res[r.regel]) ? { ok: true } : { ok: false, fout: "fout" in x ? x.fout : "Mislukt" };
-      setRes({ ...nieuw });
-    }
-    setBezig(false);
-    await Promise.all([qc.invalidateQueries({ queryKey: ["cases"] }), qc.invalidateQueries({ queryKey: ["url-index"] })]);
-    const mislukt = teDoen.filter((r) => !nieuw[r.regel]?.ok).length;
-    const ok = teDoen.length - mislukt;
-    if (mislukt) { setFout(`${ok} geïmporteerd, ${mislukt} mislukt — zie de rijen hieronder en probeer opnieuw.`); return; }
-    toast.success(`${ok} case${ok === 1 ? "" : "s"} geïmporteerd`);
-    reset(); onOpenChange(false);
+    try {
+      if (!await zorgVoorBeheer()) { setFout("Import gepauzeerd — ontgrendel om verder te gaan."); return; }
+      const result = await importBatch(teDoen,res,async r => {
+        const payload = { casenummer: r.casenummer, casenaam: r.casenaam, wv: r.wv, notitie: r.notitie, uitvoerder: "van_gelder" as const, ronde: r.ronde, toStatus: r.status, ingediendOp: r.ingediend_op, onHold: r.on_hold, onHoldReden: r.on_hold_reden };
+        const key = JSON.stringify([mapping,r.regel,casePayload(payload)]);
+        let id = requests.current.get(key);
+        if (!id) { id = crypto.randomUUID(); requests.current.set(key,id); }
+        return importCase(payload,id);
+      },() => navigator.onLine,setRes);
+      const saved = Object.values(result.res).filter(x => x.status === "aangemaakt" || x.status === "replay").length;
+      const skipped = Object.values(result.res).filter(x => x.status === "bestaat").length;
+      const failed = Object.values(result.res).filter(x => x.status === "mislukt").length;
+      if (result.gepauzeerd || failed) setFout(`${saved} opgeslagen · ${skipped} overgeslagen · ${failed} mislukt. ${result.gepauzeerd ? "Import gepauzeerd; herstel verbinding/beheer en hervat." : "Probeer alleen de resterende rijen opnieuw."}`);
+      else toast.success(`${saved} opgeslagen · ${skipped} overgeslagen`);
+      await Promise.all([qc.invalidateQueries({ queryKey: ["cases"] }), qc.invalidateQueries({ queryKey: ["url-index"] })]);
+    } catch { setFout("Import onderbroken — resultaten zijn behouden. Probeer de resterende rijen opnieuw."); }
+    finally { setBezig(false); }
   };
+  const wijzigMapping = (m: Mapping) => { if (!bezig) { setMapping(m); setRes({}); setPagina(0); } };
 
   const kleurRij = (r: ImportPreviewRij) => {
     const x = res[r.regel];
-    if (x?.ok) return { icoon: "check_circle", kleur: T.green, tekst: "Geïmporteerd" };
-    if (x && !x.ok) return { icoon: "error", kleur: T.danger, tekst: x.fout ?? "Mislukt" };
+    if (x?.status === "aangemaakt" || x?.status === "replay") return { icoon: "check_circle", kleur: T.green, tekst: x.status === "replay" ? "Opgeslagen (herhaald bevestigd)" : "Aangemaakt" };
+    if (x?.status === "bestaat") return { icoon: "block", kleur: T.subOnBg, tekst: "Bestaat al — overgeslagen" };
+    if (x?.status === "mislukt") return { icoon: "error", kleur: T.danger, tekst: x.fout ?? "Mislukt" };
     if (r.klasse === "nieuw") return { icoon: "check_circle", kleur: T.green, tekst: "Nieuw" };
     if (r.klasse === "waarschuwing") return { icoon: "warning", kleur: ORANJE, tekst: r.redenen.join(" · ") };
     if (r.klasse === "bestaat") return { icoon: "block", kleur: T.subOnBg, tekst: r.redenen[0] };
@@ -94,13 +106,13 @@ export function ExcelImportDialog({ open, onOpenChange, bestaand }: { open: bool
               if (v) return (
                 <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 4px 3px 10px", borderRadius: 999, fontSize: 13, fontWeight: 600, background: "#E3EFE0", color: T.green }}>
                   {k || `Kolom ${i + 1}`} → {VELD_LABEL[v]}
-                  <button aria-label={`${k} ontkoppelen`} onClick={() => setMapping(zetMapping(mapping, i, null))} style={{ padding: "0 6px" }}>×</button>
+                  <Button aria-label={`${k} ontkoppelen`} disabled={bezig} onClick={() => wijzigMapping(zetMapping(mapping, i, null))} style={{ padding: "0 6px" }}>×</Button>
                 </span>
               );
               return (
                 <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 6px 3px 10px", borderRadius: 999, fontSize: 13, fontWeight: 600, background: ORANJE_BG, color: ORANJE }}>
                   {k || `Kolom ${i + 1}`}{isDubbelHerkend(koppen, mapping, i) ? " (dubbel)" : ""}
-                  <select aria-label={`Kolom ${k} koppelen`} value="" onChange={(e) => setMapping(zetMapping(mapping, i, (e.target.value || null) as ImportVeld | null))} style={{ background: "transparent", color: ORANJE, fontWeight: 600 }}>
+                  <select aria-label={`Kolom ${k} koppelen`} value="" disabled={bezig} onChange={(e) => wijzigMapping(zetMapping(mapping, i, (e.target.value || null) as ImportVeld | null))} style={{ background: "transparent", color: ORANJE, fontWeight: 600 }}>
                     <option value="">kies kolom…</option>
                     {VELDEN.map((f) => <option key={f} value={f}>{VELD_LABEL[f]}{mapping.includes(f) ? " (vervangt)" : ""}</option>)}
                     <option value="">negeren</option>
@@ -119,7 +131,7 @@ export function ExcelImportDialog({ open, onOpenChange, bestaand }: { open: bool
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead><tr><th style={th}>Controle</th><th style={th}>Casenr.</th><th style={th}>Casenaam</th><th style={th}>TO-status</th><th style={th}>Ronde</th><th style={th}>WV</th></tr></thead>
               <tbody>
-                {preview.slice(0, 500).map((r) => {
+                {previewPagina(preview,pagina).map((r) => {
                   const k = kleurRij(r), s = TO_STATUS[r.status];
                   return (
                     <tr key={r.regel} style={{ opacity: r.klasse === "bestaat" && !res[r.regel] ? 0.6 : 1 }}>
@@ -134,17 +146,24 @@ export function ExcelImportDialog({ open, onOpenChange, bestaand }: { open: bool
                 })}
               </tbody>
             </table>
+            <div className="flex items-center justify-between gap-2 py-2">
+              <Button variant="ghost" aria-label="Vorige previewpagina" disabled={bezig || pagina === 0} onClick={() => setPagina(pagina-1)}>←</Button>
+              <span>Rijen {pagina*100+1}–{Math.min((pagina+1)*100,preview.length)} van {preview.length}</span>
+              <Button variant="ghost" aria-label="Volgende previewpagina" disabled={bezig || (pagina+1)*100>=preview.length} onClick={() => setPagina(pagina+1)}>→</Button>
+            </div>
             {waarschuwingen.length > 0 && <div style={{ fontSize: 13, color: ORANJE, marginTop: 8 }}>{waarschuwingen.length} rij{waarschuwingen.length === 1 ? "" : "en"} met waarschuwing: onbekende status wordt TO open. Controleer dit vóór importeren.</div>}
           </div>
         )}
+        {nummersLaden && open && <div className="flex items-center gap-2"><KnopLader />Casenummers controleren…</div>}
+        {nummersFout && <div role="alert">Bestaande casenummers konden niet worden gecontroleerd. <Button variant="ghost" onClick={() => qc.invalidateQueries({ queryKey: ["alle-case-nummers"] })}>Opnieuw proberen</Button></div>}
         {fout && <div role="alert" style={{ color: T.danger, fontSize: 14 }}>{fout}</div>}
 
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", borderTop: `1px solid ${T.hairline}`, paddingTop: 12 }}>
-          <span style={{ flex: "1 1 220px", fontSize: 14, fontWeight: 600 }}>{tel.nieuw} nieuw · {tel.bestaat} bestaat al · {tel.fout} fout</span>
-          <button onClick={() => { if (!bezig) { reset(); onOpenChange(false); } }} disabled={bezig} className="px-4 py-2.5 rounded-xl font-semibold" style={{ border: `1px solid ${T.hairline}` }}>Annuleren</button>
-          <button onClick={importeer} disabled={bezig || !teDoen.length} className="bg-primary text-primary-foreground font-bold px-4 py-2.5 rounded-xl disabled:opacity-50">
+          <span style={{ flex: "1 1 220px", fontSize: 14, fontWeight: 600 }}>{Object.values(res).filter(x => x.status === "aangemaakt" || x.status === "replay").length} opgeslagen · {teDoen.length} resterend · {tel.bestaat + Object.values(res).filter(x => x.status === "bestaat").length} bestaat al · {tel.fout + Object.values(res).filter(x => x.status === "mislukt").length} fout</span>
+          <Button onClick={() => { if (!bezig) { reset(); onOpenChange(false); } }} disabled={bezig} className="px-4 py-2.5 rounded-xl font-semibold" style={{ border: `1px solid ${T.hairline}` }}>Annuleren</Button>
+          <Button onClick={importeer} disabled={bezig || !teDoen.length || !nummers || !!nummersFout} className="bg-primary text-primary-foreground font-bold px-4 py-2.5 rounded-xl disabled:opacity-50">
             {bezig ? <span className="inline-flex items-center gap-2"><KnopLader />Importeren</span> : `${teDoen.length} case${teDoen.length === 1 ? "" : "s"} importeren`}
-          </button>
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

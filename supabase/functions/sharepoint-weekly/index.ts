@@ -4,7 +4,8 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3";
 import { isBeheerder } from "../_shared/admin-auth.ts";
 import { authenticateCronRequest } from "../_shared/cron-auth.ts";
-import { context, controleerSleutel, nietSyncReden, syncStation, verplaatsVerwijderd, zetStatus } from "../_shared/sharepoint.ts";
+import { Claim, Bezet, stelSyncUit } from "../_shared/verwerking.ts";
+import { context, syncEnRegistreer, controleerSleutel, nietSyncReden, syncStation, verplaatsVerwijderd, zetStatus } from "../_shared/sharepoint.ts";
 
 const BATCH = 2;
 const Body = z.union([
@@ -15,7 +16,7 @@ const Body = z.union([
 ]);
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-const db = () => createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+const db = () => createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
 
 // Is het nu zondag 01:xx in Amsterdam? (zomer- en wintertijd via Intl)
 function isZondagEenUur(d = new Date()) {
@@ -44,20 +45,25 @@ async function batch(runId: string, offset: number) {
     const ctx = await context(sb);
     const { data: stations } = await sb.from("stations").select("*").neq("uitvoerder", "van_gelder").order("created_at").range(offset, offset + BATCH - 1); // Van Gelder: volledig overslaan
     for (const st of stations ?? []) {
-      const { data: vorig } = await sb.from("sharepoint_sync").select("sharepoint_item_id").eq("station_id", st.id).maybeSingle();
-      if (nietSyncReden(st)) {
-        // Niet (meer) opgeleverd: SharePoint blijft staan, alleen Status bijwerken (bv. afgekeurd)
-        if (vorig?.sharepoint_item_id) { try { await zetStatus(ctx, vorig.sharepoint_item_id, st); } catch (e) { console.error((e as Error).message); } }
+      let claim: Claim;
+      try { claim = await Claim.neem(sb,st.id); }
+      catch(e) {
+        await stelSyncUit(sb,st.id,!!nietSyncReden(st),(e as Error).message);
+        fouten.push({ station_id: st.id, uitgesteld: true, fout: (e as Error).message });
         continue;
       }
       try {
-        const res = await syncStation(ctx, sb, st, vorig?.sharepoint_item_id ?? null);
-        tel.toegevoegd += res.toegevoegd.length; tel.verwijderd += res.verwijderd.length + res.leegVerwijderd.length; tel.verplaatst += res.verplaatst.length;
-        await sb.from("sharepoint_sync").upsert({ station_id: st.id, status: "gelukt", aantal_bestanden: res.aantal_bestanden, sharepoint_url: res.sharepoint_url, sharepoint_item_id: res.item_id, fout: null, gesynct_op: new Date().toISOString() });
-      } catch (e) {
-        fouten.push({ station: st.naam_msr, station_id: st.id, fout: (e as Error).message.slice(0, 500) });
-        await sb.from("sharepoint_sync").upsert({ station_id: st.id, status: "mislukt", fout: (e as Error).message.slice(0, 1000), gesynct_op: new Date().toISOString() });
-      }
+        if (nietSyncReden(st)) {
+          const { data: vorig } = await sb.from("sharepoint_sync").select("sharepoint_item_id").eq("station_id",st.id).maybeSingle();
+          if (vorig?.sharepoint_item_id) await zetStatus(await context(sb,true,claim),vorig.sharepoint_item_id,st);
+        } else {
+          const res = await syncEnRegistreer(sb,st,claim);
+          tel.toegevoegd += res.toegevoegd.length; tel.verwijderd += res.verwijderd.length + res.leegVerwijderd.length; tel.verplaatst += res.verplaatst.length;
+        }
+      } catch(e) {
+        fouten.push({ station: st.naam_msr, station_id: st.id, fout: (e as Error).message.slice(0,500) });
+        await stelSyncUit(sb,st.id,!!nietSyncReden(st),(e as Error).message);
+      } finally { await claim.release().catch(() => {}); }
       tel.stations++;
     }
     if ((stations ?? []).length < BATCH) {
@@ -66,15 +72,19 @@ async function batch(runId: string, offset: number) {
       const { data: bestaand } = await sb.from("stations").select("id");
       const ids = new Set((bestaand ?? []).map((s: any) => s.id));
       for (const r of (rijen ?? []).filter((r: any) => !ids.has(r.station_id))) {
+        let deletionClaim: Claim | undefined;
         try {
+          deletionClaim = await Claim.neem(sb,r.station_id);
+          ctx.claim = deletionClaim;
           if (r.sharepoint_item_id) {
             const res = await verplaatsVerwijderd(ctx, r.sharepoint_item_id, r.station_id);
             tel.verplaatst += res.verplaatst.length; tel.verwijderd += res.leegVerwijderd.length;
           }
+          await deletionClaim.check();
           await sb.from("sharepoint_sync").delete().eq("station_id", r.station_id);
         } catch (e) {
           fouten.push({ station_id: r.station_id, fout: `Verplaatsen naar _Verwijderd: ${(e as Error).message.slice(0, 500)}` });
-        }
+        } finally { await deletionClaim?.release().catch(() => {}); ctx.claim = undefined; }
       }
       klaar = true;
     }
@@ -123,7 +133,7 @@ Deno.serve(async (req) => {
 
   // Dry-run: rapporteert wat er zou gebeuren, verandert niets
   const sb = db();
-  const ctx = await context();
+  const ctx = await context(undefined,false);
   const uit: unknown[] = [];
   const { data: stations } = b.station_id
     ? await sb.from("stations").select("*").eq("id", b.station_id)
