@@ -12,7 +12,7 @@ import { ketenWeergave, type KetenRun } from "@/lib/opleverketen";
 export function OpleverStatus({ stationId }: { stationId: string }) {
   const qc = useQueryClient();
   const [bezig, setBezig] = useState(false);
-  const { data: run } = useQuery({
+  const { data: run, isError, refetch, isFetching } = useQuery({
     queryKey: ["opleverketen", stationId],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke("opleverketen", { body: { actie: "status", station_id: stationId } });
@@ -22,6 +22,13 @@ export function OpleverStatus({ stationId }: { stationId: string }) {
     refetchInterval: (q) => (ketenWeergave(q.state.data)?.actief ? 5000 : false),
   });
   const w = ketenWeergave(run);
+  // Leesfout van de status: alleen opnieuw lezen (geen herstart van de keten).
+  if (isError && !w) return (
+    <div role="alert" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0 12px", marginBottom: 12, fontSize: 15 }}>
+      <span style={{ color: T.danger, fontWeight: 600 }}>Opleverstatus kon niet worden gelezen</span>
+      <Pressable onClick={() => void refetch()} disabled={isFetching} style={{ minHeight: 44, color: T.green, fontSize: 15, fontWeight: 600, padding: 0 }}>{isFetching ? <KnopLader /> : "Opnieuw laden"}</Pressable>
+    </div>
+  );
   if (!w) return null;
 
   const opnieuw = async () => {

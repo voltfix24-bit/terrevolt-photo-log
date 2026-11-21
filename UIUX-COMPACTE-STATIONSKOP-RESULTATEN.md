@@ -30,3 +30,19 @@ Startpunt: 8651431. Geen database-, function- of publicatiewijzigingen.
 - Goedgekeurd-dossier en partiële voortgang in de browser niet op echte data bekeken; gedekt door unit-tests.
 - Echte opnieuw-versturen niet uitgevoerd (writes geblokkeerd).
 - Niet gepubliceerd.
+
+## Afrondingscorrectie statusweergave (na de47ffd)
+- **Opgeleverd/goedgekeurd**: de dossierstatus blijft leidend; een fotoaantal verschijnt alleen na een geslaagde fotoquery (tijdens laden geen "0 foto's"). Bij een fotoleesfout staat buiten Casegegevens "Foto's konden niet worden geladen" met **Opnieuw laden** (alleen opnieuw lezen).
+- **SharePointStatus**: één label per status. Uitzonderingen — leesfout, mislukt, uitgesteld, vorige rapportversie, actieve sync — staan altijd buiten Casegegevens, ook als er een niet-sync-reden is (dan zonder handmatige syncknop). Alleen "Nog niet naar SharePoint: {reden}", "In SharePoint ✓" en "Nog niet in SharePoint" staan in Casegegevens. Handmatige sync-voortgang wordt per station gedeeld door beide weergaven, zodat feedback tijdens een retry niet verdwijnt. Autorisatie (`zorgVoorBeheer`), de check op een actieve keten en de bescherming tegen parallelle sync zijn ongewijzigd.
+- **OpleverStatus**: een mislukte statusquery toont "Opleverstatus kon niet worden gelezen" met **Opnieuw laden** (query-refetch, geen herstart van de keten). De beveiligde ketenherstelactie is ongewijzigd.
+
+Controles: `src/test/stationskop-status.test.tsx` met 11 renderregressies:
+- opgeleverd en goedgekeurd tijdens laden en bij een leesfout, inclusief opnieuw laden;
+- SharePoint: reden + leesfout, reden + mislukt, uitgesteld, vorige versie, gelukt, en de overgang van retry naar actief met beide weergaven;
+- OpleverStatus: leesfout en refetch, waarbij alleen `actie: "status"` wordt gelezen en geen PIN wordt gevraagd.
+
+Volledige suite: 33 bestanden / 273 tests geslaagd (5 lokale-PostgreSQL-bestanden overgeslagen). Typecheck en build geslaagd. Preview op 390px met geblokkeerde writes, voor opgeleverd dossier 0320221:
+- normaal: "Opgeleverd aan van Gelder / Wacht op beoordeling · 103 foto's";
+- met nagebootste leesfouten (foto's, SharePoint, opleverstatus): drie leesfoutregels met opnieuw-knoppen buiten de gesloten Casegegevens, geen fotoaantal en geen horizontale scroll.
+
+Beperking: een echte SharePoint-retry en een echt herstel van de keten zijn niet uitgevoerd.

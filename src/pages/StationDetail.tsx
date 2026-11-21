@@ -344,8 +344,8 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
       case "nieuw": return { titel: `Nog niet gestart · 0 van ${werkfase.totaal} onderdelen`, sub: null, deel: 0 };
       case "bezig": return { titel: `${werkfase.ingevuld} van ${werkfase.totaal} onderdelen ingevuld`, sub: null, deel: werkfase.ingevuld / werkfase.totaal };
       case "ingevuld": return { titel: "Fotochecklist ingevuld", sub: `Nog niet opgeleverd · ${fotosTekst(werkfase.fotos)}`, deel: null };
-      case "opgeleverd": return { titel: `Opgeleverd aan ${og}`, sub: `Wacht op beoordeling · ${fotosTekst(aantalFotos)}`, deel: null };
-      case "goedgekeurd": return { titel: `Goedgekeurd door ${og}`, sub: fotosTekst(aantalFotos), deel: null };
+      case "opgeleverd": return { titel: `Opgeleverd aan ${og}`, sub: fotos ? `Wacht op beoordeling · ${fotosTekst(aantalFotos)}` : "Wacht op beoordeling", deel: null };
+      case "goedgekeurd": return { titel: `Goedgekeurd door ${og}`, sub: fotos ? fotosTekst(aantalFotos) : null, deel: null };
     }
   })();
 
@@ -482,6 +482,12 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
             {voortgang.deel !== null && (
               <div aria-hidden style={{ marginTop: 8, height: 6, borderRadius: 3, background: T.softBorder, overflow: "hidden" }}>
                 <div style={{ width: `${Math.round(voortgang.deel * 100)}%`, height: "100%", background: T.green }} />
+              </div>
+            )}
+            {vergrendeld && fotosFout && (
+              <div role="alert" style={{ marginTop: 6, display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0 12px" }}>
+                <span style={{ fontSize: 15, color: T.danger, fontWeight: 600 }}>Foto's konden niet worden geladen</span>
+                <Pressable onClick={() => void refetchFotos()} style={{ minHeight: 44, color: T.green, fontSize: 15, fontWeight: 600, padding: 0 }}>Opnieuw laden</Pressable>
               </div>
             )}
             {werkfase.soort === "leesfout" && (
