@@ -13,7 +13,8 @@ Deno.serve(async (req) => {
   const { station_id, stap, run, keten } = parsed.data;
   const machine = authenticateCronRequest(req) === null;
   if (!machine && (stap !== undefined || run !== undefined || keten !== undefined || !await isBeheerder(req))) return json({ error: "Beheer vergrendeld of verlopen — ontgrendel opnieuw met de PIN." }, 403);
-  const { data: station } = await db().from("stations").select("status, uitvoerder, submitted_at").eq("id", station_id).maybeSingle();
+  const { data: station, error: stationError } = await db().from("stations").select("status, uitvoerder, submitted_at").eq("id", station_id).maybeSingle();
+  if (stationError) return json({ error:"Station kon niet worden gelezen" },500);
   if (!station || station.uitvoerder !== "terrevolt" || !station.submitted_at) return json({ error: "Geen opgeleverd fotodossier" }, 409);
   const sb = db();
   let r = run;
@@ -26,7 +27,8 @@ Deno.serve(async (req) => {
       await ketenKick(station_id);
       return json({ ok: true, status: "bezig", run: data.id },202);
     }
-    const { data: active } = await sb.from("opleverruns").select("id").eq("station_id",station_id).not("status","in","(afgerond,mislukt)").maybeSingle();
+    const { data: active, error: activeError } = await sb.from("opleverruns").select("id").eq("station_id",station_id).not("status","in","(afgerond,mislukt)").maybeSingle();
+    if (activeError) return json({ error:"Actieve PDF-run kon niet worden gelezen" },500);
     r = active?.id;
   }
   if (!r) return json({ error: "Geen PDF-run" },409);

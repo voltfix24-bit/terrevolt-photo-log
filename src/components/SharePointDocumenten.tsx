@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { T } from "@/components/apple/Primitives";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 type Doc = { id: string; naam: string; type: string | null; gewijzigd: string };
 const cacheKey = (id: string) => `sp-documenten-${id}`;
@@ -18,7 +19,7 @@ const icoon = (naam: string) => {
 
 // Documenten uit de map "10 Documenten" van de case in SharePoint
 export function SharePointDocumenten({ stationId }: { stationId: string }) {
-  const { data } = useQuery({
+  const { data, isError, refetch } = useQuery({
     queryKey: ["sp-documenten", stationId],
     staleTime: 5 * 60_000,
     queryFn: async (): Promise<{ heeft_map: boolean; bestanden: Doc[] }> => {
@@ -27,15 +28,16 @@ export function SharePointDocumenten({ stationId }: { stationId: string }) {
         if (error) throw error;
         localStorage.setItem(cacheKey(stationId), JSON.stringify(data));
         return data;
-      } catch {
+      } catch (error) {
         // Offline of fout: laatst bekende lijst
         const oud = localStorage.getItem(cacheKey(stationId));
-        if (oud) return JSON.parse(oud);
-        return { heeft_map: false, bestanden: [] };
+        if (!navigator.onLine && oud) return JSON.parse(oud);
+        throw error;
       }
     },
   });
 
+  if (isError) return <div role="alert" className="mb-5 text-sm">Documenten konden niet worden geladen. <Button variant="ghost" onClick={() => void refetch()}>Opnieuw proberen</Button></div>;
   if (!data?.heeft_map) return null;
 
   const open = async (d: Doc) => {

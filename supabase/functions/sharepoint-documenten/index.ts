@@ -15,10 +15,11 @@ Deno.serve(async (req) => {
   if (!parsed.success) return json({ error: parsed.error.flatten().fieldErrors }, 400);
   const { station_id, bestand_id } = parsed.data;
 
-  const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-  const { data: r } = await db.from("sharepoint_sync").select("sharepoint_item_id").eq("station_id", station_id).maybeSingle();
-  if (!r?.sharepoint_item_id) return json({ heeft_map: false, bestanden: [] });
   try {
+    const db = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+    const { data: r, error: readError } = await db.from("sharepoint_sync").select("sharepoint_item_id").eq("station_id", station_id).maybeSingle();
+    if (readError) throw readError;
+    if (!r?.sharepoint_item_id) return json({ heeft_map: false, bestanden: [] });
     const ctx = await context(undefined, false);
     const mapId = await documentenMap(ctx, r.sharepoint_item_id);
     if (!mapId) return json({ heeft_map: false, bestanden: [] });

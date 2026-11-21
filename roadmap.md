@@ -1,4 +1,5 @@
 # Werkpunten
+- [x] Aanvullende flow-sweep: rapport/document/status-readfouten, voorbereidingsrun onder claim en bestaande lokale concepttokens; 212 tests incl. 33 lokale DB-tests, 19 Deno-tests; drie endpoints opnieuw gedeployed; verslag bijgewerkt.
 - [x] Correctie fase 3: volledige foutveilige SharePoint-inventaris en bronrevisie; inhoudupdates en fenced cleanup.
 - [x] Correctie fase 3: verse runstaat/CAS en duurzaam hervatbare PDF-stappen met eerlijke selectie.
 - [x] Correctie fase 3: notitieversies/concepten, holdrechten/index, lokale route- en importfouten/tellingen/operatie-ID's.

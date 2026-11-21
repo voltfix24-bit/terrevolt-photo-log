@@ -6,6 +6,7 @@ import { Pressable, T } from "@/components/apple/Primitives";
 import { toast } from "sonner";
 import { internetVereist } from "@/lib/internet";
 import { handmatigeSyncToegestaan, syncUitkomst, type KetenRun } from "@/lib/opleverketen";
+import { Button } from "@/components/ui/button";
 
 // Klein statuslabel voor de SharePoint-koppeling + handmatig opnieuw synchroniseren
 type StationInfo = { id: string; uitvoerder?: string | null; status: string | null; casenummer: string | null; casenaam: string | null };
@@ -23,7 +24,7 @@ export function SharePointStatus({ station }: { station: StationInfo }) {
   const reden = nietSyncReden(station);
   const qc = useQueryClient();
   const [bezig, setBezig] = useState(false);
-  const { data: sync } = useQuery({
+  const { data: sync, error: syncError, refetch: refetchSync } = useQuery({
     queryKey: ["sharepoint-sync", stationId],
     queryFn: async () => {
       const { data, error } = await supabase.from("sharepoint_sync").select("*").eq("station_id", stationId).maybeSingle();
@@ -33,7 +34,7 @@ export function SharePointStatus({ station }: { station: StationInfo }) {
     refetchInterval: (q) => (q.state.data?.status === "bezig" ? 3000 : false),
   });
   // Lopende opleverketen: die werkt SharePoint zelf bij, dus geen parallelle handmatige sync
-  const { data: run } = useQuery({
+  const { data: run, error: runError, refetch: refetchRun } = useQuery({
     queryKey: ["opleverrun-actief", stationId],
     queryFn: async () => {
       const { data, error } = await supabase.from("opleverruns").select("id, status").eq("station_id", stationId).order("gestart_op", { ascending: false }).limit(1).maybeSingle();
@@ -42,7 +43,7 @@ export function SharePointStatus({ station }: { station: StationInfo }) {
     },
     refetchInterval: (q) => (handmatigeSyncToegestaan(q.state.data) ? false : 5000),
   });
-  const { data: wachtrij } = useQuery({ queryKey:["sharepoint-wachtrij",stationId], queryFn:async () => {
+  const { data: wachtrij, error: queueError, refetch: refetchQueue } = useQuery({ queryKey:["sharepoint-wachtrij",stationId], queryFn:async () => {
     const { data,error } = await supabase.from("sharepoint_wachtrij").select("fout").eq("station_id",stationId).maybeSingle();
     if (error) throw error; return data;
   }, refetchInterval: 10000 });
@@ -61,8 +62,8 @@ export function SharePointStatus({ station }: { station: StationInfo }) {
     if (!internetVereist() || !await zorgVoorBeheer()) return;
     if (ketenActief) { toast.info("Oplevering loopt nog — SharePoint wordt automatisch bijgewerkt"); return; }
     setBezig(true);
+    try {
     const { data, error } = await supabase.functions.invoke("sharepoint-sync", { body: { station_id: stationId } });
-    setBezig(false);
     qc.invalidateQueries({ queryKey: ["sharepoint-sync", stationId] });
     qc.invalidateQueries({ queryKey: ["opleverrun-actief", stationId] });
     const uitkomst = syncUitkomst(data, error);
@@ -70,7 +71,11 @@ export function SharePointStatus({ station }: { station: StationInfo }) {
     else if (uitkomst === "bezig") toast.info("Oplevering loopt nog — SharePoint wordt automatisch bijgewerkt");
     else if (uitkomst === "overgeslagen") toast.info("Niet naar SharePoint gestuurd");
     else toast.error("Naar SharePoint sturen is mislukt");
+    } catch { toast.error("Naar SharePoint sturen is niet bevestigd — probeer opnieuw"); }
+    finally { setBezig(false); }
   };
+
+  if (syncError || runError || queueError) return <div role="alert" className="mb-4 text-sm">SharePoint-status kon niet worden gecontroleerd. <Button variant="ghost" onClick={() => void Promise.all([refetchSync(),refetchRun(),refetchQueue()])}>Opnieuw proberen</Button></div>;
 
   const loopt = bezig || sync?.status === "bezig";
   const label = loopt

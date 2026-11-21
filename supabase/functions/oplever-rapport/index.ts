@@ -36,11 +36,14 @@ Deno.serve(async (req) => {
     const stationId = body.station_id;
 
     if (actie === "rapport-url") {
-      const { data: station } = await supabase.from("stations").select("id, uitvoerder").eq("id", stationId).single();
+      const { data: station, error: stationError } = await supabase.from("stations").select("id, uitvoerder").eq("id", stationId).single();
+      if (stationError) throw stationError;
       if (!station) throw new Error("Station niet gevonden");
       if (station.uitvoerder === "van_gelder") return fout(409, "Geen rapport voor uitvoering Van Gelder");
-      const { data: pdf } = await supabase.from("rapport_pdf").select("status, pdf_pad, geaccepteerde_run").eq("station_id", stationId).maybeSingle();
-      const { data: latest } = await supabase.from("opleverruns").select("id,html_pad").eq("station_id",stationId).order("gestart_op",{ ascending:false }).limit(1).maybeSingle();
+      const { data: pdf, error: pdfError } = await supabase.from("rapport_pdf").select("status, pdf_pad, geaccepteerde_run").eq("station_id", stationId).maybeSingle();
+      if (pdfError) throw pdfError;
+      const { data: latest, error: latestError } = await supabase.from("opleverruns").select("id,html_pad").eq("station_id",stationId).order("gestart_op",{ ascending:false }).limit(1).maybeSingle();
+      if (latestError) throw latestError;
       const { data: legacy } = !pdf?.pdf_pad ? await supabase.storage.from("rapporten").download(`${stationId}/rapport.pdf`) : { data:null };
       const pad = pdf?.pdf_pad ?? (legacy?.size ? `${stationId}/rapport.pdf` : latest?.html_pad ?? `${stationId}/rapport.html`);
       const { data: signed, error } = await supabase.storage.from("rapporten").createSignedUrl(pad, 60 * 60);
@@ -59,8 +62,10 @@ Deno.serve(async (req) => {
     let aanvraag: { id: string; nieuw: boolean };
     if (actie === "voorbereiden") {
       if (authenticateCronRequest(req)) return fout(403, "Alleen interne verwerking");
-      const { data: active } = await supabase.from("opleverruns").select("id").eq("station_id", stationId).not("status", "in", "(afgerond,mislukt)").limit(1).maybeSingle();
-      const { data: st } = await supabase.from("stations").select("submitted_at, uitvoerder").eq("id",stationId).maybeSingle();
+      const { data: active, error: activeError } = await supabase.from("opleverruns").select("id").eq("station_id", stationId).not("status", "in", "(afgerond,mislukt)").limit(1).maybeSingle();
+      if (activeError) throw activeError;
+      const { data: st, error: stationError } = await supabase.from("stations").select("submitted_at, uitvoerder").eq("id",stationId).maybeSingle();
+      if (stationError) throw stationError;
       if (!active || !st?.submitted_at || st.uitvoerder !== "terrevolt") return fout(409, "Geen actieve oplevering");
       aanvraag = { id: active.id, nieuw: true };
     } else {
@@ -71,7 +76,8 @@ Deno.serve(async (req) => {
         submitError?.code === "42501" ? "Beheer vergrendeld of verlopen — ontgrendel opnieuw met de PIN." : "Fotodossier is niet compleet of niet beschikbaar");
       aanvraag = result;
     }
-    const { data: run } = await supabase.from("opleverruns").select("id, status, gestart_op").eq("id", aanvraag.id).single();
+    const { data: run, error: runError } = await supabase.from("opleverruns").select("id, status, gestart_op").eq("id", aanvraag.id).single();
+    if (runError) throw runError;
     if (!run) throw new Error("Oplevering niet gevonden");
     // Existing submitted run: never rewrite files on a repeated public request.
     if (!aanvraag.nieuw) {
@@ -87,6 +93,13 @@ Deno.serve(async (req) => {
     try { claim = await Claim.neem(supabase, stationId, aanvraag.id); }
     catch (e) { if (e instanceof Bezet) return fout(409, e.message); throw e; }
     try {
+    const current = await claim.current();
+    if (["afgerond","mislukt"].includes(current.status)) return new Response(JSON.stringify({ ok:true,run:current }), { headers: { ...corsHeaders,"Content-Type":"application/json" } });
+    if (current.html_pad) {
+      const { data:signed,error } = await supabase.storage.from("rapporten").createSignedUrl(current.html_pad,60*60);
+      if (error || !signed?.signedUrl) throw error ?? new Error("Rapportlink niet bevestigd");
+      return new Response(JSON.stringify({ ok:true,run:current,rapport_url:signed.signedUrl }), { headers: { ...corsHeaders,"Content-Type":"application/json" } });
+    }
     const dossier = await claim.snapshot();
     toetsDossier(dossier);
     const { station, fotos, opmerkingen, skips, instellingen } = dossier;
@@ -129,7 +142,8 @@ ${(skips ?? []).length ? `<h2>Niet van toepassing</h2>${(skips ?? []).map((skip:
     await immutableUpload(supabase, pad, new TextEncoder().encode(html), "text/html", claim);
     await claim.save({ html_pad: pad });
     // Station transition/review reset/run creation were atomically committed by SQL.
-    const { data: signed } = await supabase.storage.from("rapporten").createSignedUrl(pad, 60 * 60);
+    const { data: signed, error: signedError } = await supabase.storage.from("rapporten").createSignedUrl(pad, 60 * 60);
+    if (signedError || !signed?.signedUrl) throw signedError ?? new Error("Rapportlink niet bevestigd");
 
     return new Response(JSON.stringify({ ok: true, run, rapport_url: signed?.signedUrl, submitted_at: submittedAt }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -1,6 +1,6 @@
 # Correctieronde fase 3 — resultaten
 
-Startpunt: `9531303da97f8bd320dc9aeef04a9d04cd3a6024`. De definitieve commit is de commit die dit verslag toevoegt (`git log -1`). `PHASE2-RESULTATEN.md` en `PHASE3-RESULTATEN.md` zijn byte-ongewijzigd behouden. Geen frontendpublicatie uitgevoerd.
+Startpunt: `9531303da97f8bd320dc9aeef04a9d04cd3a6024`. Eerste correctiecommit: `e748e5f441d4116bfc574ca27868db288cc69490`; de aanvullende flow-sweep staat in de nieuwste commit (`git log -1`). `PHASE2-RESULTATEN.md` en `PHASE3-RESULTATEN.md` zijn byte-ongewijzigd behouden. Geen frontendpublicatie uitgevoerd.
 
 ## Concrete correcties
 
@@ -25,7 +25,7 @@ Startpunt: `9531303da97f8bd320dc9aeef04a9d04cd3a6024`. De definitieve commit is 
 
 | Controle | Werkelijke uitkomst |
 |---|---|
-| Volledige tijdelijke lokale PostgreSQL/Vitest-run | **209 tests geslaagd in 27 bestanden** |
+| Volledige tijdelijke lokale PostgreSQL/Vitest-run | **212 tests geslaagd in 28 bestanden**, inclusief aanvullende flow-sweep |
 | Echte lokale DB-tests binnen bovenstaande telling | **33**: 12 fase 1, 6 fase 2, 9 fase 3, 6 correctieronde |
 | PDF/Graph/worker-adapters via Deno | **19 geslaagd**, 5 bestaande + 14 nieuwe; laatste run met `--deny-net` |
 | Automatische platform-TypeScript/productiebuildgate | Nieuwste gecontroleerde logentry **build OK**; geen afzonderlijke handmatige frontendtypecheck/build uitgevoerd |
@@ -58,3 +58,27 @@ De standaard edge-testtool liep aanvankelijk vast op npm-module-resolutie. De lo
 - Geen echte productie-PIN/oplevering/Storage/SharePoint-end-to-end uitgevoerd. TSV en aanvraagretry zijn getest; geen nieuwe echte `.xlsx` end-to-endcontrole.
 - Importaanvragen/concepten behouden de bestaande opslaggrenzen: import-UUID's staan in dialooggeheugen, niet als herstelbare batch na browserherlaad. Geen service worker toegevoegd.
 - Geen frontendpublicatie; laatste onafhankelijke controle en publicatie blijven bij de gebruiker/root.
+
+## Aanvullende flow-sweep
+
+**Regel in gebruikerswoorden:** een leesfout betekent niet dat iets verdwenen of leeg is; alleen bevestigde actuele verwerking mag klaar heten, en een oud antwoord mag nieuw werk niet wissen.
+
+| Plaats waar die regel geldt | Nu gelezen/gecontroleerd | Uitkomst |
+|---|---|---|
+| Wekelijkse SharePoint-run/inventaris/cleanup | `sharepoint-weekly`, `bron-read`, `verwijderMapping` | Foutveilige volledige inventaris; onder-claim bestaanscontrole; lokale adaptertests behouden |
+| Handmatige volledige/status-only sync | `sharepoint-sync`, `station-service`, `SharePointStatus` | Claim/queueversie beschermd; statusreadfouten nu expliciet zichtbaar; rejected handmatige call eindigt via finally |
+| Documentlijst en downloaden | `sharepoint-documenten`, `SharePointDocumenten`, gedeelde documentenhelpers | Mappingreadfout werd nog lege lijst: hersteld naar serverfout + zichtbaar schermalert/retry; bruikbare offline lijstcache behouden; nooit writes naar 10 Documenten |
+| Opleverreservering en HTML-voorbereiding | `oplever-rapport`, `fotodossier_aanbieden`, `Claim.snapshot/save` | Extra readfoutguards; voorbereiding herleest onder claim, stopt op terminale run en hergebruikt bestaande HTML zonder nieuwe write; signed-url succes wordt bevestigd |
+| Rapportlink/legacyresolver | `oplever-rapport` rapport-url, `UrlRoutes.RapportOpener` | Station/PDF/laatste-run-queryerrors vallen niet meer stil terug; scherm meldt onbeschikbaar; oude geldige PDF-pointer blijft leesbaar |
+| PDF-ingang/render/vervolg | `rapport-pdf/index`, `renderer`, `pdf_stap_start/klaar`, pogingtrigger | Extra station/active-run-readguards; duurzame stappen/immutable bestanden/verse clocks behouden; Deno-adapters opnieuw geslaagd |
+| Centrale scheduler/late fouten/retry | `keten-worker`, `opleverketen`, `uitvoerbare_opleverruns`, `verwerking_run_cas/opslaan`, `opleverrun_retry` | Actuele staat na claim, terminale guard, cursorselectie en fenced acknowledgements; echte lokale DB-/concurrencyregressies behouden |
+| Vrije dossiernotitie/heropenen | `DossierNotitie`, `dossier-draft`, `case_notitie_opslaan` | Oud lokaal concept zonder token kreeg per read ander token: eenmalige stabiele tokenupgrade toegevoegd; bevestigd-save-test houdt bestaande tekst intact en wist alleen de juiste entry |
+| Categorienotitie/offline achtergrondqueue | `notities`, relevante `NotitieSheet` save/unlock/errorpaden | Versiecheck na await; fout bewaart entry; achtergrondqueue vraagt geen PIN en stopt per mislukte versie; niet gewijzigd |
+| Foto-upload/verwijderen/skip/queue | `fotos-service`, `sync-service`, `station-service`, `useSkippedCategories` | Read-/targetbevestiging vóór delete/succes, stabiele paden, bestand/queuebehoud bij fout; bestaande tests behouden; niet gewijzigd |
+| Import/create/duplicaten | `case-service`, `import-batch`, create/importdialogen, `case_aanmaken` | Eigen UUID/payload, expliciete resultaten en volledige nummers; responseverlies/new-operation-tests behouden; geen zakelijke records herschreven |
+| Hold/hervatten | `on-hold`, bestaande hold-RPC's en dedicated note guard | Verwachte periode-ID en onafhankelijke notitieversie; concrete lokale tests ongewijzigd behouden |
+| Koude/voorheen geopende routes en importdownload | `use-url-index`, `UrlRoutes`, `ImportScherm`, relevante Cases-opening | Eindige fout, offline cache, lokale chunkfallback; definitieve mobiele emulatie uit hoofdcorrectieronde behouden |
+
+Na deze sweep: **212 Vitest-tests / 28 bestanden, 33 echte lokale DB-tests en 19 Deno-adaptertests geslaagd**; automatische TypeScript/buildgate opnieuw `build OK`. Deploymenttool bevestigde de opnieuw gewijzigde **oplever-rapport, rapport-pdf en sharepoint-documenten**. Geen nieuwe migratie nodig, geen gewijzigde autorisatie, instellingen of voorbeelddata en geen bewerking van afgehandelde dossiers.
+
+De aanvullende serveringangs-guards zijn gelezen en gedeployed, maar niet met productieverzoeken uitgevoerd. De nieuwe document-/statusalerts en legacy-conceptupgrade hebben lokale UI-regressies; geen aanvullende hardware- of mobiele browsercontrole specifiek van die twee kleine SharePoint-alerts. Alle eerder genoemde beperkingen blijven van kracht.

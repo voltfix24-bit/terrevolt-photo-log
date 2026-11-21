@@ -5,7 +5,10 @@ export function leesConcept(key: string): DossierDraft | null {
   if (!raw) return null;
   const parsed = JSON.parse(raw);
   if (typeof parsed.tekst !== "string" || typeof parsed.versie !== "number") return null;
-  return { ...parsed, token: parsed.token ?? crypto.randomUUID() };
+  const draft = { ...parsed, token: parsed.token ?? crypto.randomUUID() };
+  // Upgrade existing local drafts once; repeated reads must identify the same operation.
+  if (!parsed.token) localStorage.setItem(key, JSON.stringify(draft));
+  return draft;
 }
 /** A response may acknowledge only its own local operation, never another tab's draft. */
 export function bevestigConcept(key: string, sent: DossierDraft, current: DossierDraft, versie: number) {
