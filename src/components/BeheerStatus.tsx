@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { LockKeyhole } from "lucide-react";
+import { useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,7 @@ import { zorgVoorBeheer, vergrendelBeheer } from "@/lib/require-pin";
 
 /** Display only: the server rechecks authority for every protected write. */
 export function BeheerStatus() {
+  const { pathname } = useLocation();
   const [tot, setTot] = useState<string | null>(null);
   const [bezig, setBezig] = useState(false);
   useEffect(() => {
@@ -34,8 +36,10 @@ export function BeheerStatus() {
     else toast.error("Vergrendelen niet bevestigd — controleer je verbinding en probeer opnieuw.");
     setBezig(false);
   };
-  return <div role="status" className="fixed bottom-3 left-3 z-[100] flex max-w-[calc(100vw-24px)] flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground shadow-lg">
+  return <section aria-label="Beheerstatus" className={`border-b border-border bg-background ${pathname.startsWith("/instellingen") ? "pt-14" : "pt-[env(safe-area-inset-top)]"}`}>
+    <div role="status" className="mx-auto flex min-h-12 max-w-7xl flex-wrap items-center justify-between gap-2 px-4 py-2 text-xs text-foreground">
     <span>{tot ? `Beheer ontgrendeld tot ${new Date(tot).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}` : "Beheer vergrendeld"}</span>
     <Button variant="ghost" size="sm" disabled={bezig} onClick={tot ? lock : () => zorgVoorBeheer("Beheer ontgrendelen")} className="h-8 gap-1 text-xs"><LockKeyhole size={14} />{tot ? "Beheer vergrendelen" : "Ontgrendelen"}</Button>
-  </div>;
+    </div>
+  </section>;
 }

@@ -57,7 +57,7 @@ describe("offline notities", () => {
   });
   it("verlopen beheer bewaart ook een leeg notitie-item voor retry", async () => {
     mock.save.mockResolvedValueOnce({ data: null, error: { code: "42501", message: "Beheer verlopen" } });
-    expect(await bewaarNotitie({ ...note, tekst: "" })).toBe("wachtrij");
+    expect(await bewaarNotitie({ ...note, tekst: "" })).toBe("beheer");
     expect(lokaleNotitie(note.stationId, note.categorie)).toBe("");
     expect(await verstuurNotities()).toBe(1);
     expect(lokaleNotitie(note.stationId, note.categorie)).toBeUndefined();

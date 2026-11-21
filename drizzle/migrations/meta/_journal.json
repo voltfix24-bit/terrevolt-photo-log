@@ -134,6 +134,13 @@
       "when": 1795260285863,
       "tag": "0018_photo_source_and_submission_guards",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1795260878474,
+      "tag": "0019_revoke_direct_pin_session_grants",
+      "breakpoints": true
     }
   ]
 }

@@ -55,14 +55,14 @@ export function SharePointBeheer() {
     if (error) toast.error("Controleren is mislukt"); else toast.success("SharePoint gecontroleerd");
   };
   const zetDatum = async (v: string) => {
-    if (!internetVereist()) return;
+    if (!internetVereist() || !await zorgVoorBeheer()) return;
     if (!inst?.id) return;
-    const { error } = await supabase.from("instellingen").update({ sp_sleutel_verloopt_op: v || null } as any).eq("id", inst.id);
-    if (error) toast.error("Opslaan mislukt"); else qc.invalidateQueries({ queryKey: ["instellingen"] });
+    const { data, error } = await supabase.from("instellingen").update({ sp_sleutel_verloopt_op: v || null } as any).eq("id", inst.id).select("id");
+    if (error || !data?.some(row => row.id === inst.id)) toast.error("Datum niet opgeslagen — ontgrendel beheer opnieuw"); else qc.invalidateQueries({ queryKey: ["instellingen"] });
   };
 
   const loopt = !!run && !run.klaar_op;
-  const fouten = Array.isArray(run?.fouten) ? run!.fouten.length : 0;
+  const fouten = Array.isArray(run?.fouten) ? run.fouten.length : 0;
 
   const nu = async () => {
     if (!internetVereist()) return;

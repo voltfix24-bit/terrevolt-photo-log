@@ -8,7 +8,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { supabase } from "@/integrations/supabase/client";
-import { requirePin, zorgVoorBeheer, BEHEER_NODIG } from "@/lib/require-pin";
+import { requirePin } from "@/lib/require-pin";
 import { SECTIONS, type Category } from "@/lib/categories";
 import type { MergedCategory } from "@/hooks/use-categories";
 import { Pressable, R, T } from "@/components/apple/Primitives";
@@ -162,13 +162,12 @@ export function WizardView({
 
   const saveOpmerking = useCallback(async (tekst: string) => {
     if (!cat) return;
-    if ((station.submitted_at || station.status === "opgeleverd" || station.status === "goedgekeurd") && !await zorgVoorBeheer()) throw new Error(BEHEER_NODIG);
     setOpmerkingText(tekst.trim());
     const r = await bewaarNotitie({ stationId, categorie: cat.name, tekst });
     queryClient.invalidateQueries({ queryKey: ["opmerking", stationId, cat.name] });
     queryClient.invalidateQueries({ queryKey: ["opmerkingen", stationId] });
     return r;
-  }, [cat, stationId, queryClient, station.submitted_at, station.status]);
+  }, [cat, stationId, queryClient]);
 
   const incompleteCategories = applicableCategories.filter((c) => !categorieKlaar(c.id, fotosByCategorie(c.name).length) && !skipped.includes(c.name));
 
@@ -461,6 +460,8 @@ export function WizardView({
           soort={sheet}
           titel={sheet === "skip" ? `Niet gemaakt: ${cat.effectiveName}` : `Notitie: ${cat.effectiveName}`}
           begin={sheet === "skip" ? skippedReasons[cat.name] ?? "" : opmerkingText}
+          stationId={stationId}
+          categorie={cat.name}
           onClose={() => setSheet(null)}
           onSave={sheet === "skip" ? confirmSkip : saveOpmerking}
         />

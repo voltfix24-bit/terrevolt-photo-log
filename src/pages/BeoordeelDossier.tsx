@@ -1,4 +1,4 @@
-import { zorgVoorBeheer } from "@/lib/require-pin";
+import { BEHEER_NODIG, zorgVoorBeheer } from "@/lib/require-pin";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { sharepointStatusBijwerken } from "@/lib/station-service";
 import { internetVereist } from "@/lib/internet";
@@ -96,7 +96,8 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
   const { data: station } = useQuery({
     queryKey: ["station", id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("stations").select("*").eq("id", id!).single();
+      if (!id) throw new Error("Station ontbreekt");
+      const { data, error } = await supabase.from("stations").select("*").eq("id", id).single();
       if (error) throw error;
       return data;
     },
@@ -106,7 +107,8 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
   const { data: fotos } = useQuery({
     queryKey: ["review-fotos", id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("fotos").select("*").eq("station_id", id!).order("categorie");
+      if (!id) return [];
+      const { data, error } = await supabase.from("fotos").select("*").eq("station_id", id).order("categorie");
       if (error) throw error;
       return (data ?? []) as unknown as Foto[];
     },
@@ -116,7 +118,8 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
   const { data: notities } = useQuery({
     queryKey: ["opmerkingen", id],
     queryFn: async () => {
-      const { data } = await supabase.from("categorie_opmerkingen").select("categorie, opmerking").eq("station_id", id!);
+      if (!id) return [];
+      const { data } = await supabase.from("categorie_opmerkingen").select("categorie, opmerking").eq("station_id", id);
       return data ?? [];
     },
     enabled: !!id,
@@ -125,7 +128,8 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
   const { data: skips } = useQuery({
     queryKey: ["categorie-skips", id],
     queryFn: async () => {
-      const { data } = await supabase.from("categorie_skips").select("categorie, reden").eq("station_id", id!);
+      if (!id) return [];
+      const { data } = await supabase.from("categorie_skips").select("categorie, reden").eq("station_id", id);
       return data ?? [];
     },
     enabled: !!id,
@@ -180,21 +184,21 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
 
   const keurGoed = useCallback(async () => {
     if (!internetVereist() || !await zorgVoorBeheer()) return;
-    if (!selected) return;
-    const { error } = await supabase.from("fotos").update({ review_status: "approved", review_reden: null, reviewed_at: new Date().toISOString() }).eq("id", selected.id);
-    if (error) { toast.error("Goedkeuren mislukt — probeer opnieuw"); return; }
+    if (!selected || !id) return;
+    const { data, error } = await supabase.from("fotos").update({ review_status: "approved", review_reden: null, reviewed_at: new Date().toISOString() }).eq("id", selected.id).eq("station_id", id).select("id");
+    if (error || !data?.some(row => row.id === selected.id)) { toast.error(`Foto niet goedgekeurd. ${BEHEER_NODIG}`); return; }
     volgende();
     ververs();
-  }, [selected, volgende]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selected, volgende, id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const bevestigAfkeuren = async () => {
     if (!internetVereist() || !await zorgVoorBeheer()) return;
     if (!rejectFor || !id) return;
     const tekst = reden === "Anders" ? (toelichting.trim() || "Anders") : `${reden}${toelichting.trim() ? ` — ${toelichting.trim()}` : ""}`;
-    const { error: fErr } = await supabase.from("fotos").update({ review_status: "rejected", review_reden: tekst, reviewed_at: new Date().toISOString() }).eq("id", rejectFor);
-    if (fErr) { toast.error("Afkeuren mislukt — probeer opnieuw"); return; }
-    const { error: sErr } = await supabase.from("stations").update({ status: "in uitvoering", review_reden: tekst }).eq("id", id);
-    if (sErr) { ververs(); toast.error("Foto afgekeurd, maar de taak is niet heropend bij de monteur — probeer opnieuw"); return; }
+    const { data: fotoRows, error: fErr } = await supabase.from("fotos").update({ review_status: "rejected", review_reden: tekst, reviewed_at: new Date().toISOString() }).eq("id", rejectFor).eq("station_id", id).select("id");
+    if (fErr || !fotoRows?.some(row => row.id === rejectFor)) { toast.error(`Foto niet afgekeurd. ${BEHEER_NODIG}`); return; }
+    const { data: stationRows, error: sErr } = await supabase.from("stations").update({ status: "in uitvoering", review_reden: tekst }).eq("id", id).select("id");
+    if (sErr || !stationRows?.some(row => row.id === id)) { ververs(); toast.error(`Foto afgekeurd, maar de taak is niet heropend. ${BEHEER_NODIG}`); return; }
     const spOk = await sharepointStatusBijwerken(id);
     setRejectFor(null);
     setToelichting("");
@@ -207,8 +211,8 @@ export default function BeoordeelDossier({ stationId }: { stationId?: string } =
   const afronden = async () => {
     if (!internetVereist() || !await zorgVoorBeheer()) return;
     if (!id || tellingen.pending > 0) return;
-    const { error } = await supabase.from("stations").update({ status: "goedgekeurd", review_reden: null }).eq("id", id);
-    if (error) { toast.error("Goedkeuren van het dossier mislukt — probeer opnieuw"); return; }
+    const { data, error } = await supabase.from("stations").update({ status: "goedgekeurd", review_reden: null }).eq("id", id).select("id");
+    if (error || !data?.some(row => row.id === id)) { toast.error(`Dossier niet goedgekeurd. ${BEHEER_NODIG}`); return; }
     const spOk = await sharepointStatusBijwerken(id);
     ververs();
     toast.success("Dossier goedgekeurd en afgesloten");

@@ -17,7 +17,7 @@ import { useInstellingen } from "@/hooks/use-theme";
 import { useOnline } from "@/hooks/use-online";
 import { syncPendingPhotos } from "@/lib/sync-service";
 import { getQueueCount } from "@/lib/offline-queue";
-import { verstuurNotities } from "@/lib/notities";
+import { verstuurNotities, verstuurNotitiesNaBeheer } from "@/lib/notities";
 import { toast } from "sonner";
 import { useEffect } from "react";
 
@@ -26,6 +26,19 @@ const queryClient = new QueryClient();
 function AppContent() {
   useInstellingen();
   const isOnline = useOnline();
+
+  useEffect(() => {
+    const herstel = () => {
+      void verstuurNotitiesNaBeheer().then(n => {
+        if (n > 0) {
+          queryClient.invalidateQueries({ queryKey: ["opmerkingen"] });
+          queryClient.invalidateQueries({ queryKey: ["opmerking"] });
+        }
+      }).catch(() => toast.error("Notities blijven lokaal bewaard — probeer opnieuw"));
+    };
+    window.addEventListener("beheer-veranderd", herstel);
+    return () => window.removeEventListener("beheer-veranderd", herstel);
+  }, []);
 
   useEffect(() => {
     if (isOnline) {

@@ -1,5 +1,6 @@
 import { afterAll, describe, expect, it } from "vitest";
 import postgres from "postgres";
+import { readFileSync } from "node:fs";
 
 // Real PostgreSQL RLS/trigger tests, never a production connection. All data rolls back.
 const socket = process.env.PHASE1_TEST_SOCKET;
@@ -48,6 +49,32 @@ async function denied(tx: Tx, query: string) {
 const active = async (tx: Tx) => (await tx`SELECT public.heeft_beheer() AS ok`)[0].ok;
 
 describe.skipIf(!socket)("phase 1 real isolated PostgreSQL permissions", () => {
+  it("revokes every default table privilege while RPCs and service grants keep working", () => fixture(async tx => {
+    await tx.unsafe("GRANT ALL ON public.beheer_sessies TO anon,authenticated");
+    expect((await tx`SELECT has_table_privilege('anon','public.beheer_sessies','TRUNCATE') AS ok`)[0].ok).toBe(true);
+    await tx.unsafe(readFileSync("drizzle/migrations/0019_revoke_direct_pin_session_grants.sql", "utf8"));
+    for (const role of ["anon", "authenticated"]) {
+      for (const privilege of ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"]) {
+        expect((await tx`SELECT has_table_privilege(${role},'public.beheer_sessies',${privilege}) AS ok`)[0].ok).toBe(false);
+      }
+    }
+    await as(tx, "authenticated");
+    expect(await active(tx)).toBe(true);
+    expect((await tx`SELECT public.beheer_status() AS deadline`)[0].deadline).toBeTruthy();
+    await denied(tx, "TRUNCATE public.beheer_sessies");
+    await as(tx, "service_role");
+    expect((await tx`SELECT public.beheer_toestaan(${a},${user}) AS deadline`)[0].deadline).toBeTruthy();
+  }));
+  it("expired review returns zero photo/station rows, active session returns the intended rows", () => fixture(async tx => {
+    await tx`UPDATE public.stations SET status='opgeleverd',submitted_at=statement_timestamp() WHERE id=${station}`;
+    await tx`UPDATE public.beheer_sessies SET geldig_tot=statement_timestamp() WHERE session_id=${a}`;
+    await as(tx, "authenticated", a);
+    expect((await tx`UPDATE public.fotos SET review_status='approved' WHERE id=${photo} RETURNING id`).length).toBe(0);
+    expect((await tx`UPDATE public.stations SET status='goedgekeurd' WHERE id=${station} RETURNING id`).length).toBe(0);
+    await as(tx, "authenticated", b);
+    expect((await tx`UPDATE public.fotos SET review_status='approved' WHERE id=${photo} RETURNING id`)[0].id).toBe(photo);
+    expect((await tx`UPDATE public.stations SET status='goedgekeurd' WHERE id=${station} RETURNING id`)[0].id).toBe(station);
+  }));
   it("creates exactly eight server hours and never extends on token refresh or repeated grant", () => fixture(async tx => {
     const initial = (await tx`SELECT geldig_tot,extract(epoch from (geldig_tot-ontgrendeld_op)) AS seconds FROM public.beheer_sessies WHERE session_id=${a}`)[0];
     expect(Number(initial.seconds)).toBe(8 * 3600);

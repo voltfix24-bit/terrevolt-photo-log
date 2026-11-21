@@ -2,6 +2,9 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { R, T } from "@/components/apple/Primitives";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { zorgVoorBeheer } from "@/lib/require-pin";
+import { lokaleNotitie, lokaleNotitieStatus, verstuurNotitiesNaBeheer, type NotitieStatus } from "@/lib/notities";
 
 export const NOTITIE_CHIPS = ["Niet bereikbaar", "Niet aanwezig", "Defect", "Volgt later", "Zie foto"];
 export const SKIP_CHIPS = ["Niet aanwezig in dit station", "Niet bereikbaar", "Geen toegang", "Volgt bij TO-ronde"];
@@ -24,16 +27,20 @@ type Props = {
   soort: "notitie" | "skip";
   titel: string;
   begin: string;
+  stationId?: string;
+  categorie?: string;
   onClose: () => void;
   /** notitie: autosave tijdens typen; skip: alleen bij Opslaan */
-  onSave: (tekst: string) => Promise<"online" | "wachtrij" | void> | void;
+  onSave: (tekst: string) => Promise<NotitieStatus | void> | void;
 };
 
-export function NotitieSheet({ soort, titel, begin, onClose, onSave }: Props) {
+export function NotitieSheet({ soort, titel, begin, stationId, categorie, onClose, onSave }: Props) {
   const [tekst, setTekst] = useState(begin);
-  const [status, setStatus] = useState<"" | "bezig" | "online" | "wachtrij" | "fout">("");
+  const [status, setStatus] = useState<"" | "bezig" | NotitieStatus | "fout">("");
+  const [ontgrendelen, setOntgrendelen] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
   const laatst = useRef(begin);
+  const hadLokaleNotitie = useRef(false);
   const { bottom, hoogte } = useZichtbaar();
   const chips = soort === "skip" ? SKIP_CHIPS : NOTITIE_CHIPS;
   const verplicht = soort === "skip";
@@ -47,6 +54,33 @@ export function NotitieSheet({ soort, titel, begin, onClose, onSave }: Props) {
 
   useEffect(() => { const t = setTimeout(() => ref.current?.focus(), 60); return () => clearTimeout(t); }, []);
 
+  useEffect(() => {
+    if (soort !== "notitie" || !stationId || !categorie) return;
+    const check = () => {
+      try {
+        const lokaal = lokaleNotitie(stationId, categorie);
+        if (lokaal === tekst) hadLokaleNotitie.current = true;
+        if (lokaal === tekst || (lokaal === undefined && laatst.current === tekst && hadLokaleNotitie.current)) {
+          setStatus(lokaleNotitieStatus(stationId, categorie));
+          if (lokaal === undefined) hadLokaleNotitie.current = false;
+        }
+      } catch { setStatus("fout"); }
+    };
+    check();
+    window.addEventListener("notitie-wachtrij-veranderd", check);
+    return () => window.removeEventListener("notitie-wachtrij-veranderd", check);
+  }, [soort, stationId, categorie, tekst, begin]);
+
+  const herstelBeheer = async () => {
+    setOntgrendelen(true);
+    try {
+      if (!await zorgVoorBeheer("Notitie versturen")) return;
+      await verstuurNotitiesNaBeheer();
+      if (stationId && categorie) setStatus(lokaleNotitieStatus(stationId, categorie));
+    } catch { toast.error("Notitie blijft lokaal bewaard — probeer opnieuw"); }
+    finally { setOntgrendelen(false); }
+  };
+
   // Autosave (alleen notitie), debounce 700 ms
   useEffect(() => {
     if (soort !== "notitie" || tekst === laatst.current) return;
@@ -55,7 +89,7 @@ export function NotitieSheet({ soort, titel, begin, onClose, onSave }: Props) {
       try {
         const r = await onSave(tekst);
         laatst.current = tekst;
-        setStatus(r === "wachtrij" ? "wachtrij" : "online");
+        setStatus(typeof r === "string" ? r : "online");
       } catch (e) {
         setStatus("fout");
         toast.error(e instanceof Error ? e.message : "Notitie niet bewaard — probeer opnieuw");
@@ -72,8 +106,9 @@ export function NotitieSheet({ soort, titel, begin, onClose, onSave }: Props) {
   const opslaan = async () => {
     if (verplicht && !tekst.trim()) return;
     try {
-      await onSave(tekst);
+      const r = await onSave(tekst);
       laatst.current = tekst;
+      if (r === "beheer") { setStatus("beheer"); return; }
       onClose();
     } catch (e) {
       setStatus("fout");
@@ -83,7 +118,7 @@ export function NotitieSheet({ soort, titel, begin, onClose, onSave }: Props) {
   const annuleren = async () => {
     // Notitie: terugzetten naar de begintekst als er al tussentijds is opgeslagen
     try {
-      if (soort === "notitie" && (laatst.current !== begin || status === "bezig")) await onSave(begin);
+      if (soort === "notitie" && status !== "beheer" && (laatst.current !== begin || status === "bezig")) await onSave(begin);
       onClose();
     } catch (e) {
       setStatus("fout");
@@ -120,8 +155,12 @@ export function NotitieSheet({ soort, titel, begin, onClose, onSave }: Props) {
             style={{ width: "100%", resize: "none", border: "none", outline: "none", borderRadius: R.small, background: "#F2F5F1", padding: "12px 14px", fontSize: 17, lineHeight: 1.4, color: T.rowText, overflowY: "auto" }}
           />
           <div style={{ minHeight: 20, fontSize: 13, color: T.subOnBg, padding: "4px 2px 0" }} aria-live="polite">
-            {status === "bezig" ? <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><KnopLader />Opslaan</span> : status === "online" ? "Opgeslagen ✓" : status === "wachtrij" ? "Lokaal opgeslagen ✓ — wordt verstuurd zodra er verbinding is" : status === "fout" ? "Niet bewaard — houd dit venster open en probeer opnieuw" : ""}
+            {status === "bezig" ? <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><KnopLader />Opslaan</span> : status === "online" ? "Opgeslagen ✓" : status === "beheer" ? "Lokaal bewaard — beheer vergrendeld of verlopen." : status === "wachtrij" ? "Lokaal bewaard — nog niet verstuurd." : status === "fout" ? "Niet bewaard — houd dit venster open en probeer opnieuw" : ""}
           </div>
+          {status === "beheer" && <Button variant="ghost" disabled={ontgrendelen} onClick={() => void herstelBeheer()} className="mt-1 gap-2 text-primary">
+            {ontgrendelen ? <KnopLader /> : <span className="material-symbols-rounded" aria-hidden="true">lock_open</span>}
+            Beheer ontgrendelen
+          </Button>}
         </div>
       </div>
     </div>
