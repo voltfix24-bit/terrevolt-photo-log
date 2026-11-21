@@ -17,7 +17,7 @@ cleanup() {
   rm -rf "$root"
 }
 trap cleanup EXIT
-"${as_pg[@]}" initdb -D "$root/data" -U postgres --auth=trust --no-locale >/dev/null
+"${as_pg[@]}" initdb -D "$root/data" -U postgres --auth=trust --no-locale --encoding=UTF8 >/dev/null
 "${as_pg[@]}" pg_ctl -D "$root/data" -l "$root/server.log" -o "-k $root/socket -p 55439 -h ''" -w start >/dev/null
 psql -X -h "$root/socket" -p 55439 -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE phase1_tests' >/dev/null
 psql -X -h "$root/socket" -p 55439 -U postgres -d phase1_tests -v ON_ERROR_STOP=1 -f src/test/fixtures/security-phase1-baseline.sql >/dev/null

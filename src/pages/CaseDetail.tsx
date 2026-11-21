@@ -9,11 +9,13 @@ import { internetVereist } from "@/lib/internet";
 import { Pressable, T } from "@/components/apple/Primitives";
 import {
   DOSSIER, PARTIJEN, PARTIJ_STIJL, Partij, REDENEN, REDEN_LABEL, TO_ORDER, TO_STATUS, ToRonde, ToStatus,
-  actieWie, dagenSinds, dagenTekst, db, fmtDatum, useCases, vandaag, caseNaam, caseNr, caseSub, indieningen,
+  actieWie, dagenSinds, dagenTekst, db, fmtDatum, useCase, useWvSuggesties, vandaag, caseNaam, caseNr, caseSub, indieningen,
 } from "@/lib/to-rondes";
 import { VgVelden } from "@/components/cases/VgVelden";
 import { UitvoeringLabel } from "@/components/cases/UitvoeringLabel";
 import { OnHoldBalk, OnHoldKnop } from "@/components/cases/OnHold";
+import { DossierNotitie } from "@/components/cases/DossierNotitie";
+import { casePresentatie, indieningTekst } from "@/lib/case-presentatie";
 import { dagenZonderHold } from "@/lib/on-hold";
 
 const SUB = T.bodyOnBg;
@@ -32,10 +34,11 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
   const id = stationId ?? params.id;
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { data: cases } = useCases({ inclVerborgen: true });
+  const { data: c, isLoading, error } = useCase(id);
+  const { data: wvNamen = [] } = useWvSuggesties();
   const [draft, setDraft] = useState({ txt: "", bij: "TerreVolt" as Partij, derde: "", notitie: "" });
-  const c = cases?.find((x) => x.station.id === id);
-  if (!c) return <PaginaLader label="Case laden…" />;
+  if (isLoading) return <PaginaLader label="Case laden…" />;
+  if (!c) return <div role="alert" className="p-6">{error ? "Case laden mislukt" : "Case inmiddels verwijderd"}</div>;
 
   const { station, rondes, bal } = c;
   const cur: ToRonde | null = c.last;
@@ -55,9 +58,10 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
 
   const zetStatus = (k: ToStatus) => {
     const t = vandaag();
+    const ingediend = !cur || cur.status === "open" ? t : cur.ingediend_op;
     if (k === "open") return updRonde({ status: k, ingediend_op: null, reactie_op: null });
-    if (k === "controle") return updRonde({ status: k, ingediend_op: cur?.ingediend_op ?? t, ingediend_bij: cur?.ingediend_bij ?? "Van Gelder", reactie_op: null });
-    return updRonde({ status: k, ingediend_op: cur?.ingediend_op ?? t, ingediend_bij: cur?.ingediend_bij ?? "Van Gelder", reactie_op: cur?.reactie_op ?? t });
+    if (k === "controle") return updRonde({ status: k, ingediend_op: ingediend, ingediend_bij: cur?.ingediend_bij ?? "Van Gelder", reactie_op: null });
+    return updRonde({ status: k, ingediend_op: ingediend, ingediend_bij: cur?.ingediend_bij ?? "Van Gelder", reactie_op: cur?.reactie_op ?? t });
   };
   const toggleReden = (k: string) => {
     const r = cur?.redenen ?? [];
@@ -80,7 +84,7 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
   const ftr = first?.status === "goedgekeurd" ? "Ja" : first?.status === "afgekeurd" ? "Nee" : "—";
   const acties = cur?.to_acties ?? [];
   const openN = acties.filter((a) => !a.afgehandeld_op).length;
-  const balWie = bal.length ? [...new Set(bal.map((b) => b.wie))] : [];
+  const balWie = casePresentatie(c).partijen;
   const facts = [
     { k: "Aantal keer ingediend", v: String(indieningen(rondes)), fg: T.titleOnBg },
     { k: "First time right", v: ftr, fg: ftr === "Ja" ? T.green : ftr === "Nee" ? T.danger : SUB },
@@ -88,8 +92,8 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
     { k: "Doorlooptijd", v: first?.ingediend_op ? dagenTekst(dagenZonderHold(first.ingediend_op, apprIdx >= 0 ? rondes[apprIdx].reactie_op : null, station)) : "—", fg: T.titleOnBg },
     { k: "Afkeurredenen totaal", v: String(rondes.reduce((t, r) => t + r.redenen.length, 0)), fg: T.titleOnBg },
   ];
-  const dateLine = !cur?.ingediend_op ? "Nog niet ingediend"
-    : `Ingediend ${fmtDatum(cur.ingediend_op)} bij ${cur.ingediend_bij ?? "Van Gelder"}` +
+  const dateLine = indieningTekst(cur) ??
+    `Ingediend ${fmtDatum(cur.ingediend_op)} bij ${cur.ingediend_bij ?? "Van Gelder"}` +
       (cur.reactie_op ? ` · reactie ${fmtDatum(cur.reactie_op)} (${dagenTekst(dagenSinds(cur.ingediend_op, cur.reactie_op))})` : ` · ${dagenTekst(dagenZonderHold(cur.ingediend_op, null, station))} in behandeling`);
   const vg = station.uitvoerder === "van_gelder";
   const placeholder = { open: vg ? "Bijv. wacht op stukken van Van Gelder" : "Bijv. wacht op laatste foto's", controle: "Bijv. Van Gelder heeft doorgezet naar Liander", afgekeurd: "Toelichting van Van Gelder / Liander", goedgekeurd: "Bijv. goedgekeurd door Liander, kenmerk …" }[curStatus];
@@ -98,25 +102,25 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
 
   return (
     <div style={{ minHeight: "100vh", background: T.bg }}>
-      <div style={{ position: "sticky", top: 0, zIndex: 10, background: T.surface, borderBottom: `1px solid ${T.hairline}`, padding: "calc(12px + env(safe-area-inset-top)) 24px 12px", display: "flex", alignItems: "center", gap: 14 }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 10, background: T.surface, borderBottom: `1px solid ${T.hairline}`, padding: "calc(12px + env(safe-area-inset-top)) 24px 12px", display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
         <Pressable onClick={() => navigate("/cases")} style={{ display: "flex", alignItems: "center", gap: 6, color: T.green, fontSize: 15, fontWeight: 600, minHeight: 44 }}>
           <span className="material-symbols-rounded" style={{ fontSize: 22 }}>arrow_back</span>Wie moet wat doen
         </Pressable>
         <span style={{ color: T.softBorder }}>/</span>
         <span className="font-mono" style={{ fontSize: 15, color: SUB }}>{caseNr(station)}</span>
-        {!station.on_hold && <OnHoldKnop id={station.id} />}
+        {!station.on_hold && <OnHoldKnop key={station.id} id={station.id} />}
       </div>
 
       <main style={{ padding: "24px 24px 60px", maxWidth: 1400, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
-        {station.on_hold && <OnHoldBalk id={station.id} station={station} />}
+        {station.on_hold && <OnHoldBalk key={station.id} id={station.id} station={station} />}
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
           <div style={{ minWidth: 0 }}>
             <div className="font-mono" style={{ fontSize: 15, fontWeight: 600, color: T.bodyOnBg }}>Case {caseNr(station)}{station.is_nummer ? <span style={{ fontSize: 12, fontWeight: 500, color: SUB, marginLeft: 8 }}>{String(station.is_nummer)}</span> : null}</div>
-            <h1 className="font-display" style={{ margin: "4px 0 0", fontWeight: 800, fontSize: 30, lineHeight: 1.15, color: T.titleOnBg }}>{caseNaam(station)}</h1>
+            <h1 className="font-display" style={{ margin: "4px 0 0", fontWeight: 800, fontSize: 30, overflowWrap: "anywhere", lineHeight: 1.15, color: T.titleOnBg }}>{caseNaam(station)}</h1>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
               <UitvoeringLabel uitvoerder={vg ? "van_gelder" : "terrevolt"} />
             </div>
-            {vg ? <VgVelden id={station.id} uitvoerder="van_gelder" wv={(station.wv as string | null) ?? null} namen={[...new Set((cases ?? []).map((x) => (x.station.wv as string | null)?.trim()).filter((w): w is string => !!w))].sort((a, b) => a.localeCompare(b, "nl-NL"))} />
+            {vg ? <VgVelden id={station.id} uitvoerder="van_gelder" wv={(station.wv as string | null) ?? null} namen={wvNamen} />
               : <div style={{ fontSize: 14, color: SUB }}>{[caseSub(station), "opdrachtgever Van Gelder", "netbeheerder Liander"].filter(Boolean).join(" · ")}</div>}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
@@ -141,7 +145,7 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 380px), 1fr))", gap: 20, alignItems: "start" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0, gridColumn: "span 2" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0, gridColumn: "auto" }}>
             <div style={{ ...card, display: "flex", flexDirection: "column", gap: 16, boxShadow: `inset 0 0 0 2px ${st.dot}` }}>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                 <div className="font-display" style={{ fontWeight: 700, fontSize: 20 }}>Ronde {n} <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 500, fontSize: 14, color: SUB }}>· huidige ronde</span></div>
@@ -199,10 +203,10 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
                             {done && <span className="material-symbols-rounded" style={{ fontSize: 18 }}>check</span>}
                           </Pressable>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.35, color: done ? T.subOnBg : T.titleOnBg, textDecoration: done ? "line-through" : "none" }}>{a.omschrijving}</div>
+                            <div style={{ overflowWrap: "anywhere", fontSize: 15, fontWeight: 600, lineHeight: 1.35, color: done ? T.subOnBg : T.titleOnBg, textDecoration: done ? "line-through" : "none" }}>{a.omschrijving}</div>
                             {a.notitie && <div style={{ fontSize: 13, color: SUB, lineHeight: 1.4, marginTop: 4 }}>{a.notitie}</div>}
                           </div>
-                          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, flexShrink: 0 }}>
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, maxWidth: "45%", overflowWrap: "anywhere" }}>
                             <span style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 8px", borderRadius: 6, fontSize: 13, fontWeight: 600, background: ps.bg, color: ps.fg }}><span className="material-symbols-rounded" style={{ fontSize: 15 }}>{ps.icon}</span>{actieWie(a)}</span>
                             <span style={{ fontSize: 13, color: SUB }}>{done ? `Afgehandeld ${fmtDatum(a.afgehandeld_op)}` : `${dagenTekst(dagenSinds(cur.reactie_op ?? a.created_at))} open`}</span>
                           </div>
@@ -243,7 +247,7 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
                       <span className="font-display" style={{ fontWeight: 700, fontSize: 16 }}>Ronde {r.nummer}</span>
                       <span style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 9px", borderRadius: 7, fontSize: 13, fontWeight: 600, background: s.bg, color: s.fg }}><span style={{ width: 7, height: 7, borderRadius: 4, background: s.dot }} />{s.label}</span>
                     </div>
-                    <span style={{ fontSize: 13, color: SUB }}>Ingediend {fmtDatum(r.ingediend_op)} bij {r.ingediend_bij ?? "—"}{r.reactie_op ? ` · reactie ${fmtDatum(r.reactie_op)}` : ""}</span>
+                    <span style={{ fontSize: 13, color: SUB }}>{indieningTekst(r) ?? `Ingediend ${fmtDatum(r.ingediend_op)} bij ${r.ingediend_bij ?? "—"}`}{r.reactie_op ? ` · reactie ${fmtDatum(r.reactie_op)}` : ""}</span>
                   </div>
                   {r.redenen.length > 0 && <div style={{ fontSize: 14, fontWeight: 600, color: T.danger }}>{r.redenen.map((k) => REDEN_LABEL[k] ?? k).join(" · ")}</div>}
                   {r.notitie && <div style={{ fontSize: 14, color: SUB, lineHeight: 1.4 }}>{r.notitie}</div>}
@@ -280,7 +284,8 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
                   </Pressable>
                 );
               })}
-              <Notitie value={station.dossier_notitie} placeholder="Notitie, bijv. navraag gedaan bij Van Gelder op 12 nov" onSave={(v) => updStation({ dossier_notitie: v || null })} />
+              <DossierNotitie key={station.id} id={station.id} tekst={station.dossier_notitie as string | null} versie={Number(station.dossier_notitie_versie ?? 0)} refresh={refresh} />
+              {station.hold_periodes?.map((h: any) => <div key={h.id} className="text-sm break-words" style={{ color: SUB }}>On hold {h.begin_op ?? "begin onbekend"} — {h.einde_op ?? "lopend"} · {h.reden} · {h.partij}</div>)}
             </div>
             <div style={{ ...card, display: "flex", flexDirection: "column", gap: 12 }}>
               <div className="font-display" style={{ fontWeight: 700, fontSize: 17 }}>

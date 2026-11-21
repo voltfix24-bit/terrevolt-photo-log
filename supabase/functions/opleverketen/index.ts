@@ -51,6 +51,9 @@ async function verwerk(sb: any, runId: string): Promise<boolean> {
   for (let i=0; i<8; i++) {
     const { data: run } = await sb.from("opleverruns").select("*").eq("id",runId).single();
     if (!run) return false;
+    const { data: orphan, error: orphanError } = await sb.rpc("opleverrun_verweesd", { _id: runId });
+    if (orphanError) throw orphanError;
+    if (orphan === true) return true;
     let claim: Claim;
     try { claim = await Claim.neem(sb, run.station_id, runId); }
     catch (e) { if (e instanceof Bezet) return false; throw e; }

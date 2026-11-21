@@ -9,7 +9,7 @@ import { internetVereist } from "@/lib/internet";
 import { importCase, alleCaseNummers, casePayload } from "@/lib/case-service";
 import { zorgVoorBeheer } from "@/lib/require-pin";
 import { Button } from "@/components/ui/button";
-import { importBatch, afgerond, previewPagina, type RijUitkomst } from "@/lib/import-batch";
+import { importBatch, resterendeImport, previewPagina, type RijUitkomst } from "@/lib/import-batch";
 import { TO_STATUS } from "@/lib/to-rondes";
 import {
   VELDEN, VELD_LABEL, bouwPreview, celTekst, importeerbaar, isDubbelHerkend, ontbrekendeVerplicht, parseTsv, startMapping, zetMapping,
@@ -46,7 +46,9 @@ export function ExcelImportDialog({ open, onOpenChange, bestaand }: { open: bool
   const koppen = grid[0] ?? [];
   const mist = ontbrekendeVerplicht(mapping);
   const preview = useMemo(() => (grid.length > 1 && !mist.length ? bouwPreview(grid, mapping, nummers ?? bestaand, { excelSerial: serial }) : []), [grid, mapping, bestaand, nummers, serial, mist.length]);
-  const teDoen = importeerbaar(preview).filter((r) => !afgerond(res[r.regel]));
+  const payloadVan = (r: ImportPreviewRij) => ({ casenummer: r.casenummer, casenaam: r.casenaam, wv: r.wv, notitie: r.notitie, uitvoerder: "van_gelder" as const, ronde: r.ronde, toStatus: r.status, ingediendOp: r.ingediend_op, onHold: r.on_hold, onHoldReden: r.on_hold_reden });
+  const requestKey = (r: ImportPreviewRij) => JSON.stringify([mapping,r.regel,casePayload(payloadVan(r))]);
+  const teDoen = resterendeImport(preview,res,r => requests.current.has(requestKey(r)));
   const tel = { nieuw: importeerbaar(preview).length, bestaat: preview.filter((r) => r.klasse === "bestaat").length, fout: preview.filter((r) => r.klasse === "fout").length };
   const waarschuwingen = preview.filter((r) => r.klasse === "waarschuwing");
   const dubbelKolom = koppen.some((_, i) => isDubbelHerkend(koppen, mapping, i));
@@ -57,8 +59,8 @@ export function ExcelImportDialog({ open, onOpenChange, bestaand }: { open: bool
     try {
       if (!await zorgVoorBeheer()) { setFout("Import gepauzeerd — ontgrendel om verder te gaan."); return; }
       const result = await importBatch(teDoen,res,async r => {
-        const payload = { casenummer: r.casenummer, casenaam: r.casenaam, wv: r.wv, notitie: r.notitie, uitvoerder: "van_gelder" as const, ronde: r.ronde, toStatus: r.status, ingediendOp: r.ingediend_op, onHold: r.on_hold, onHoldReden: r.on_hold_reden };
-        const key = JSON.stringify([mapping,r.regel,casePayload(payload)]);
+        const payload = payloadVan(r);
+        const key = requestKey(r);
         let id = requests.current.get(key);
         if (!id) { id = crypto.randomUUID(); requests.current.set(key,id); }
         return importCase(payload,id);
@@ -89,15 +91,15 @@ export function ExcelImportDialog({ open, onOpenChange, bestaand }: { open: bool
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!bezig) { onOpenChange(o); if (!o) reset(); } }}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+      <DialogContent className="max-h-[90vh] max-w-[calc(100vw-24px)] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Van Gelder-cases importeren</DialogTitle>
           <DialogDescription>Kopieer de rijen in Excel, inclusief de kopregel, en plak ze hieronder.</DialogDescription>
         </DialogHeader>
         <textarea aria-label="Geplakte Excel-rijen" value={tekst} onChange={(e) => plak(e.target.value)} rows={7} spellCheck={false} disabled={bezig}
           placeholder={"Casenummer\tCasenaam\tTO-status\tRonde\tWV"}
-          className="w-full font-mono" style={{ fontSize: 13, padding: 12, borderRadius: 12, border: `1px solid ${T.hairline}`, background: T.soft, whiteSpace: "pre", overflowX: "auto" }} />
-        <label style={{ fontSize: 13, color: T.subOnBg }}>Of kies een .xlsx-bestand: <input type="file" accept=".xlsx" disabled={bezig} onChange={(e) => void kiesBestand(e.target.files?.[0])} /></label>
+          className="w-full min-w-0 font-mono" style={{ fontSize: 16, padding: 12, borderRadius: 12, border: `1px solid ${T.hairline}`, background: T.soft, whiteSpace: "pre", overflowX: "auto" }} />
+        <label className="min-w-0" style={{ fontSize: 13, color: T.subOnBg }}>Of kies een .xlsx-bestand: <input className="w-full min-w-0" type="file" accept=".xlsx" disabled={bezig} onChange={(e) => void kiesBestand(e.target.files?.[0])} /></label>
 
         {koppen.length > 0 && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }} aria-label="Kolommen">
@@ -127,7 +129,7 @@ export function ExcelImportDialog({ open, onOpenChange, bestaand }: { open: bool
         {grid.length > 0 && mist.length > 0 && <div role="alert" style={{ fontSize: 13, color: T.danger }}>Geen kopregel herkend voor {mist.map((m) => VELD_LABEL[m]).join(" en ")}. Plak de rijen inclusief kopregel, of koppel de kolom hierboven.</div>}
 
         {preview.length > 0 && (
-          <div style={{ overflowX: "auto" }}>
+          <div style={{ overflowX: "auto", minWidth: 0, maxWidth: "100%" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead><tr><th style={th}>Controle</th><th style={th}>Casenr.</th><th style={th}>Casenaam</th><th style={th}>TO-status</th><th style={th}>Ronde</th><th style={th}>WV</th></tr></thead>
               <tbody>
@@ -156,7 +158,7 @@ export function ExcelImportDialog({ open, onOpenChange, bestaand }: { open: bool
         )}
         {nummersLaden && open && <div className="flex items-center gap-2"><KnopLader />Casenummers controleren…</div>}
         {nummersFout && <div role="alert">Bestaande casenummers konden niet worden gecontroleerd. <Button variant="ghost" onClick={() => qc.invalidateQueries({ queryKey: ["alle-case-nummers"] })}>Opnieuw proberen</Button></div>}
-        {fout && <div role="alert" style={{ color: T.danger, fontSize: 14 }}>{fout}</div>}
+        {fout && <div role="alert" style={{ overflowWrap: "anywhere", color: T.danger, fontSize: 14 }}>{fout}</div>}
 
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", borderTop: `1px solid ${T.hairline}`, paddingTop: 12 }}>
           <span style={{ flex: "1 1 220px", fontSize: 14, fontWeight: 600 }}>{Object.values(res).filter(x => x.status === "aangemaakt" || x.status === "replay").length} opgeslagen · {teDoen.length} resterend · {tel.bestaat + Object.values(res).filter(x => x.status === "bestaat").length} bestaat al · {tel.fout + Object.values(res).filter(x => x.status === "mislukt").length} fout</span>

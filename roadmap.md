@@ -1,4 +1,8 @@
 # Werkpunten
+- [x] Fase 3: aanvraagversies SharePoint, verweesde runs, verwijderde importreplays en minimale grants.
+- [x] Fase 3: gedeelde casepresentatie, volledige scores, transactionele holdhistorie en notitie-CAS.
+- [x] Fase 3: compacte gepagineerde overzichten, gerichte detail/URL/WV-reads en blobvrije wachtrijtelling.
+- [x] Fase 3: 192 regressies incl. 27 lokale DB-tests, 5 PDF/SharePoint-adaptertests, geïsoleerde mobiele browsercontrole, migraties 0023–0024 en vijf deployments; zie PHASE3-RESULTATEN.md.
 - [x] Fase 2: atomaire stationclaims, vast rapportdossier, onveranderlijke PDF-versies en eerlijke wachtrij/retry.
 - [x] Fase 2: claimbeveiligde SharePoint-ingangen en duurzame hervatting van bezet werk.
 - [x] Fase 2: server-idempotente import, volledige preview, hervatbare batches en gedeelde validatie.

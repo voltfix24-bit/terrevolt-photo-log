@@ -125,6 +125,13 @@ export type Database = {
             foreignKeyName: "categorie_opmerkingen_station_id_fkey"
             columns: ["station_id"]
             isOneToOne: false
+            referencedRelation: "case_overzicht"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "categorie_opmerkingen_station_id_fkey"
+            columns: ["station_id"]
+            isOneToOne: false
             referencedRelation: "stations"
             referencedColumns: ["id"]
           },
@@ -156,6 +163,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "categorie_skips_station_id_fkey"
+            columns: ["station_id"]
+            isOneToOne: false
+            referencedRelation: "case_overzicht"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "categorie_skips_station_id_fkey"
             columns: ["station_id"]
@@ -238,6 +252,58 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "fotos_station_id_fkey"
+            columns: ["station_id"]
+            isOneToOne: false
+            referencedRelation: "case_overzicht"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fotos_station_id_fkey"
+            columns: ["station_id"]
+            isOneToOne: false
+            referencedRelation: "stations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hold_periodes: {
+        Row: {
+          begin_op: string | null
+          einde_op: string | null
+          id: string
+          partij: Database["public"]["Enums"]["on_hold_partij"]
+          reden: string
+          station_id: string
+          verwacht_op: string | null
+        }
+        Insert: {
+          begin_op?: string | null
+          einde_op?: string | null
+          id?: string
+          partij: Database["public"]["Enums"]["on_hold_partij"]
+          reden: string
+          station_id: string
+          verwacht_op?: string | null
+        }
+        Update: {
+          begin_op?: string | null
+          einde_op?: string | null
+          id?: string
+          partij?: Database["public"]["Enums"]["on_hold_partij"]
+          reden?: string
+          station_id?: string
+          verwacht_op?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hold_periodes_station_id_fkey"
+            columns: ["station_id"]
+            isOneToOne: false
+            referencedRelation: "case_overzicht"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hold_periodes_station_id_fkey"
             columns: ["station_id"]
             isOneToOne: false
             referencedRelation: "stations"
@@ -571,6 +637,7 @@ export type Database = {
       }
       sharepoint_wachtrij: {
         Row: {
+          aanvraag_id: string
           alleen_status: boolean
           fout: string | null
           poging: number
@@ -578,6 +645,7 @@ export type Database = {
           volgende_poging_op: string
         }
         Insert: {
+          aanvraag_id?: string
           alleen_status?: boolean
           fout?: string | null
           poging?: number
@@ -585,6 +653,7 @@ export type Database = {
           volgende_poging_op?: string
         }
         Update: {
+          aanvraag_id?: string
           alleen_status?: boolean
           fout?: string | null
           poging?: number
@@ -624,6 +693,7 @@ export type Database = {
           da_kast: boolean | null
           datum: string | null
           dossier_notitie: string | null
+          dossier_notitie_versie: number
           dossier_status: string
           id: string
           ingevuld_door: string | null
@@ -655,6 +725,7 @@ export type Database = {
           da_kast?: boolean | null
           datum?: string | null
           dossier_notitie?: string | null
+          dossier_notitie_versie?: number
           dossier_status?: string
           id?: string
           ingevuld_door?: string | null
@@ -686,6 +757,7 @@ export type Database = {
           da_kast?: boolean | null
           datum?: string | null
           dossier_notitie?: string | null
+          dossier_notitie_versie?: number
           dossier_status?: string
           id?: string
           ingevuld_door?: string | null
@@ -756,6 +828,13 @@ export type Database = {
             foreignKeyName: "to_acties_station_id_fkey"
             columns: ["station_id"]
             isOneToOne: false
+            referencedRelation: "case_overzicht"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "to_acties_station_id_fkey"
+            columns: ["station_id"]
+            isOneToOne: false
             referencedRelation: "stations"
             referencedColumns: ["id"]
           },
@@ -803,6 +882,13 @@ export type Database = {
             foreignKeyName: "to_rondes_station_id_fkey"
             columns: ["station_id"]
             isOneToOne: false
+            referencedRelation: "case_overzicht"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "to_rondes_station_id_fkey"
+            columns: ["station_id"]
+            isOneToOne: false
             referencedRelation: "stations"
             referencedColumns: ["id"]
           },
@@ -828,7 +914,24 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      case_overzicht: {
+        Row: {
+          id: string | null
+          rondes: Json | null
+          station: Json | null
+        }
+        Insert: {
+          id?: string | null
+          rondes?: never
+          station?: never
+        }
+        Update: {
+          id?: string | null
+          rondes?: never
+          station?: never
+        }
+        Relationships: []
+      }
     }
     Functions: {
       beheer_deadline_geldig: {
@@ -844,6 +947,30 @@ export type Database = {
       case_aanmaken: {
         Args: { _payload: Json; _request_id: string }
         Returns: Json
+      }
+      case_hold_hervat: {
+        Args: { _periode_id: string; _station_id: string }
+        Returns: boolean
+      }
+      case_hold_start: {
+        Args: {
+          _partij: Database["public"]["Enums"]["on_hold_partij"]
+          _periode_id: string
+          _reden: string
+          _station_id: string
+          _verwacht?: string
+        }
+        Returns: string
+      }
+      case_notitie_opslaan: {
+        Args: { _station_id: string; _tekst: string; _versie: number }
+        Returns: Json
+      }
+      case_wv_suggesties: {
+        Args: never
+        Returns: {
+          wv: string
+        }[]
       }
       categorienotitie_opslaan: {
         Args: { _categorie: string; _station_id: string; _tekst: string }
@@ -889,6 +1016,7 @@ export type Database = {
         Returns: string
       }
       opleverrun_retry: { Args: { _id: string }; Returns: boolean }
+      opleverrun_verweesd: { Args: { _id: string }; Returns: boolean }
       sharepoint_uitstellen: {
         Args: { _alleen_status?: boolean; _fout?: string; _station_id: string }
         Returns: undefined
@@ -941,6 +1069,22 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      url_candidates: {
+        Args: { _key?: string; _og?: string }
+        Returns: {
+          behuizingsnummer: string
+          casenaam: string
+          casenummer: string
+          created_at: string
+          datum: string
+          id: string
+          naam_msr: string
+          opdrachtgever: string
+          submitted_at: string
+          uitvoerder: Database["public"]["Enums"]["case_uitvoerder"]
+        }[]
+      }
+      url_slug: { Args: { _tekst: string }; Returns: string }
       vereiste_fotocategorieen: {
         Args: { _station: Database["public"]["Tables"]["stations"]["Row"] }
         Returns: {
@@ -970,9 +1114,24 @@ export type Database = {
         }
         Returns: Json
       }
-      verwerking_wachtrij_klaar: {
+      verwerking_wachtrij_klaar:
+        | {
+            Args: { _eigenaar: string; _generatie: number; _station_id: string }
+            Returns: boolean
+          }
+        | {
+            Args: {
+              _aanvraag_id: string
+              _alleen_status: boolean
+              _eigenaar: string
+              _generatie: number
+              _station_id: string
+            }
+            Returns: boolean
+          }
+      verwerking_wachtrij_snapshot: {
         Args: { _eigenaar: string; _generatie: number; _station_id: string }
-        Returns: boolean
+        Returns: Json
       }
     }
     Enums: {

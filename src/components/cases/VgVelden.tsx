@@ -8,7 +8,7 @@ import { wijzigCase } from "@/lib/case-service";
 import type { Uitvoerder } from "@/lib/to-rondes";
 
 const ANDERS = "__anders__";
-const sel = { minHeight: 40, borderRadius: 10, border: `1px solid ${T.hairline}`, background: T.surface, padding: "0 10px", fontSize: 15, fontWeight: 600, color: T.titleOnBg } as const;
+const sel = { minHeight: 40, maxWidth: "100%", minWidth: 0, borderRadius: 10, border: `1px solid ${T.hairline}`, background: T.surface, padding: "0 10px", fontSize: 16, fontWeight: 600, color: T.titleOnBg } as const;
 export const OVERSTAP_TEKST = "Deze case wordt een TerreVolt-station en verschijnt dan op de startpagina als station zonder foto's, waar het fotowerk alsnog moet gebeuren. Er gaat niets verloren. Doorgaan?";
 
 /** Inline Uitvoerder + WV (werkverantwoordelijke) op een Van Gelder-casepagina; slaat direct op. */
@@ -42,9 +42,9 @@ export function VgVelden({ id, uitvoerder, wv, namen, bevestig = (t: string) => 
             <option value="van_gelder">Van Gelder</option>
           </select>
         </label>
-        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12, fontWeight: 600, color: T.subOnBg }}>WV
+        <label style={{ display: "flex", flexDirection: "column", maxWidth: "100%", minWidth: 0, gap: 4, fontSize: 12, fontWeight: 600, color: T.subOnBg }}>WV
           {anders ? (
-            <span style={{ display: "flex", gap: 6 }}>
+            <span style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               <input aria-label="Naam werkverantwoordelijke" autoFocus value={nieuweNaam} onChange={(e) => setNieuweNaam(e.target.value)} placeholder="Naam werkverantwoordelijke" style={{ ...sel, fontWeight: 500 }} />
               <button disabled={bezig || !nieuweNaam.trim()} onClick={async () => { if (await opslaan({ wv: nieuweNaam })) { setAnders(false); setNieuweNaam(""); } }} style={{ ...sel, background: T.green, color: T.surface, border: 0 }}>Opslaan</button>
               <button onClick={() => setAnders(false)} style={{ ...sel, border: 0, background: "transparent", color: T.green }}>Annuleer</button>

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { leesAllePaginas } from "./paged-read";
 
 // Losse typing: CaseDetail geeft de query-builders door als Promise; strikte types vragen een grotere ombouw
 export const db = supabase as any; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -101,12 +102,15 @@ export function useCases(opts?: { inclVerborgen?: boolean }) {
   return useQuery({
     queryKey: ["cases", inclVerborgen],
     queryFn: async (): Promise<CaseItem[]> => {
-      const { data, error } = await db
-        .from("stations")
-        .select("id, naam_msr, casenummer, casenaam, behuizingsnummer, status, dossier_status, dossier_notitie, case_verborgen, created_at, uitvoerder, wv, is_nummer, tg, on_hold, on_hold_reden, on_hold_sinds, on_hold_tot, on_hold_partij, to_rondes(*, to_acties(*))")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
+      const data = await leesAllePaginas<any>(async (after, size) => {
+        let query = db.from("case_overzicht").select("id, station, rondes").order("id").limit(size);
+        if (after) query = query.gt("id", after);
+        const { data, error } = await query;
+        if (error) throw error;
+        return data ?? [];
+      });
       return (data ?? [])
+        .map((row: any) => ({ ...row.station, to_rondes: row.rondes }))
         .filter((s: any) => inclVerborgen || !s.case_verborgen)
         .sort((a: any, b: any) => {
           const ca = a.casenummer ?? "", cb = b.casenummer ?? "";
@@ -132,7 +136,9 @@ export function scoreVan(cases: CaseItem[]) {
   const cnt: Record<string, number> = {};
   cases.forEach((c) => c.rondes.forEach((r) => r.redenen.forEach((k) => { cnt[k] = (cnt[k] ?? 0) + 1; })));
   const controle = cases.filter((c) => c.last?.status === "controle");
+  const ing = cases.map(c => indieningen(c.rondes)).filter(n => n > 0);
   return {
+    gemIndieningen: ing.length ? ing.reduce((a,b) => a+b,0)/ing.length : null,
     ftrPct: judged.length ? Math.round((ftrN / judged.length) * 100) : null,
     ftrN, judgedN: judged.length,
     gemRondes: appr.length ? appr.reduce((t, k) => t + k + 1, 0) / appr.length : null,
@@ -157,4 +163,28 @@ export function scorePerUitvoerder(cases: CaseItem[]): UitvoerderScore[] {
     const ing = sub.map((c) => indieningen(c.rondes)).filter((n) => n > 0);
     return { uitvoerder: u, casesN: sub.length, judgedN: s.judgedN, ftrN: s.ftrN, ftrPct: s.ftrPct, goedgekeurdN: s.goedgekeurdN, gemRondes: s.gemRondes, gemIndieningen: ing.length ? ing.reduce((a, b) => a + b, 0) / ing.length : null };
   });
+}
+
+export function useCase(id?: string) {
+  return useQuery({
+    queryKey: ["case-detail", id], enabled: !!id,
+    queryFn: async (): Promise<CaseItem | null> => {
+      const { data: station, error } = await db.from("stations").select("*, to_rondes(*, to_acties(*)), hold_periodes(*)").eq("id", id).maybeSingle();
+      if (error) throw error;
+      if (!station) return null;
+      const rondes: ToRonde[] = [...(station.to_rondes ?? [])].sort((a,b) => a.nummer-b.nummer).map(r => ({ ...r, redenen: r.redenen ?? [], to_acties: r.to_acties ?? [] }));
+      return { station, rondes, last: rondes[rondes.length-1] ?? null, bal: balVan(station,rondes) };
+    },
+  });
+}
+export function useWvSuggesties() {
+  return useQuery({ queryKey: ["case-wv"], queryFn: async (): Promise<string[]> => {
+    const rows: string[] = [];
+    for (let offset=0;;offset+=250) {
+      const { data, error } = await db.rpc("case_wv_suggesties").range(offset,offset+249);
+      if (error) throw error;
+      rows.push(...(data ?? []).map((r: { wv: string }) => r.wv));
+      if ((data?.length ?? 0)<250) return rows;
+    }
+  } });
 }

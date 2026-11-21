@@ -14,6 +14,7 @@ const veld = { border: 0, borderRadius: 10, background: T.soft, padding: "12px 1
 
 export function OnHoldKnop({ id }: { id: string }) {
   const qc = useQueryClient();
+  const [requestId, setRequestId] = useState(() => crypto.randomUUID());
   const [open, setOpen] = useState(false);
   const [reden, setReden] = useState("");
   const [partij, setPartij] = useState<OnHoldPartij | null>(null);
@@ -23,11 +24,11 @@ export function OnHoldKnop({ id }: { id: string }) {
   const opslaan = async () => {
     if (!kan || !partij || !internetVereist() || !await zorgVoorBeheer()) return;
     setBezig(true);
-    const fout = await zetOnHold(id, { reden, partij, tot: tot || null });
+    const fout = await zetOnHold(id, { reden, partij, tot: tot || null, requestId });
     setBezig(false);
     if (fout) return toast.error(fout);
     await qc.invalidateQueries({ queryKey: ["cases"] });
-    setOpen(false); setReden(""); setPartij(null); setTot("");
+    setRequestId(crypto.randomUUID()); setOpen(false); setReden(""); setPartij(null); setTot("");
   };
   return (
     <>
@@ -77,7 +78,7 @@ export function OnHoldBalk({ id, station }: { id: string; station: HoldVelden & 
   return (
     <div role="status" style={{ background: HOLD_KLEUR.bg, color: HOLD_KLEUR.fg, borderRadius: 14, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
       <PauseCircle size={20} style={{ flexShrink: 0 }} />
-      <span style={{ flex: 1, minWidth: 200, fontSize: 15, fontWeight: 600 }}>{delen.filter(Boolean).join(" · ")}</span>
+      <span style={{ flex: 1, minWidth: 0, overflowWrap: "anywhere", fontSize: 15, fontWeight: 600 }}>{delen.filter(Boolean).join(" · ")}</span>
       <Pressable onClick={go} disabled={bezig} scale={0.97} style={{ minHeight: 38, padding: "0 14px", borderRadius: 19, fontSize: 14, fontWeight: 700, background: HOLD_KLEUR.fg, color: "#fff", display: "flex", alignItems: "center", gap: 6 }}>
         {bezig && <KnopLader />}Hervatten
       </Pressable>

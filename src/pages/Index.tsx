@@ -12,11 +12,9 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getApplicableCategories, type Category } from "@/lib/categories";
-import { getPendingPhotos } from "@/lib/offline-queue";
+import { getQueueCounts, QUEUE_EVENT } from "@/lib/offline-queue";
 import { useOnline } from "@/hooks/use-online";
 import { useInstellingen } from "@/hooks/use-theme";
-import { generatePdfHtml } from "@/lib/pdf-generator";
-import { downloadStationZip } from "@/lib/zip-download";
 import { requirePin } from "@/lib/require-pin";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { M, Pressable, R, T, glass } from "@/components/apple/Primitives";
@@ -192,14 +190,14 @@ export default function Dashboard() {
   useEffect(() => {
     let mounted = true;
     const updatePending = async () => {
-      const pending = await getPendingPhotos();
+      const counts = await getQueueCounts();
       if (!mounted) return;
-      setPendingCounts(pending.reduce<PendingCounts>((c, p) => { c[p.stationId] = (c[p.stationId] ?? 0) + 1; return c; }, {}));
+      setPendingCounts(old => JSON.stringify(old) === JSON.stringify(counts) ? old : counts);
     };
     updatePending();
-    const interval = window.setInterval(updatePending, 3000);
+    window.addEventListener(QUEUE_EVENT, updatePending);
     window.addEventListener("focus", updatePending);
-    return () => { mounted = false; window.clearInterval(interval); window.removeEventListener("focus", updatePending); };
+    return () => { mounted = false; window.removeEventListener(QUEUE_EVENT, updatePending); window.removeEventListener("focus", updatePending); };
   }, [isOnline]);
 
   useEffect(() => { if (searchOpen) searchInputRef.current?.focus(); }, [searchOpen]);
@@ -248,6 +246,7 @@ export default function Dashboard() {
 
   const openPdf = async (station: any) => {
     if (!internetVereist()) return;
+    const { generatePdfHtml } = await import("@/lib/pdf-generator");
     const { data: opmerkingen } = await supabase.from("categorie_opmerkingen").select("categorie, opmerking").eq("station_id", station.id);
     const html = generatePdfHtml(station, await fotosVan(station.id), instellingenData ?? undefined, opmerkingen ?? undefined);
     const w = window.open("", "_blank");
@@ -256,6 +255,7 @@ export default function Dashboard() {
 
   const downloadZip = async (station: any) => {
     try {
+      const { downloadStationZip } = await import("@/lib/zip-download");
       const r = await downloadStationZip(station.naam_msr, await fotosVan(station.id));
       if (r.mislukt > 0) toast.warning(`Zip gedownload, maar ${r.mislukt} van ${r.totaal} foto's ontbreken`, { duration: 8000 });
       else toast.success("Zip gedownload");

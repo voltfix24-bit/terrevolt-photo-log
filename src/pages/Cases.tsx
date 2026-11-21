@@ -1,10 +1,11 @@
 // Kantoor: "Wie moet wat doen" (9b) + "TO-score" (9c)
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { FileUp, Plus } from "lucide-react";
 import { CaseToevoegenDialog } from "@/components/cases/CaseToevoegenDialog";
 import { Bord } from "@/components/cases/Bord";
 import { OnHoldLabel } from "@/components/cases/OnHoldLabel";
-import { ExcelImportDialog } from "@/components/cases/ExcelImportDialog";
+const ExcelImportDialog = lazy(() => import("@/components/cases/ExcelImportDialog").then(m => ({ default: m.ExcelImportDialog })));
+import { casePresentatie } from "@/lib/case-presentatie";
 import { FILTER_OPTIES, bewaarFilter, filterCases, leesFilter, tellingen, uitvoerderVan, type UitvoerderFilter } from "@/lib/cases-filter";
 import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { casesUrl, type UrlStation } from "@/lib/urls";
@@ -51,10 +52,10 @@ function Score({ cases, open, perUitvoerder }: { cases: CaseItem[]; open: (s: Ur
     { label: "Ter controle", v: String(s.controleN), sub: `${s.controleVG} bij Van Gelder · ${s.controleLiander} bij Liander`, fg: T.upload },
     { label: "Afgekeurd, nog niet herindiend", v: String(s.afgekeurdN), sub: "Zie TerreVolt en Derden", fg: T.danger },
   ];
-  const cols = "100px minmax(0,1fr) 120px 130px 150px";
+  const cols = "110px minmax(200px,1fr) 120px 130px 150px";
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {perUitvoerder && <PerUitvoerder cases={cases} />}
+      <PerUitvoerder cases={cases} />
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
         {kpis.map((k) => (
           <div key={k.label} style={{ ...card, padding: "18px 20px" }}>
@@ -64,7 +65,7 @@ function Score({ cases, open, perUitvoerder }: { cases: CaseItem[]; open: (s: Ur
           </div>
         ))}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16, alignItems: "start" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: 16, alignItems: "start" }}>
         <div style={{ ...card, padding: "18px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
           <div className="font-display" style={{ fontWeight: 700, fontSize: 17 }}>Afkeurredenen</div>
           {s.redenen.length === 0 && <div style={{ fontSize: 14, color: SUB }}>Nog geen afkeuringen</div>}
@@ -75,12 +76,12 @@ function Score({ cases, open, perUitvoerder }: { cases: CaseItem[]; open: (s: Ur
             </div>
           ))}
         </div>
-        <div style={{ ...card, overflow: "auto", gridColumn: "span 2" }}>
-          <div style={{ display: "grid", gridTemplateColumns: cols, gap: 12, padding: "12px 18px", fontSize: 12, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", color: SUB, borderBottom: `1px solid ${T.hairline}`, minWidth: 620 }}>
+        <div style={{ ...card, overflow: "auto", gridColumn: "auto", minWidth: 0, maxWidth: "100%" }}>
+          <div style={{ display: "grid", gridTemplateColumns: cols, gap: 12, padding: "12px 18px", fontSize: 12, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", color: SUB, borderBottom: `1px solid ${T.hairline}`, minWidth: 800 }}>
             <span>Case</span><span>Casenaam</span><span>Rondes</span><span>Nu</span><span>Bal bij</span>
           </div>
           {cases.map((c) => (
-            <Pressable key={c.station.id} onClick={() => open(c.station)} scale={0.99} style={{ display: "grid", gridTemplateColumns: cols, gap: 12, padding: "11px 18px", alignItems: "center", fontSize: 14, borderBottom: "1px solid #F0F3EF", width: "100%", textAlign: "left", minWidth: 620 }}>
+            <Pressable key={c.station.id} onClick={() => open(c.station)} scale={0.99} style={{ display: "grid", gridTemplateColumns: cols, gap: 12, padding: "11px 18px", alignItems: "center", fontSize: 14, borderBottom: "1px solid #F0F3EF", width: "100%", textAlign: "left", minWidth: 800 }}>
               <span className="font-mono" style={{ fontWeight: 600 }}>{caseNr(c.station)}</span>
               <span style={{ minWidth: 0 }}>
                 <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
@@ -93,7 +94,7 @@ function Score({ cases, open, perUitvoerder }: { cases: CaseItem[]; open: (s: Ur
                 {(c.rondes.length ? c.rondes : [{ status: "open" as const }]).map((r, k) => <span key={k} style={{ width: 14, height: 14, borderRadius: 4, background: TO_STATUS[r.status as keyof typeof TO_STATUS].dot }} />)}
               </span>
               <span><StatusPil status={c.last?.status ?? "open"} /></span>
-              <span style={{ fontWeight: 600, color: SUB, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{[...new Set(c.bal.map((b) => b.label))].join(", ") || "—"}</span>
+              <span style={{ fontWeight: 600, color: SUB, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{casePresentatie(c).partijen.join(", ") || "—"}</span>
             </Pressable>
           ))}
         </div>
@@ -141,7 +142,7 @@ export default function Cases() {
         </Pressable>
       </div>
       <CaseToevoegenDialog open={nieuwOpen} onOpenChange={setNieuwOpen} />
-      <ExcelImportDialog open={importOpen} onOpenChange={setImportOpen} bestaand={(alleCases ?? []).map((c) => c.station.casenummer ?? "").filter(Boolean)} />
+      {importOpen && <Suspense fallback={<PaginaLader />}><ExcelImportDialog open={importOpen} onOpenChange={setImportOpen} bestaand={(alleCases ?? []).map((c) => c.station.casenummer ?? "").filter(Boolean)} /></Suspense>}
       <main style={{ padding: 24, paddingBottom: 60 }}>
         <div role="group" aria-label="Uitvoering" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
           <span style={{ fontSize: 14, color: SUB, fontWeight: 600 }}>Uitvoering:</span>

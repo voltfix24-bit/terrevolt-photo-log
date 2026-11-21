@@ -16,7 +16,6 @@ import { useRef, useState, useCallback, useMemo, useEffect } from "react";
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { generatePdfHtml } from "@/lib/pdf-generator";
-import { downloadStationZip } from "@/lib/zip-download";
 import { useVoorbeelden } from "@/components/CategorieSettings";
 import { useInstellingen } from "@/hooks/use-theme";
 import { Kruimelpad, deelLink } from "@/components/url/Kruimelpad";
@@ -142,6 +141,7 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
     }
     const toastId = toast.loading("ZIP wordt voorbereid...");
     try {
+      const { downloadStationZip } = await import("@/lib/zip-download");
       const r = await downloadStationZip(station.naam_msr, fotos, (pct) => toast.loading(`ZIP wordt voorbereid... ${pct}%`, { id: toastId }));
       if (r.mislukt > 0) toast.warning(`ZIP gedownload, maar ${r.mislukt} van ${r.totaal} foto's ontbreken`, { id: toastId, duration: 8000 });
       else toast.success("ZIP gedownload", { id: toastId });
@@ -289,7 +289,7 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
         {/* ── 1. HERO ── */}
         <div className="px-2 pt-2 pb-5">
           {/* ROW 1: Navigation bar */}
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-x-2 mb-4">
             <Pressable
               onClick={() => navigate('/')}
               aria-label="Terug naar stations"
@@ -308,8 +308,8 @@ export default function StationDetail({ stationId, sub }: { stationId?: string; 
           {sub && <Kruimelpad station={station} sectionId={sub.soort === "sectie" || sub.soort === "categorie" ? sub.sectionId : undefined} categorieId={sub.soort === "categorie" ? sub.categorieId : undefined} />}
           {/* ROW 2: Station info */}
           {station.behuizingsnummer && <div style={{ fontSize: 14, color: T.subOnBg, fontFamily: "ui-monospace, monospace", marginBottom: 4 }}>{station.behuizingsnummer}</div>}
-          {(station.casenummer || station.casenaam) && <div style={{ fontSize: 14, color: T.subOnBg, marginBottom: 4 }}>Case: {[station.casenummer, station.casenaam].filter(Boolean).join(" · ")}</div>}
-          <h1 className="font-display leading-tight mb-1" style={{ fontSize: 28, fontWeight: 500, color: T.titleOnBg }}>
+          {(station.casenummer || station.casenaam) && <div style={{ overflowWrap: "anywhere", fontSize: 14, color: T.subOnBg, marginBottom: 4 }}>Case: {[station.casenummer, station.casenaam].filter(Boolean).join(" · ")}</div>}
+          <h1 className="font-display leading-tight mb-1" style={{ overflowWrap: "anywhere", fontSize: 28, fontWeight: 500, color: T.titleOnBg }}>
             {station.naam_msr}
           </h1>
           <p className="mb-5" style={{ fontSize: 14, color: T.subOnBg }}>

@@ -162,6 +162,20 @@
       "when": 1795262544402,
       "tag": "0022_fence_latest_report_revision",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1795263661675,
+      "tag": "0023_phase3_queue_history_projection",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1795263988739,
+      "tag": "0024_phase3_url_normalization_compatibility",
+      "breakpoints": true
     }
   ]
 }

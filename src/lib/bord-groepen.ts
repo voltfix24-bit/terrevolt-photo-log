@@ -1,6 +1,5 @@
 // Groepering van het bord "Wie moet wat doen": kolom → groepen per actie
-import { uitvoerderVan } from "@/lib/cases-filter";
-import { HOLD_PARTIJ_NAAM, holdDagen, holdPartij, isOnHold } from "@/lib/on-hold";
+import { casePresentatie } from "./case-presentatie";
 import type { BalItem, CaseItem, Partij } from "@/lib/to-rondes";
 
 export type Lane = Partij | "Derden";
@@ -31,15 +30,11 @@ function groepVan(lane: Lane, txt: string): GroepKey {
 // Kolomlogica ongewijzigd: VG-cases bij Van Gelder, behalve goedgekeurd → Liander
 export function bordItems(cases: CaseItem[]): BordItem[] {
   return cases.flatMap((c) => {
-    // On hold: één kaart, in de kolom van de partij bij wie het ligt
-    if (isOnHold(c.station)) {
-      const lane = HOLD_PARTIJ_NAAM[holdPartij(c.station)];
-      return [{ wie: lane as Partij, label: lane, txt: (c.station.on_hold_reden as string) ?? "", dagen: holdDagen(c.station), c, lane, groep: "onhold" as GroepKey }];
-    }
-    const bal: BalItem[] = uitvoerderVan(c) === "van_gelder" && c.last?.status !== "goedgekeurd"
-      ? [{ ...(c.bal[0] ?? { label: "Van Gelder", txt: "TO afgerond", dagen: 0 }), wie: "Van Gelder" }]
-      : c.bal;
-    return bal.map((b) => ({ ...b, c, lane: b.wie as Lane, groep: groepVan(b.wie as Lane, b.txt) }));
+    const presentatie = casePresentatie(c);
+    return presentatie.bal.map((b) => {
+      const lane = c.station.uitvoerder === "van_gelder" || presentatie.hold ? presentatie.partijen[0] : b.wie;
+      return { ...b, c, lane, groep: presentatie.hold ? "onhold" as const : groepVan(lane, b.txt) };
+    });
   });
 }
 

@@ -60,10 +60,10 @@ Deno.serve(async (req) => {
   try {
     if (parsed.data.alleen_status) {
       const { data: r } = await db.from("sharepoint_sync").select("sharepoint_item_id").eq("station_id",stationId).maybeSingle();
-      if (!r?.sharepoint_item_id) { await claim.queueDone(); return json({ ok: true, overgeslagen: "niet in SharePoint" }); }
+      if (!r?.sharepoint_item_id) { await claim.queueDone(true); return json({ ok: true, overgeslagen: "niet in SharePoint" }); }
       const n = await zetStatus(await context(db,true,claim),r.sharepoint_item_id,station);
       await claim.check();
-      await claim.queueDone();
+      await claim.queueDone(true);
       return json({ ok: true, bijgewerkt: n });
     }
     const reden = nietSyncReden(station);

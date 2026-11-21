@@ -2,12 +2,19 @@
 export class Bezet extends Error { constructor() { super("Station wordt verwerkt; poging is uitgesteld"); } }
 export class Claim {
   constructor(public db: any, public station: string, public eigenaar: string, public generatie: number, public run: string | null) {}
+  aanvraagId: string | null = null;
   static async neem(db: any, station: string, run: string | null = null) {
     const eigenaar = crypto.randomUUID();
     const { data, error } = await db.rpc("station_claim", { _station_id: station, _eigenaar: eigenaar, _run: run, _seconden: 90 });
     if (error) throw error;
     if (data == null) throw new Bezet();
-    return new Claim(db, station, eigenaar, data, run);
+    const claim = new Claim(db, station, eigenaar, data, run);
+    try {
+      const { data: q, error: qe } = await db.rpc("verwerking_wachtrij_snapshot", claim.args());
+      if (qe) throw qe;
+      claim.aanvraagId = q?.aanvraag_id ?? null;
+      return claim;
+    } catch (e) { await claim.release().catch(() => {}); throw e; }
   }
   args() { return { _station_id: this.station, _eigenaar: this.eigenaar, _generatie: this.generatie }; }
   async check(vrijgeven = false) {
@@ -24,8 +31,8 @@ export class Claim {
     if (error || !data) throw new Error("Dossierkopie niet bevestigd");
     return data;
   }
-  async queueDone() {
-    const { data,error } = await this.db.rpc("verwerking_wachtrij_klaar",this.args());
+  async queueDone(alleenStatus = false) {
+    const { data,error } = await this.db.rpc("verwerking_wachtrij_klaar",{ ...this.args(), _aanvraag_id: this.aanvraagId, _alleen_status: alleenStatus });
     if (error || data !== true) throw new Error("Wachtrij niet bevestigd");
   }
   async release() { await this.check(true); }

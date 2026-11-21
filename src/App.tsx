@@ -1,4 +1,5 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { CaseQueryClient } from "@/lib/case-queries";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -21,7 +22,7 @@ import { verstuurNotities, verstuurNotitiesNaBeheer } from "@/lib/notities";
 import { toast } from "sonner";
 import { useEffect } from "react";
 
-const queryClient = new QueryClient();
+const queryClient = new CaseQueryClient();
 
 function AppContent() {
   useInstellingen();

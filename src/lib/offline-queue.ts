@@ -20,6 +20,9 @@ interface OfflineDB extends DBSchema {
 
 let db: IDBPDatabase<OfflineDB>;
 
+export const QUEUE_EVENT = 'foto-wachtrij-veranderd';
+const changed = () => window.dispatchEvent(new Event(QUEUE_EVENT));
+
 export async function getDB() {
   if (!db) {
     db = await openDB<OfflineDB>('terrevolt-offline', 1, {
@@ -49,6 +52,7 @@ export async function queuePhoto(
     timestamp: new Date().toISOString(),
     status: 'pending'
   });
+  changed();
   return id;
 }
 
@@ -67,6 +71,7 @@ export async function markDone(id: string) {
   const item = await db.get('photo-queue', id);
   if (item) {
     await db.put('photo-queue', { ...item, status: 'done' });
+    changed();
   }
 }
 
@@ -74,17 +79,35 @@ export async function markError(id: string, fout: string) {
   const db = await getDB();
   const item = await db.get('photo-queue', id);
   if (item) await db.put('photo-queue', { ...item, status: 'error', pogingen: (item.pogingen ?? 0) + 1, laatsteFout: fout.slice(0, 300) });
+  changed();
 }
 
 export async function clearDone() {
   const db = await getDB();
-  const all = await db.getAll('photo-queue');
-  for (const item of all) {
-    if (item.status === 'done') await db.delete('photo-queue', item.id);
-  }
+  const keys = await db.getAllKeysFromIndex('photo-queue', 'by-status', 'done');
+  for (const key of keys) await db.delete('photo-queue', key);
+  changed();
 }
 
 export async function getQueueCount(): Promise<number> {
   const db = await getDB();
-  return (await db.getAll('photo-queue')).filter(p => p.status !== 'done').length;
+  const tx = db.transaction('photo-queue', 'readonly');
+  const [total, done] = await Promise.all([tx.store.count(), tx.store.index('by-status').count('done')]);
+  await tx.done;
+  return total - done;
+}
+
+/** Key cursors expose only station and primary key, never deserialize a photo Blob. */
+export async function getQueueCounts(): Promise<Record<string, number>> {
+  const db = await getDB();
+  const tx = db.transaction('photo-queue', 'readonly');
+  const done = new Set(await tx.store.index('by-status').getAllKeys('done'));
+  const counts: Record<string, number> = {};
+  let cursor = await tx.store.index('by-station').openKeyCursor();
+  while (cursor) {
+    if (!done.has(cursor.primaryKey)) counts[cursor.key] = (counts[cursor.key] ?? 0) + 1;
+    cursor = await cursor.continue();
+  }
+  await tx.done;
+  return counts;
 }

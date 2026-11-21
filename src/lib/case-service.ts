@@ -27,6 +27,7 @@ export async function maakCase(c: NieuweCase, requestId: string = crypto.randomU
       return { ok: false, fout: "Case aanmaken mislukt — probeer opnieuw", pauze: true };
     }
     if (data && typeof data === "object" && !Array.isArray(data)) {
+      if (data.uitkomst === "verwijderd") return { ok: false, fout: "Deze case is inmiddels verwijderd; de aanvraag wordt niet opnieuw aangemaakt" };
       if (data.uitkomst === "bestaat") return { ok: false, fout: `Casenummer ${normaliseer(c.casenummer)} bestaat al`, bestaat: true };
       if ((data.uitkomst === "aangemaakt" || data.uitkomst === "replay") && typeof data.id === "string") return { ok: true, id: data.id, uitkomst: data.uitkomst };
     }

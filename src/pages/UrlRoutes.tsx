@@ -55,7 +55,7 @@ function RapportOpener({ station }: { station: UrlStation }) {
 /* /c/:casenummer */
 export function KorteLink() {
   const { nr = "" } = useParams();
-  const { data } = useUrlIndex();
+  const { data } = useUrlIndex(nr);
   if (!data) return <Leeg />;
   const s = data.stations.find((x) => caseNrSlug(x) === slug(nr)) ?? zoekOpCaseSlug(data.stations, nr)[0];
   return s ? <Navigate to={isVanGelder(s) ? casesUrl(s) : caseUrl(s)} replace /> : <NotFound />;
@@ -64,7 +64,7 @@ export function KorteLink() {
 /* /stations/:key/* — uuid (oud) of behuizingsnummer-naam */
 export function StationsRoute() {
   const { key = "", "*": rest = "" } = useParams();
-  const { data, isFetching } = useUrlIndex();
+  const { data, isFetching } = useUrlIndex(key);
   if (!data) return <Leeg />;
   const s = zoekOpStationSlug(data.stations, key);
   if (!s) return isFetching ? <Leeg /> : <NotFound />;
@@ -76,7 +76,7 @@ export function StationsRoute() {
 export function OpdrachtgeverRoute() {
   const { og = "", jaar, case: caseKey, "*": rest = "" } = useParams();
   const [sp] = useSearchParams();
-  const { data, isFetching } = useUrlIndex();
+  const { data, isFetching } = useUrlIndex(caseKey, og);
   if (!data) return <Leeg />;
   const ogNaam = data.opdrachtgevers.find((o) => slug(o) === slug(og));
   const bekendInStations = data.stations.some((s) => opdrachtgeverSlug(s) === slug(og));
@@ -108,7 +108,7 @@ export function OpdrachtgeverRoute() {
 function eigenScherm(soort: "cases" | "beoordelen") {
   return function EigenScherm() {
     const { key = "" } = useParams();
-    const { data, isFetching } = useUrlIndex();
+    const { data, isFetching } = useUrlIndex(key);
     if (!data) return <Leeg />;
     const s = UUID_RE.test(key) ? data.stations.find((x) => x.id === key) : (zoekOpCaseSlug(data.stations, key)[0] ?? zoekOpStationSlug(data.stations, key));
     if (!s) return isFetching ? <Leeg /> : <NotFound />;

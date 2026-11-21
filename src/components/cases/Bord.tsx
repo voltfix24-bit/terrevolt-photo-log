@@ -41,7 +41,7 @@ function Kaart({ i, open }: { i: BordItem; open: (s: UrlStation) => void }) {
   return (
     <Pressable onClick={() => open(s)} scale={0.98} className="border border-[#DCE6DA] hover:border-[#1F5C3A] hover:shadow-[0_2px_10px_rgba(10,42,24,0.08)] transition-[border-color,box-shadow]"
       style={{ background: T.surface, borderRadius: 12, padding: "10px 12px", display: "flex", flexDirection: "column", gap: 4, textAlign: "left", width: "100%" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, width: "100%" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", flexWrap: "wrap" }}>
         <span className="font-mono" style={{ fontSize: 12, color: T.bodyOnBg }}>{caseNr(s)}</span>
         <UitvoeringLabel uitvoerder={uitvoerderVan(i.c)} variant="kort" />
         <span style={{ marginLeft: "auto" }}><Wacht i={i} /></span>
@@ -51,10 +51,10 @@ function Kaart({ i, open }: { i: BordItem; open: (s: UrlStation) => void }) {
       {(i.groep === "actiepunt" || i.groep === "onhold") && (
         <div style={{ display: "flex", alignItems: "flex-start", gap: 4, fontSize: 12.5, color: "#1F5C3A" }}>
           <CornerDownRight size={14} style={{ flexShrink: 0, marginTop: 1 }} />
-          <span>{i.txt}{i.lane === "Derden" && i.label !== "Derden" ? ` · ${i.label}` : ""}</span>
+          <span style={{ minWidth: 0, overflowWrap: "anywhere" }}>{i.txt}{i.wie !== i.lane || (i.lane === "Derden" && i.label !== "Derden") ? ` · ${i.label}` : ""}</span>
         </div>
       )}
-      {wv && <div style={{ fontSize: 12, color: T.subOnBg }}>WV: {wv}</div>}
+      {wv && <div style={{ fontSize: 12, overflowWrap: "anywhere", color: T.subOnBg }}>WV: {wv}</div>}
     </Pressable>
   );
 }

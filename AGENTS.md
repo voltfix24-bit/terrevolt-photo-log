@@ -27,7 +27,7 @@
 - Queue only photos and notes offline; reject all other mutations without internet, and surface local persistence failures. Why: prevent false success and data loss.
 - All progress/completion uses the central photo rule, including category 31. Why: one consistent requirement.
 - Import: case_aanmaken wraps maak_case with own request/payload replay; full-number preview, paged rows, pause/resume remaining work. Why: no false import success.
-- On hold: `stations.on_hold*` + `src/lib/on-hold.ts`; resume appends to `dossier_notitie`, only the current hold is stored and subtracted from wait time. Why: history without extra table.
+- Holds use `hold_periodes`, atomic RPCs and expected period IDs; compatibility fields update together. Notes use their own CAS version, never resume-appends. Why: preserve history and concurrent text.
 
 - PIN grants bind real session_id and user_id for eight fixed server hours; unlock never resets the shared password, refresh never extends, lock revokes only this grant. Why: device independence.
 - Field triggers check OLD/NEW; immutable photo sources/linkage and no storage overwrite prevent delivered-dossier bypasses.
