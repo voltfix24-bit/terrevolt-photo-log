@@ -100,8 +100,17 @@ Alias/korte link: `/stations/{uuid}` en `/c/0295546` gaven het canonieke scherm 
 
 ## Uitgevoerde commando's
 - `python3 scripts/mobile-ui-check.py` (definitieve kandidaat, volledige route-smoke): exit 0, 159 metingen, 0 overflow.
-- `npx tsgo -b --noEmit`: geslaagd. `bunx vitest run`: 33 bestanden/275 tests geslaagd (5 lokale-PostgreSQL-bestanden overgeslagen, geen DB-wijziging). `npx vite build`: geslaagd.
-- Geen nieuwe unit-tests: alle fixes zijn alleen afmetingen (geen beslislogica); bewijs is de browsermeting.
+- *Historie (eerste ronde a9b61a8, achterhaald):* 33 bestanden/275 tests. Actuele stand: zie Eindstand.
+
+## Eindstand (twee laatste correcties, op 921a4d8)
+1. **Rapportpreview:** viewport `width=device-width`; alleen `.rapport` (A4-pagina's) krijgt op schermen <820px `zoom = breedte/820`; print zet `zoom:1`. "Opslaan als PDF" blijft op echte maat (16px, min. 48px hoog). Foto-script en printlayout ongewijzigd; golden bijgewerkt met uitsluitend deze wijziging.
+2. **Laagvolgorde:** SharePoint-sleutelbanner z-index 60 → 45: boven AppHeader-inhoud (die onder `--banner-h` begint), onder Dialog/AlertDialog/Sheet/Drawer en hun backdrop (z-50, portals na de app), NotitieSheet (z-120) en PIN (z-200). Bannerhoogte/headeroffset en tekst ongewijzigd.
+
+Gerichte checks (sanitized: `mobile-ui-eindcheck.json`):
+- `python3 scripts/rapportpreview-check.py`: exit 0. 320×568 en 390×844: visualViewport.scale 1, scrollWidth = breedte, knop 48px effectief, tekst 16px effectief, A4-pagina binnen beeld; print-zoom 1.
+- `python3 scripts/mobile-ui-acceptatie.py laag`: exit 0. Banner (verlopen) + Case toevoegen op 320×568 en 340×234: titel en Sluiten via hit-test bovenop, dialoog binnen beeld met interne scroll, laatste CTA na scroll bereikbaar, gesloten zonder opslaan, geen schrijfverzoeken. Gegenproef met z-index 60: beide maten FOUT (gate werkt).
+- PDF/golden-regressies (modulariteit + fase2): 29 geslaagd. `tsgo --noEmit` en `vite build` geslaagd.
+- Definitieve stand: 335 eerdere mobiele metingen (159 route + 176 gericht) + 2 laagmetingen + 4 rapportmetingen; 286 tests (eerdere volledige run, niet herhaald).
 
 ## Screenshots
 Lokaal: `/tmp/browser/mobiel/*.png` (+ `resultaat.json`), kopie in Files: `mobiele-ui-check/`.
@@ -111,3 +120,4 @@ Lokaal: `/tmp/browser/mobiel/*.png` (+ `resultaat.json`), kopie in Files: `mobie
 - Fictieve toestanden zijn browser-patches op echte leesresponses, geen databaserijen; RLS/autorisatie is daardoor niet in deze meting getest (wel in eerdere lokale DB-tests).
 - Succespaden van schrijfacties (opleveren, import) zijn alleen met gemockte antwoorden getoond; afkeuren/afhandelen/afronden zijn geopend maar niet verstuurd.
 - Focusterugkeer niet per overlay gemeten; Escape sluit elke geteste overlay.
+- Rapportpreview gemeten in Chromium; CSS `zoom` op iOS Safari niet op een fysiek toestel gecontroleerd. Volledige suite en overige browsergroepen niet herhaald.

@@ -3,7 +3,7 @@ Leest echte data ALLEEN-LEZEND; elk schrijfverzoek wordt in de testbrowser geblo
 Fictieve toestanden ontstaan door antwoorden in deze testbrowser te patchen of te vervangen (zie FIXTURES);
 niets daarvan zit in de app of bereikt de backend. Faalt (exit 1) bij: ontbrekende verplichte overlay/titel,
 JS-pagefout, paginaoverflow, materiële clipping, dialoog buiten beeld, onbereikbare laatste actie, tikvlak <44px.
-Gebruik: python3 scripts/mobile-ui-acceptatie.py <groep> [uitvoermap]   groepen: station beoordelen cases overig"""
+Gebruik: python3 scripts/mobile-ui-acceptatie.py <groep> [uitvoermap]   groepen: station beoordelen cases overig laag"""
 import asyncio, json, re, sys, copy
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
@@ -17,7 +17,7 @@ OPGELEVERD = 'f0ad25e8-6714-4ca1-9583-c743d784ab06'; RONDE = '520ed3e1-794b-4953
 LEES_RPC = {'beheer_status', 'url_candidates', 'heeft_beheer', 'fotowerk_toegestaan', 'case_wv_suggesties', 'dossier_eindcontrole'}
 LEES_FUNC = {'sharepoint-documenten'}
 LANG_ONBEKEND = 'UitvoeringsverantwoordelijkeBijAannemer'
-MATEN = {'320': (320, 568), '390': (390, 844), '430': (430, 932), 'liggend': (740, 360), 'zoom130': (246, 437)}
+MATEN = {'320': (320, 568), '390': (390, 844), '430': (430, 932), 'liggend': (740, 360), 'zoom130': (246, 437), 'kort': (340, 234)}
 # Onderstaande kleine elementen zijn bewust geen eigen tikvlak (reden in rapport).
 KLEIN_OK = re.compile(r'^(bv\. .*|Primaire knop|Foto \d+: .*)$')
 fouten, metingen, geblokkeerd = [], [], set()
@@ -451,6 +451,31 @@ async def run_overig(b):
                     await meet(p, naam, maat)
                 await stap(naam, maat, t()); await ctx.close()
 
+BOVENOP = """(el) => { const r = el.getBoundingClientRect(); if (r.bottom <= 0) return 'buiten beeld';
+  const x = r.left + r.width / 2, y = Math.max(r.top, 0) + Math.min(r.height, r.bottom) / 2; const h = document.elementFromPoint(x, y);
+  return h && (h === el || el.contains(h)) ? 'ok' : 'bedekt door ' + (h ? (h.getAttribute('role') || h.tagName) + ' ' + (h.textContent || '').trim().slice(0, 30) : 'niets'); }"""
+async def run_laag(b):
+    """Sleutelbanner actief + lange Case toevoegen-dialoog: modal en backdrop moeten boven de banner liggen."""
+    for maat in ['320', 'kort']:
+        ctx, p = await context(b, maat, {'beheer': True, 'patch': {'GET instellingen': sleutel(-2)}})
+        async def t():
+            await ga(p, '/cases', lambda x: x.get_by_role('alert').filter(has_text='SharePoint'))
+            await p.get_by_role('button', name='Meer acties').click(); await p.get_by_role('menuitem', name='Case toevoegen').click()
+            dl = p.get_by_role('dialog'); titel = dl.get_by_role('heading', name='Case toevoegen'); await expect(titel).to_be_visible()
+            await meet(p, 'Banner + Case toevoegen', maat, DLG, dl.get_by_role('button', name='Case toevoegen'), titel)
+            await p.locator(DLG).first.evaluate('d => d.scrollTop = 0')
+            sluit = dl.get_by_role('button', name='Close').or_(dl.get_by_role('button', name='Sluiten')).first
+            z = await p.evaluate("""() => { const z = e => +getComputedStyle(e).zIndex || 0; const bn = [...document.querySelectorAll('[role=alert]')].find(e => /SharePoint/.test(e.textContent));
+              const ov = document.querySelector('[data-state=open].fixed.inset-0'); return {banner: z(bn), dialoog: z(document.querySelector('[role=dialog]')), backdrop: ov ? z(ov) : null}; }""")
+            for naam, el in [('titel', titel), ('Sluiten', sluit)]:
+                r = await el.evaluate(BOVENOP)
+                if r != 'ok': fouten.append(f'{maat} {naam}: {r}')
+            metingen[-1]['z'] = z
+            if not (z['dialoog'] > z['banner'] and (z['backdrop'] or 0) > z['banner']): fouten.append(f'{maat} laagvolgorde {z}')
+            await sluit.click(); await expect(titel).to_be_hidden()
+            print('ok   ' if not fouten else 'FOUT ', maat, 'titel/Sluiten bovenop, z', z)
+        await stap('Banner + dialoog', maat, t()); await ctx.close()
+
 FOTOS_INGEVULD = []
 async def main():
     global FOTOS_INGEVULD
@@ -461,11 +486,11 @@ async def main():
             await pg.goto(B + '/'); FOTOS_INGEVULD = await pg.evaluate("""async (id) => { const { supabase } = await import('/src/integrations/supabase/client.ts');
                 const { data } = await supabase.from('fotos').select('*').eq('station_id', id); return (data || []).map(f => ({...f, station_id: '%s'})); }""" % NIEUW, INGEVULD)
             await c.close()
-        await {'station': run_station, 'beoordelen': run_beoordelen, 'cases': run_cases, 'overig': run_overig}[GROEP](b)
+        await {'station': run_station, 'beoordelen': run_beoordelen, 'cases': run_cases, 'overig': run_overig, 'laag': run_laag}[GROEP](b)
         await b.close()
     ok = sum(1 for m in metingen if not m.get('probleem'))
     (OUT / 'resultaat.json').write_text(json.dumps({'groep': GROEP, 'metingen': len(metingen), 'ok': ok, 'fouten': fouten, 'geblokkeerd': sorted(geblokkeerd),
-        'details': [{k: m.get(k) for k in ('label', 'maat', 'url', 'probleem', 'shot', 'dlg')} for m in metingen]}, indent=1))
+        'details': [{k: m.get(k) for k in ('label', 'maat', 'url', 'probleem', 'shot', 'dlg', 'z')} for m in metingen]}, indent=1))
     print(f'\n{GROEP}: {len(metingen)} metingen, {ok} ok, {len(fouten)} fouten; geblokkeerde schrijfverzoeken: {sorted(geblokkeerd)}')
     sys.exit(1 if fouten else 0)
 asyncio.run(main())

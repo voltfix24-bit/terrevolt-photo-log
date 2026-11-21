@@ -25,3 +25,4 @@
 - StationDetail progress and its single primary action come from stationWerkfase; unknown/local/rejection signals mean "begonnen", loading/read errors show no progress or action. Why: no false new/complete claims.
 - StationDetail: normal SharePoint status lives in Casegegevens (deel="normaal"), exceptions always outside (deel="uitzondering"); queue summary via getWachtrijSamenvattingVoor (key cursors). Why: calm header without hiding problems.
 - Dialogs, PIN and sheets size from --vvh/--vvt/--vvb (src/lib/viewport.ts) and scroll internally; mobile UI acceptance = scripts/mobile-ui-check.py + scripts/mobile-ui-acceptatie.py exiting 0. Why: keyboard/short viewports must keep actions reachable.
+- Normal warnings (SharePoint key banner) stay below z-50 (modals/sheets and their backdrops). Why: dialogs on short screens must never be covered.

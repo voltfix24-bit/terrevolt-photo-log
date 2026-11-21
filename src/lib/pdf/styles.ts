@@ -10,7 +10,11 @@ export function pdfStyles(ctx: PdfContext): string {
   .no-print { display: none !important; }
   body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: white !important; }
   .page { box-shadow: none !important; margin: 0 !important; }
+  .rapport { zoom: 1 !important; width: auto !important; padding: 0 !important; }
 }
+/* Schermpreview: A4-inhoud wordt via zoom op apparaatbreedte gepast; knop blijft op echte maat. */
+.rapport { width: 820px; margin: 0 auto; padding: 13px 0 0; }
+@media screen and (min-width: 820px) { .rapport { width: auto; } }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
   font-family: 'Inter', -apple-system, sans-serif;
@@ -510,19 +514,20 @@ body {
 /* ── PRINT BUTTON ── */
 .print-btn {
   position: fixed;
-  top: 20px; right: 20px;
+  top: max(12px, env(safe-area-inset-top)); right: 12px;
+  min-height: 48px;
   z-index: 9999;
   background: linear-gradient(135deg, ${primaryCss}, ${primaryLightCss});
   color: white;
   border: none;
-  padding: 14px 28px;
+  padding: 12px 20px;
   border-radius: 14px;
   cursor: pointer;
   font-family: 'Inter', sans-serif;
   font-weight: 700;
-  font-size: 14px;
+  font-size: 16px;
   box-shadow: 0 8px 28px ${arcColor1};
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 8px;
   transition: all 0.15s;

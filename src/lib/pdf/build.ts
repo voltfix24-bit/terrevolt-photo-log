@@ -14,7 +14,7 @@ export function bouwPdfHtml(station: Station, fotos: Foto[], branding?: PdfBrand
 <html lang="nl">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=820"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>TO Fotorapport – ${station.naam_msr}</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
 <style>
@@ -30,7 +30,16 @@ ${pdfStyles(ctx)}
   Opslaan als PDF
 </button>
 
+<main class="rapport">
 ${pages}
+</main>
+<script>
+(function(){
+  var r=document.querySelector('.rapport');
+  function pas(){ var w=document.documentElement.clientWidth||window.innerWidth; r.style.zoom = w < 820 ? String(w/820) : ''; }
+  pas(); window.addEventListener('resize', pas);
+})();
+</script>
 
 <script>
 window.addEventListener('load', async () => {

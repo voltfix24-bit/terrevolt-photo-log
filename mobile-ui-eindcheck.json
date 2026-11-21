@@ -1,0 +1,68 @@
+{
+ "basis": "921a4d8",
+ "checks": [
+  {
+   "check": "rapportpreview",
+   "viewport": "320x568",
+   "scale": 1,
+   "scrollWidth": 320,
+   "knopHoogteEff": 48,
+   "tekstPxEff": 16,
+   "paginaBinnenBeeld": true,
+   "printZoom": "1",
+   "ok": true
+  },
+  {
+   "check": "rapportpreview",
+   "viewport": "390x844",
+   "scale": 1,
+   "scrollWidth": 390,
+   "knopHoogteEff": 48,
+   "tekstPxEff": 16,
+   "paginaBinnenBeeld": true,
+   "printZoom": "1",
+   "ok": true
+  },
+  {
+   "check": "banner+dialoog",
+   "viewport": "320x568",
+   "z": {
+    "banner": 45,
+    "dialoog": 50,
+    "backdrop": 50
+   },
+   "titelBovenop": true,
+   "sluitenBovenop": true,
+   "laatsteCtaBereikbaar": true,
+   "schrijfverzoeken": 0,
+   "ok": true
+  },
+  {
+   "check": "banner+dialoog",
+   "viewport": "340x234",
+   "z": {
+    "banner": 45,
+    "dialoog": 50,
+    "backdrop": 50
+   },
+   "titelBovenop": true,
+   "sluitenBovenop": true,
+   "laatsteCtaBereikbaar": true,
+   "schrijfverzoeken": 0,
+   "ok": true
+  },
+  {
+   "check": "gegenproef z60",
+   "viewports": [
+    "320x568",
+    "340x234"
+   ],
+   "resultaat": "FOUT (verwacht)"
+  }
+ ],
+ "tests": {
+  "pdfGolden": 29,
+  "typecheck": "ok",
+  "build": "ok"
+ }
+}

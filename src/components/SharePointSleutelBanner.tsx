@@ -32,7 +32,8 @@ export function SharePointSleutelBanner() {
       ref={ref}
       role="alert"
       style={{
-        position: "sticky", top: 0, zIndex: 60,
+        // z 45: boven AppHeader-inhoud (die start onder --banner-h), onder alle modals/sheets (z-50+ portals).
+        position: "sticky", top: 0, zIndex: 45,
         paddingTop: "max(env(safe-area-inset-top), 6px)", paddingBottom: 6, paddingLeft: 16, paddingRight: 16,
         background: kapot ? "#B71C1C" : "#9A4300", color: "#fff",
         fontSize: 14, lineHeight: 1.35, fontWeight: 600, textAlign: "center",
