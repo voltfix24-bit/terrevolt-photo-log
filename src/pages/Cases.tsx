@@ -15,6 +15,7 @@ import { casePresentatie } from "@/lib/case-presentatie";
 import { FILTER_OPTIES, bewaarFilter, filterCases, leesFilter, tellingen, uitvoerderVan, type UitvoerderFilter } from "@/lib/cases-filter";
 import { BlokLader, KnopLader, LaadAfbeelding, PaginaLader } from "@/components/Laden";
 import { casesUrl, type UrlStation } from "@/lib/urls";
+import { zoekCases } from "@/lib/cases-zoeken";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Pressable, R, T } from "@/components/apple/Primitives";
 import { CaseItem, PARTIJ_STIJL, Partij, TO_STATUS, caseNaam, caseNr, caseSub, dagenTekst, scoreVan, scorePerUitvoerder, useCases } from "@/lib/to-rondes";
@@ -215,7 +216,10 @@ export default function Cases() {
   const [importPoging, setImportPoging] = useState(0);
   const startImport = () => { if (internetVereist()) { setImportPoging(p => p+1); setImportOpen(true); } };
   const telling = tellingen(alleCases ?? []);
-  const cases = filterCases(alleCases ?? [], filter);
+  const zoek = params.get("q") ?? "";
+  const zetZoek = (q: string) => setParams((prev) => { const n = new URLSearchParams(prev); if (q) n.set("q", q); else n.delete("q"); return n; }, { replace: true });
+  const gefilterd = filterCases(alleCases ?? [], filter);
+  const cases = zoekCases(gefilterd, zoek);
   const [tab, setTab] = useState<"bal" | "score">("bal");
   // Partijkeuze staat los van het uitvoerderfilter (URL, niet localStorage). Mobiel standaard één werklijst.
   const partijParam = params.get("partij") as Lane | "alle" | null;
@@ -272,6 +276,18 @@ export default function Cases() {
       {importOpen && <ImportFoutGrens key={importPoging} sluiten={() => setImportOpen(false)} opnieuw={startImport}><ImportScherm sluiten={() => setImportOpen(false)} opnieuw={startImport} poging={importPoging} bestaand={(alleCases ?? []).map((c) => c.station.casenummer ?? "").filter(Boolean)} /></ImportFoutGrens>}
       <main style={{ padding: mobiel ? "12px 12px 48px" : 24, paddingBottom: 60, maxWidth: "100%" }}>
         {mobiel && <div style={{ marginBottom: 12 }}>{tabs}</div>}
+        <div role="search" style={{ marginBottom: 12 }}>
+          <div style={{ position: "relative", maxWidth: 640 }}>
+            <span className="material-symbols-rounded" aria-hidden="true" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontSize: 22, color: SUB }}>search</span>
+            <input type="text" inputMode="search" autoComplete="off" value={zoek} onChange={(e) => zetZoek(e.target.value)} aria-label="Zoek in cases" aria-describedby="zoek-hulp"
+              placeholder="Zoek op casenummer, naam, WV, actie, reden…" enterKeyHint="search"
+              style={{ width: "100%", minHeight: 48, padding: "0 44px 0 42px", borderRadius: 12, border: `1px solid ${T.hairline}`, background: T.surface, fontSize: 16, color: T.titleOnBg }} />
+            {zoek && <button type="button" onClick={() => zetZoek("")} aria-label="Zoekopdracht wissen" style={{ position: "absolute", right: 2, top: 2, width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", color: SUB, background: "none", border: 0 }}><span className="material-symbols-rounded" style={{ fontSize: 20 }}>close</span></button>}
+          </div>
+          <div id="zoek-hulp" style={{ fontSize: 13, color: SUB, marginTop: 6 }}>
+            {zoek ? (alleCases ? <b style={{ color: T.titleOnBg }}>{cases.length} van {gefilterd.length} cases gevonden</b> : null) : <>Tip: meerdere woorden = alles moet kloppen, "exacte zin", -woord sluit uit, of zoek per veld: case: naam: wv: is: behuizing: og: status: dossier: bal: actie: reden: notitie: uitvoering: hold:</>}
+          </div>
+        </div>
         <div role="group" aria-label="Uitvoering" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
           <span style={{ fontSize: 14, color: SUB, fontWeight: 600 }}>Uitvoering:</span>
           {FILTER_OPTIES.map((o) => (
@@ -308,7 +324,7 @@ export default function Cases() {
             <div><Pressable onClick={() => void refetch()} style={{ marginTop: 10, minHeight: 48, padding: "0 20px", borderRadius: 12, background: T.green, color: T.surface, fontSize: 16, fontWeight: 600 }}>Opnieuw laden</Pressable></div>
           </div>
         ) : !cases.length ? (
-          <div style={{ padding: "52px 20px", textAlign: "center", color: SUB, fontSize: 15 }}>Geen cases</div>
+          <div style={{ padding: "52px 20px", textAlign: "center", color: SUB, fontSize: 15 }}>{zoek && gefilterd.length ? <>Geen cases gevonden voor “{zoek}”.<div><Pressable onClick={() => zetZoek("")} style={{ marginTop: 8, minHeight: 44, padding: "0 14px", color: T.green, fontWeight: 600 }}>Zoekopdracht wissen</Pressable></div></> : "Geen cases"}</div>
         ) : tab === "bal" ? <><Aandacht cases={cases} open={open} /><Bord cases={cases} open={open} partij={partij} /></> : <Score cases={cases} open={open} filter={filter} mobiel={mobiel} />}
       </main>
     </div>
