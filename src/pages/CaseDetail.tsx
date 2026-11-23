@@ -40,6 +40,7 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
   const { data: c, isLoading, error } = useCase(id);
   const { data: wvNamen = [] } = useWvSuggesties();
   const [draft, setDraft] = useState({ txt: "", bij: "TerreVolt" as Partij, derde: "", notitie: "" });
+  const [bewerk, setBewerk] = useState<{ id: string; txt: string; bij: Partij; derde: string; notitie: string } | null>(null);
   if (isLoading) return <PaginaLader label="Case laden…" />;
   if (!c) return <div role="alert" className="p-6">{error ? "Case laden mislukt" : "Case inmiddels verwijderd"}</div>;
 
@@ -91,6 +92,15 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
     }));
     if (ok) setDraft((d) => ({ ...d, txt: "", notitie: "" }));
   };
+  const bewaarActie = async () => {
+    if (!bewerk || !bewerk.txt.trim()) return;
+    const ok = await run(db.from("to_acties").update({ omschrijving: bewerk.txt.trim(), bij: bewerk.bij, derde_naam: bewerk.bij === "Derden" ? bewerk.derde.trim() || null : null, notitie: bewerk.notitie.trim() || null }).eq("id", bewerk.id));
+    if (ok) setBewerk(null);
+  };
+  const verwijderActie = async (aid: string) => {
+    if (!window.confirm("Dit actiepunt verwijderen?")) return;
+    if (await run(db.from("to_acties").delete().eq("id", aid))) setBewerk(null);
+  };
   const toggleActie = (aid: string, af: string | null) => run(db.from("to_acties").update({ afgehandeld_op: af ? null : vandaag() }).eq("id", aid));
   const herindienen = () => run(db.from("to_rondes").insert({ station_id: station.id, nummer: rondes.length + 1, status: "controle", ingediend_op: vandaag(), ingediend_bij: "Van Gelder" }));
   const updStation = (patch: Record<string, any>) => run(db.from("stations").update(patch).eq("id", station.id));
@@ -120,6 +130,22 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
                     <div style={{ display: "flex", justifyContent: "space-between" }}><div style={kop}>{curStatus === "afgekeurd" ? "Actiepunten uit deze afkeur" : "Actiepunten (bij wie ligt de actie)"}</div><div style={{ fontSize: 13, color: SUB }}>{openN} open</div></div>
                     {acties.map((a) => {
                       const done = !!a.afgehandeld_op, ps = PARTIJ_STIJL[a.bij];
+                      if (bewerk?.id === a.id) return (
+                        <div key={a.id} style={{ display: "flex", flexDirection: "column", gap: 10, padding: 14, borderRadius: 12, background: T.soft, boxShadow: `inset 0 0 0 1.5px ${T.green}` }}>
+                          <input autoFocus value={bewerk.txt} onChange={(e) => setBewerk({ ...bewerk, txt: e.target.value })} aria-label="Omschrijving" style={{ ...veld, background: T.surface, minHeight: 44 }} />
+                          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
+                            <span style={{ fontSize: 13, fontWeight: 600, marginRight: 4 }}>Bij wie</span>
+                            {PARTIJEN.map((p) => <Pressable key={p} onClick={() => setBewerk({ ...bewerk, bij: p })} scale={0.97} style={chip(bewerk.bij === p)}><span className="material-symbols-rounded" style={{ fontSize: 17 }}>{PARTIJ_STIJL[p].icon}</span>{p}</Pressable>)}
+                          </div>
+                          {bewerk.bij === "Derden" && <input value={bewerk.derde} onChange={(e) => setBewerk({ ...bewerk, derde: e.target.value })} placeholder="Welke derde?" style={{ ...veld, background: T.surface, minHeight: 44 }} />}
+                          <input value={bewerk.notitie} onChange={(e) => setBewerk({ ...bewerk, notitie: e.target.value })} placeholder="Notitie (optioneel)" style={{ ...veld, background: T.surface, minHeight: 44 }} />
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            <Pressable onClick={bewaarActie} disabled={!bewerk.txt.trim()} scale={0.97} style={{ minHeight: 44, padding: "0 18px", borderRadius: 10, display: "flex", alignItems: "center", gap: 6, fontSize: 15, fontWeight: 600, background: T.green, color: T.surface }}><span className="material-symbols-rounded" style={{ fontSize: 20 }}>check</span>Opslaan</Pressable>
+                            <Pressable onClick={() => setBewerk(null)} scale={0.97} style={{ minHeight: 44, padding: "0 16px", borderRadius: 10, fontSize: 15, fontWeight: 600, background: T.surface, color: T.titleOnBg }}>Annuleren</Pressable>
+                            <Pressable onClick={() => verwijderActie(a.id)} scale={0.97} style={{ minHeight: 44, padding: "0 16px", borderRadius: 10, display: "flex", alignItems: "center", gap: 6, fontSize: 15, fontWeight: 600, background: T.dangerBg, color: T.danger, marginLeft: "auto" }}><span className="material-symbols-rounded" style={{ fontSize: 20 }}>delete</span>Verwijderen</Pressable>
+                          </div>
+                        </div>
+                      );
                       return (
                         <div key={a.id} style={{ display: "flex", gap: 12, padding: "12px 14px", borderRadius: 12, background: done ? "#F7FAF6" : T.soft }}>
                           <Pressable role="checkbox" aria-checked={done} aria-label={`${a.omschrijving}: ${done ? "afgehandeld, heropenen" : "afhandelen"}`} onClick={() => toggleActie(a.id, a.afgehandeld_op)} style={{ width: 44, height: 44, margin: "-10px -6px -10px -10px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent" }}>
@@ -133,6 +159,7 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
                           </div>
                           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, maxWidth: "45%", overflowWrap: "anywhere" }}>
                             <span style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 8px", borderRadius: 6, fontSize: 13, fontWeight: 600, background: ps.bg, color: ps.fg }}><span className="material-symbols-rounded" style={{ fontSize: 15 }}>{ps.icon}</span>{actieWie(a)}</span>
+                            <Pressable onClick={() => setBewerk({ id: a.id, txt: a.omschrijving, bij: a.bij as Partij, derde: a.derde_naam ?? "", notitie: a.notitie ?? "" })} aria-label={`${a.omschrijving} wijzigen`} scale={0.97} style={{ minHeight: 44, padding: "0 10px", margin: "-6px -8px", borderRadius: 8, display: "flex", alignItems: "center", gap: 4, fontSize: 13, fontWeight: 600, background: "transparent", color: T.green }}><span className="material-symbols-rounded" style={{ fontSize: 18 }}>edit</span>Wijzigen</Pressable>
                             <span style={{ fontSize: 13, color: SUB }}>{done ? `Afgehandeld ${fmtDatum(a.afgehandeld_op)}` : `${dagenTekst(dagenSinds(cur?.reactie_op ?? a.created_at))} open`}</span>
                           </div>
                         </div>
