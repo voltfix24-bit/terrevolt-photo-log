@@ -115,7 +115,7 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
     `Ingediend ${fmtDatum(cur.ingediend_op)} bij ${cur.ingediend_bij ?? "Van Gelder"}` +
       (cur.reactie_op ? ` · reactie ${fmtDatum(cur.reactie_op)} (${dagenTekst(dagenSinds(cur.ingediend_op, cur.reactie_op))})` : ` · ${dagenTekst(dagenZonderHold(cur.ingediend_op, null, station))} in behandeling`);
   const vg = station.uitvoerder === "van_gelder";
-  const actieBlok = (
+  const actieBlok = () => (
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     <div style={{ display: "flex", justifyContent: "space-between" }}><div style={kop}>{curStatus === "afgekeurd" ? "Actiepunten uit deze afkeur" : "Actiepunten (bij wie ligt de actie)"}</div><div style={{ fontSize: 13, color: SUB }}>{openN} open</div></div>
                     {acties.map((a) => {
@@ -260,7 +260,7 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
                   <RedenKiezer soort="open" gekozen={cur?.open_redenen ?? []} onToggle={toggleOpenReden} kleur={{ aan: T.green, uit: T.soft }} />
                 </div>
               )}
-              {curStatus === "open" && actieBlok}
+              {curStatus === "open" && actieBlok()}
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <div style={{ fontSize: 13, fontWeight: 600 }}>Notitie bij {st.label}</div>
                 <Notitie value={cur?.notitie ?? null} placeholder={placeholder} onSave={(v) => updRonde({ notitie: v || null })} />
@@ -273,7 +273,7 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
                     {cur.redenen.filter((k) => !isReden(k)).map((k) => <div key={k} style={{ fontSize: 14, color: T.danger }}>• {k}</div>)}
                     <RedenKiezer soort="afgekeurd" gekozen={cur.redenen} onToggle={toggleReden} kleur={{ aan: T.danger, uit: T.dangerBg }} />
                   </div>
-                  {actieBlok}
+                  {actieBlok()}
                   <Pressable onClick={herindienen} scale={0.98} style={{ minHeight: 52, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 16, fontWeight: 700, background: openN ? T.soft : T.green, color: openN ? SUB : T.surface, flexWrap: "wrap" }}>
                     <span className="material-symbols-rounded" style={{ fontSize: 22 }}>send</span>Opnieuw indienen als ronde {rondes.length + 1}
                     {openN > 0 && <span style={{ fontWeight: 500, fontSize: 14 }}>· nog {openN} actiepunt{openN > 1 ? "en" : ""} open</span>}
