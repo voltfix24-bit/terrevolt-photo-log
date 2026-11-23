@@ -1,0 +1,2 @@
+- `src/components/TerreVoltLoader.tsx` is the user's file, kept verbatim; the only loading indicator is via `src/components/Laden.tsx` (PaginaLader 80, BlokLader 48, KnopLader 20, LaadAfbeelding 40) — no skeletons/spinners. Why: one brand loader everywhere.
+- Station section cards use `Kaart` (Primitives): done = `doneBg`/`doneBorder`, open = white/`cardBorder`; never opacity or muted status colors. Why: finished sections must still look clickable.

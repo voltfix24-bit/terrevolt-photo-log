@@ -8,7 +8,6 @@
 - `/:og` routes come after all fixed routes and only accept opdrachtgevers from the table (or used on stations); `/cases/:key` and `/beoordelen/:key` keep their own screens with readable slugs. Why: no collisions with fixed pages.
 - Notes (categorie_opmerkingen) are edited only in `NotitieSheet` (visualViewport-positioned bottom sheet, autosave) and saved via `src/lib/notities.ts` with a localStorage offline queue flushed when back online. Why: iOS keyboard covered inline fields.
 - A photo upload for a skipped category removes the skip; SharePoint gets `{nr}_{cat}_NIET GEMAAKT.txt` per skipped category without photos (sync-managed, deleted when no longer wanted) and an `Opmerking` column on files. Why: no contradictory status.
-- `src/components/TerreVoltLoader.tsx` is the user's file, kept verbatim; the only loading indicator is via `src/components/Laden.tsx` (PaginaLader 80, BlokLader 48, KnopLader 20, LaadAfbeelding 40) — no skeletons/spinners. Why: one brand loader everywhere.
 - No app-shell SW: manifest-only; `public/sw.js` is a kill-switch for old caches. Why: iPhone blank screens.
 - Storage branding writes require a live PIN grant; uploads use new filenames. Why: protect settings without overwrites.
 - Photo writes go through `src/lib/fotos-service.ts` (upload + DB insert, idempotent by storage_path; row deleted before file); station delete/SharePoint status via `src/lib/station-service.ts`. Why: no false success, retry-safe.
@@ -19,7 +18,6 @@
 - All office, settings and destructive authorization uses `heeft_beheer()` (session_id + user_id + server deadline + revocation), never the permanent admin role alone. Why: independent fixed eight-hour grants.
 - Internal PDF/SharePoint/cron calls verify the managed cron credential; manual starts/retry/sync require the same PIN grant as RLS. Why: service-role endpoints cannot trust public bearer strings.
 - Index loads only `fotos(categorie, review_status)`. Why: payload.
-- Station section cards use `Kaart` (Primitives): done = `doneBg`/`doneBorder`, open = white/`cardBorder`; never opacity or muted status colors. Why: finished sections must still look clickable.
 
 ## BESLUITEN
 - Open mechanic access is limited to safe TerreVolt inserts, ordinary in-execution fields, undelivered photos/category notes and validated complete submission; all Cases & TO writes, settings/category management, deletion and delivered-dossier changes require PIN. Why: user-approved phase 1 access model.
