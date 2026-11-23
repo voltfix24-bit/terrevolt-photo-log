@@ -100,12 +100,12 @@ describe("Cases-pagina", () => {
     expect(localStorage.getItem("to-uitvoerder-filter")).toBe("terrevolt");
     expect(screen.getByTestId("loc").textContent).toContain("partij=Van+Gelder");
   });
-  it("lane header names actions and cases separately; attention list lists follow-up", async () => {
+  it("lane header names actions and cases separately; no attention summary above the board", async () => {
     await renderCases("/cases?partij=alle");
     expect(within(screen.getByRole("region", { name: "Van Gelder" })).getByText(/2 acties · 1 case open/)).toBeTruthy();
-    const aandacht = screen.getByRole("region", { name: /Aandacht/ });
-    expect(within(aandacht).getByText(/4 acties · 3 cases/)).toBeTruthy();
-    expect(within(aandacht).getAllByText(/Actie bij:/).length).toBe(2);
+    expect(screen.queryByRole("region", { name: /Aandacht/ })).toBeNull();
+    expect(screen.queryByText(/^Aandacht/)).toBeNull();
+    expect(screen.queryByText(/Toon alle \d+/)).toBeNull();
   });
   it("score with executor filter shows no false zero card and keeps FTR denominators", async () => {
     localStorage.setItem("to-uitvoerder-filter", "van_gelder");

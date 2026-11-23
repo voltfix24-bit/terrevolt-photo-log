@@ -3,7 +3,7 @@ import { useState } from "react";
 import { FileUp, MoreHorizontal, Plus } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { UitvoeringLabel } from "@/components/cases/UitvoeringLabel";
-import { aandachtItems, aantalActies, dossierLabel, SOORT_TITEL, type AandachtItem } from "@/lib/aandacht";
+import { dossierLabel } from "@/lib/aandacht";
 import { bordItems, partijTellingen, type Lane } from "@/lib/bord-groepen";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { CaseToevoegenDialog } from "@/components/cases/CaseToevoegenDialog";
@@ -157,64 +157,6 @@ function Score({ cases, open, filter, mobiel }: { cases: CaseItem[]; open: (s: U
   );
 }
 
-const SOORT_KLEUR: Record<AandachtItem["soort"], { bg: string; fg: string }> = {
-  hervatten: { bg: "#FDEFE4", fg: "#9A4A06" }, afkeur: { bg: "#FBEDEC", fg: "#B33A3A" }, afronden: { bg: "#E3EFE0", fg: "#1F5C3A" },
-};
-
-/** Compacte opvolglijst: alleen bestaande acties met casenummer, volgende actie, verantwoordelijke en datum. */
-function Aandacht({ cases, open }: { cases: CaseItem[]; open: (s: UrlStation) => void }) {
-  const items = aandachtItems(cases);
-  const [alles, setAlles] = useState(false);
-  if (!items.length) return null;
-  const zicht = alles ? items : items.slice(0, 5);
-  const uniek = new Set(items.map((i) => i.c.station.id)).size;
-  const nActies = aantalActies(items);
-  return (
-    <section aria-labelledby="aandacht-kop" style={{ ...card, padding: "14px 16px", marginBottom: 18 }}>
-      <h2 id="aandacht-kop" className="font-display" style={{ margin: 0, fontWeight: 700, fontSize: 17, color: T.titleOnBg }}>
-        Aandacht <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 500, fontSize: 14, color: SUB }}>{nActies} {nActies === 1 ? "actie" : "acties"} · {uniek} {uniek === 1 ? "case" : "cases"}</span>
-      </h2>
-      <ul style={{ listStyle: "none", margin: "8px 0 0", padding: 0 }}>
-        {zicht.map((i, k) => {
-          const kl = SOORT_KLEUR[i.soort];
-          return (
-            <li key={i.c.station.id + i.soort + k} style={{ borderTop: k ? `1px solid ${T.hairline}` : "none" }}>
-              <Pressable onClick={() => open(i.c.station)} scale={0.99} style={{ display: "flex", flexDirection: "column", gap: 4, padding: "10px 4px", width: "100%", textAlign: "left", minHeight: 48 }}>
-                <span style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, padding: "2px 8px", borderRadius: 6, background: kl.bg, color: kl.fg }}>{SOORT_TITEL[i.soort]}</span>
-                  <span className="font-mono" style={{ fontSize: 14, fontWeight: 700, color: T.titleOnBg }}>{i.casenummer}</span>
-                  <UitvoeringLabel uitvoerder={uitvoerderVan(i.c)} variant="kort" />
-                  <span style={{ fontSize: 13, color: SUB, marginLeft: "auto" }}>{i.datum}</span>
-                </span>
-                {i.acties && i.acties.length > 1 ? (
-                  <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: SUB }}>{i.acties.length} open acties</span>
-                    <ul style={{ margin: 0, paddingLeft: 18 }}>
-                      {i.acties.map((a, j) => (
-                        <li key={j} style={{ fontSize: 15, fontWeight: 600, color: T.titleOnBg, overflowWrap: "anywhere" }}>
-                          {a.tekst}{a.actieBij ? <span style={{ fontSize: 13, fontWeight: 400, color: SUB }}> · Actie bij: <b>{a.actieBij}</b></span> : null}
-                        </li>
-                      ))}
-                    </ul>
-                  </span>
-                ) : (
-                  <span style={{ fontSize: 15, fontWeight: 600, color: T.titleOnBg, overflowWrap: "anywhere" }}>{i.actie}</span>
-                )}
-                <span style={{ fontSize: 13, color: SUB }}>Bal bij: <b>{i.balBij}</b>{i.actieBij ? <> · Actie bij: <b>{i.actieBij}</b></> : null} · {caseNaam(i.c.station)}</span>
-              </Pressable>
-            </li>
-          );
-        })}
-      </ul>
-      {items.length > 5 && (
-        <button type="button" onClick={() => setAlles((a) => !a)} className="focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1F5C3A] rounded-lg" style={{ minHeight: 44, padding: "0 8px", fontSize: 14, fontWeight: 600, color: T.green, background: "none", border: 0 }}>
-          {alles ? "Toon minder" : `Toon alle ${items.length}`}
-        </button>
-      )}
-    </section>
-  );
-}
-
 const PARTIJ_KEUZES: (Lane | "alle")[] = ["alle", "TerreVolt", "Van Gelder", "Liander", "Derden"];
 
 export default function Cases() {
@@ -339,7 +281,7 @@ export default function Cases() {
           </div>
         ) : !cases.length ? (
           <div style={{ padding: "52px 20px", textAlign: "center", color: SUB, fontSize: 15 }}>{zoek && gefilterd.length ? <>Geen cases gevonden voor “{zoek}”.<div><Pressable onClick={() => zetZoek("")} style={{ marginTop: 8, minHeight: 44, padding: "0 14px", color: T.green, fontWeight: 600 }}>Zoekopdracht wissen</Pressable></div></> : "Geen cases"}</div>
-        ) : tab === "bal" ? <><Aandacht cases={cases} open={open} /><Bord cases={cases} open={open} partij={partij} /></> : <Score cases={cases} open={open} filter={filter} mobiel={mobiel} />}
+        ) : tab === "bal" ? <Bord cases={cases} open={open} partij={partij} /> : <Score cases={cases} open={open} filter={filter} mobiel={mobiel} />}
       </main>
     </div>
   );

@@ -17,7 +17,7 @@
 - Queue finalisation (markDone/markError) is one owner-checked IDB transaction; sync plans a single timer at the earliest foreign lease expiry; legacy items reuse an already registered q_{id}.* path. Why: late workers and crashes cannot clobber or duplicate.
 - getDB uses one shared open promise with blocked/blocking handling and never deletes the database. Why: an old tab must not hang storage or lose photos.
 - Confirmed uploads emit SYNC_RESULTAAT_EVENT per station; App invalidates exactly those stations; done queue items stay in IndexedDB until a server list shows their path (verwijderVerstuurd) or 24h pass (ruimVerstuurdOp); never clearDone after sync. Why: sent tiles survive navigation/remount before the server refetch.
-- Attention list (aandachtItems) uses only existing dates; resume is late only when on_hold_tot is before today's Europe/Amsterdam date. Why: no invented deadlines.
+- The Cases board (Bord) is the only work list; no separate attention summary above it. On-hold lateness uses only existing on_hold_tot (before today's Europe/Amsterdam date). Why: one place to act, no invented deadlines.
 - Party choice lives in the URL (?partij), independent of the executor filter in localStorage; lane headers count actions and unique cases separately. Why: cases ≠ actions.
 
 - Mobile UI: interactive controls ≥44px (frequent ≥48px), inputs ≥16px (CSS !important on mobile), small text ≥4.5:1; TO accents #8FA88F/#1F4E8C/#B33A3A/#1F5C3A stay, light accents get dark text. Why: user-approved readability baseline.
