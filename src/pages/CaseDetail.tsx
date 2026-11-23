@@ -77,9 +77,16 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
     return updRonde({ open_redenen: r.includes(k) ? r.filter((x) => x !== k) : [...r, k] });
   };
   const addActie = async () => {
-    if (!draft.txt.trim() || !cur) return;
+    if (!draft.txt.trim()) return;
+    let rondeId = cur?.id;
+    if (!rondeId) {
+      if (!internetVereist() || !await zorgVoorBeheer()) return;
+      const { data, error } = await db.from("to_rondes").insert({ station_id: station.id, nummer: 1 }).select("id").single();
+      if (error || !data) { toast.error(`Opslaan mislukt. ${BEHEER_NODIG}`); return; }
+      rondeId = data.id;
+    }
     const ok = await run(db.from("to_acties").insert({
-      ronde_id: cur.id, station_id: station.id, omschrijving: draft.txt.trim(), bij: draft.bij,
+      ronde_id: rondeId, station_id: station.id, omschrijving: draft.txt.trim(), bij: draft.bij,
       derde_naam: draft.bij === "Derden" ? draft.derde.trim() || null : null, notitie: draft.notitie.trim() || null,
     }));
     if (ok) setDraft((d) => ({ ...d, txt: "", notitie: "" }));
@@ -108,6 +115,47 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
     `Ingediend ${fmtDatum(cur.ingediend_op)} bij ${cur.ingediend_bij ?? "Van Gelder"}` +
       (cur.reactie_op ? ` · reactie ${fmtDatum(cur.reactie_op)} (${dagenTekst(dagenSinds(cur.ingediend_op, cur.reactie_op))})` : ` · ${dagenTekst(dagenZonderHold(cur.ingediend_op, null, station))} in behandeling`);
   const vg = station.uitvoerder === "van_gelder";
+  const actieBlok = (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}><div style={kop}>{curStatus === "afgekeurd" ? "Actiepunten uit deze afkeur" : "Actiepunten (bij wie ligt de actie)"}</div><div style={{ fontSize: 13, color: SUB }}>{openN} open</div></div>
+                    {acties.map((a) => {
+                      const done = !!a.afgehandeld_op, ps = PARTIJ_STIJL[a.bij];
+                      return (
+                        <div key={a.id} style={{ display: "flex", gap: 12, padding: "12px 14px", borderRadius: 12, background: done ? "#F7FAF6" : T.soft }}>
+                          <Pressable role="checkbox" aria-checked={done} aria-label={`${a.omschrijving}: ${done ? "afgehandeld, heropenen" : "afhandelen"}`} onClick={() => toggleActie(a.id, a.afgehandeld_op)} style={{ width: 44, height: 44, margin: "-10px -6px -10px -10px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent" }}>
+                            <span style={{ width: 24, height: 24, borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center", background: done ? T.green : T.surface, boxShadow: `inset 0 0 0 1.5px ${T.green}`, color: T.surface }}>
+                              {done && <span className="material-symbols-rounded" style={{ fontSize: 18 }}>check</span>}
+                            </span>
+                          </Pressable>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ overflowWrap: "anywhere", fontSize: 15, fontWeight: 600, lineHeight: 1.35, color: done ? T.subOnBg : T.titleOnBg, textDecoration: done ? "line-through" : "none" }}>{a.omschrijving}</div>
+                            {a.notitie && <div style={{ fontSize: 13, color: SUB, lineHeight: 1.4, marginTop: 4 }}>{a.notitie}</div>}
+                          </div>
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, maxWidth: "45%", overflowWrap: "anywhere" }}>
+                            <span style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 8px", borderRadius: 6, fontSize: 13, fontWeight: 600, background: ps.bg, color: ps.fg }}><span className="material-symbols-rounded" style={{ fontSize: 15 }}>{ps.icon}</span>{actieWie(a)}</span>
+                            <span style={{ fontSize: 13, color: SUB }}>{done ? `Afgehandeld ${fmtDatum(a.afgehandeld_op)}` : `${dagenTekst(dagenSinds(cur?.reactie_op ?? a.created_at))} open`}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 14, borderRadius: 12, boxShadow: "inset 0 0 0 1.5px #E1E8E0" }}>
+                      <input value={draft.txt} onChange={(e) => setDraft({ ...draft, txt: e.target.value })} placeholder={vg ? "Nieuw actiepunt, bijv. meetrapport aanleveren" : "Nieuw actiepunt, bijv. aarding opnieuw fotograferen"} style={{ ...veld, minHeight: 44 }} />
+                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, marginRight: 4 }}>Bij wie</span>
+                        {PARTIJEN.map((p) => (
+                          <Pressable key={p} onClick={() => setDraft({ ...draft, bij: p })} scale={0.97} style={chip(draft.bij === p)}><span className="material-symbols-rounded" style={{ fontSize: 17 }}>{PARTIJ_STIJL[p].icon}</span>{p}</Pressable>
+                        ))}
+                      </div>
+                      {draft.bij === "Derden" && <input value={draft.derde} onChange={(e) => setDraft({ ...draft, derde: e.target.value })} placeholder="Welke derde? Bijv. Hoogendoorn Kabel" style={{ ...veld, minHeight: 44 }} />}
+                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                        <input value={draft.notitie} onChange={(e) => setDraft({ ...draft, notitie: e.target.value })} placeholder="Notitie (optioneel)" style={{ ...veld, flex: 1, minWidth: 200, minHeight: 44, width: "auto" }} />
+                        <Pressable onClick={addActie} disabled={!draft.txt.trim()} scale={0.97} style={{ minHeight: 44, padding: "0 18px", borderRadius: 10, display: "flex", alignItems: "center", gap: 6, fontSize: 15, fontWeight: 600, background: draft.txt.trim() ? T.green : T.done, color: T.surface }}>
+                          <span className="material-symbols-rounded" style={{ fontSize: 20 }}>add</span>Toevoegen
+                        </Pressable>
+                      </div>
+                    </div>
+                  </div>
+  );
   const placeholder = { open: vg ? "Bijv. wacht op stukken van Van Gelder" : "Bijv. wacht op laatste foto's", controle: "Bijv. Van Gelder heeft doorgezet naar Liander", afgekeurd: "Toelichting van Van Gelder / Liander", goedgekeurd: "Bijv. goedgekeurd door Liander, kenmerk …" }[curStatus];
 
   const chip = (on: boolean, onBg = T.titleOnBg) => ({ minHeight: 44, padding: "0 12px", borderRadius: 9, display: "flex", alignItems: "center", gap: 6, fontSize: 14, fontWeight: 600, background: on ? onBg : T.soft, color: on ? T.surface : T.titleOnBg } as const);
@@ -212,6 +260,7 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
                   <RedenKiezer soort="open" gekozen={cur?.open_redenen ?? []} onToggle={toggleOpenReden} kleur={{ aan: T.green, uit: T.soft }} />
                 </div>
               )}
+              {curStatus === "open" && actieBlok}
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <div style={{ fontSize: 13, fontWeight: 600 }}>Notitie bij {st.label}</div>
                 <Notitie value={cur?.notitie ?? null} placeholder={placeholder} onSave={(v) => updRonde({ notitie: v || null })} />
@@ -224,45 +273,7 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
                     {cur.redenen.filter((k) => !isReden(k)).map((k) => <div key={k} style={{ fontSize: 14, color: T.danger }}>• {k}</div>)}
                     <RedenKiezer soort="afgekeurd" gekozen={cur.redenen} onToggle={toggleReden} kleur={{ aan: T.danger, uit: T.dangerBg }} />
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between" }}><div style={kop}>Actiepunten uit deze afkeur</div><div style={{ fontSize: 13, color: SUB }}>{openN} open</div></div>
-                    {acties.map((a) => {
-                      const done = !!a.afgehandeld_op, ps = PARTIJ_STIJL[a.bij];
-                      return (
-                        <div key={a.id} style={{ display: "flex", gap: 12, padding: "12px 14px", borderRadius: 12, background: done ? "#F7FAF6" : T.soft }}>
-                          <Pressable role="checkbox" aria-checked={done} aria-label={`${a.omschrijving}: ${done ? "afgehandeld, heropenen" : "afhandelen"}`} onClick={() => toggleActie(a.id, a.afgehandeld_op)} style={{ width: 44, height: 44, margin: "-10px -6px -10px -10px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent" }}>
-                            <span style={{ width: 24, height: 24, borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center", background: done ? T.green : T.surface, boxShadow: `inset 0 0 0 1.5px ${T.green}`, color: T.surface }}>
-                              {done && <span className="material-symbols-rounded" style={{ fontSize: 18 }}>check</span>}
-                            </span>
-                          </Pressable>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ overflowWrap: "anywhere", fontSize: 15, fontWeight: 600, lineHeight: 1.35, color: done ? T.subOnBg : T.titleOnBg, textDecoration: done ? "line-through" : "none" }}>{a.omschrijving}</div>
-                            {a.notitie && <div style={{ fontSize: 13, color: SUB, lineHeight: 1.4, marginTop: 4 }}>{a.notitie}</div>}
-                          </div>
-                          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, maxWidth: "45%", overflowWrap: "anywhere" }}>
-                            <span style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 8px", borderRadius: 6, fontSize: 13, fontWeight: 600, background: ps.bg, color: ps.fg }}><span className="material-symbols-rounded" style={{ fontSize: 15 }}>{ps.icon}</span>{actieWie(a)}</span>
-                            <span style={{ fontSize: 13, color: SUB }}>{done ? `Afgehandeld ${fmtDatum(a.afgehandeld_op)}` : `${dagenTekst(dagenSinds(cur.reactie_op ?? a.created_at))} open`}</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 14, borderRadius: 12, boxShadow: "inset 0 0 0 1.5px #E1E8E0" }}>
-                      <input value={draft.txt} onChange={(e) => setDraft({ ...draft, txt: e.target.value })} placeholder={vg ? "Nieuw actiepunt, bijv. meetrapport aanleveren" : "Nieuw actiepunt, bijv. aarding opnieuw fotograferen"} style={{ ...veld, minHeight: 44 }} />
-                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, marginRight: 4 }}>Bij wie</span>
-                        {PARTIJEN.map((p) => (
-                          <Pressable key={p} onClick={() => setDraft({ ...draft, bij: p })} scale={0.97} style={chip(draft.bij === p)}><span className="material-symbols-rounded" style={{ fontSize: 17 }}>{PARTIJ_STIJL[p].icon}</span>{p}</Pressable>
-                        ))}
-                      </div>
-                      {draft.bij === "Derden" && <input value={draft.derde} onChange={(e) => setDraft({ ...draft, derde: e.target.value })} placeholder="Welke derde? Bijv. Hoogendoorn Kabel" style={{ ...veld, minHeight: 44 }} />}
-                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                        <input value={draft.notitie} onChange={(e) => setDraft({ ...draft, notitie: e.target.value })} placeholder="Notitie (optioneel)" style={{ ...veld, flex: 1, minWidth: 200, minHeight: 44, width: "auto" }} />
-                        <Pressable onClick={addActie} disabled={!draft.txt.trim()} scale={0.97} style={{ minHeight: 44, padding: "0 18px", borderRadius: 10, display: "flex", alignItems: "center", gap: 6, fontSize: 15, fontWeight: 600, background: draft.txt.trim() ? T.green : T.done, color: T.surface }}>
-                          <span className="material-symbols-rounded" style={{ fontSize: 20 }}>add</span>Toevoegen
-                        </Pressable>
-                      </div>
-                    </div>
-                  </div>
+                  {actieBlok}
                   <Pressable onClick={herindienen} scale={0.98} style={{ minHeight: 52, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 16, fontWeight: 700, background: openN ? T.soft : T.green, color: openN ? SUB : T.surface, flexWrap: "wrap" }}>
                     <span className="material-symbols-rounded" style={{ fontSize: 22 }}>send</span>Opnieuw indienen als ronde {rondes.length + 1}
                     {openN > 0 && <span style={{ fontWeight: 500, fontSize: 14 }}>· nog {openN} actiepunt{openN > 1 ? "en" : ""} open</span>}

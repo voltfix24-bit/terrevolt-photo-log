@@ -28,3 +28,4 @@
 - Normal warnings (SharePoint key banner) stay below z-50 (modals/sheets and their backdrops). Why: dialogs on short screens must never be covered.
 - TO reasons: fixed keys in `REDENEN` (afgekeurd → `to_rondes.redenen`) and `OPEN_REDENEN` (open → `to_rondes.open_redenen`); "Anders" stores `eigen:<label>` and optionally remembers it in `to_reden_opties` (per soort, PIN). Old keys stay readable via REDEN_LABEL. Why: stable keys for later per-reason filtering/overview.
 - Open TO requires stations.technisch_gereed=true before indienen (UI guard in CaseDetail, board group 'technisch' via balVan). Why: user's workflow step before TO submission.
+- Open TO may carry to_acties; with open actions balVan puts the ball at each action's party. Why: ready case can wait on e.g. Van Gelder and Liander.

@@ -15,6 +15,11 @@ describe("TO-rondes", () => {
     expect(balVan({}, [])[0].txt).toBe("Technisch gereed?");
     expect(balVan({ technisch_gereed: false }, [])[0].txt).toBe("Technisch gereed maken");
   });
+  it("open TO met actiepunten: bal bij elke partij met een open actie", () => {
+    const r = { id: "r", station_id: "s", nummer: 1, status: "open", ingediend_op: null, ingediend_bij: null, reactie_op: null, redenen: [], open_redenen: [], notitie: null,
+      to_acties: [{ id: "a", bij: "Van Gelder", derde_naam: null, omschrijving: "Bordje", created_at: "2026-11-20", afgehandeld_op: null }, { id: "b", bij: "Liander", derde_naam: null, omschrijving: "Bordje", created_at: "2026-11-20", afgehandeld_op: null }] } as never;
+    expect(balVan({ technisch_gereed: true }, [r]).map((b) => b.wie)).toEqual(["Van Gelder", "Liander"]);
+  });
   it("in controle bij Liander", () => {
     expect(balVan({}, [ronde({ status: "controle", ingediend_bij: "Liander" })])[0].wie).toBe("Liander");
   });

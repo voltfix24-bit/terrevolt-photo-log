@@ -106,6 +106,9 @@ export function balVan(station: { dossier_status?: string | null; technisch_gere
     const prev = rondes[n - 2];
     // Technisch gereed komt vóór indienen: pas bij "ja" verschijnt de case als "TO klaarzetten en indienen".
     if (station.technisch_gereed !== true) return [{ wie: "TerreVolt", label: "TerreVolt", txt: station.technisch_gereed === false ? TECHNISCH_NIET_GEREED : TECHNISCH_GEREED_VRAAG, dagen: dagenSinds(prev?.reactie_op), ...nd(prev?.reactie_op) }];
+    // Open TO met actiepunten (bijv. bordje bij Van Gelder én Liander): de bal ligt bij die partijen.
+    const openActies = (r?.to_acties ?? []).filter((x) => !x.afgehandeld_op);
+    if (openActies.length) return openActies.map((x) => ({ wie: x.bij, label: actieWie(x), txt: x.omschrijving, dagen: dagenSinds(x.created_at), ...nd(x.created_at) }));
     return [{ wie: "TerreVolt", label: "TerreVolt", txt: "TO klaarzetten en indienen", dagen: dagenSinds(prev?.reactie_op), ...nd(prev?.reactie_op) }];
   }
   if (r.status === "controle") {
