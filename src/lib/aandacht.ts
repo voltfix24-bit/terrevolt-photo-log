@@ -16,6 +16,8 @@ export type AandachtItem = {
   actieBij?: string;
   datum: string;
   dagen: number;
+  /** Alle open acties van deze case (samengevoegd tot één kaart). */
+  acties?: { tekst: string; actieBij?: string }[];
 };
 
 const dagNr = (d: string) => Math.floor(new Date(d.slice(0, 10) + "T00:00:00Z").getTime() / 86400000);
@@ -45,9 +47,9 @@ export function aandachtItems(cases: CaseItem[], nu = amsterdamDatum()): Aandach
       const sinds = r.reactie_op;
       const dagen = dagenZonderHold(sinds, null, s, nu);
       const datum = sinds ? `afgekeurd ${fmtDatum(sinds)} · ${dagenTekst(dagen)}` : "afkeurdatum onbekend";
-      if (open.length) for (const a of open) {
-        const wie = actieWie(a);
-        uit.push({ soort: "afkeur", c, casenummer: nr, actie: a.omschrijving, balBij, actieBij: p.partijen.includes(a.bij as Partij) && wie === a.bij ? undefined : wie, datum, dagen });
+      if (open.length) {
+        const acties = open.map((a) => { const wie = actieWie(a); return { tekst: a.omschrijving, actieBij: p.partijen.includes(a.bij as Partij) && wie === a.bij ? undefined : wie }; });
+        uit.push({ soort: "afkeur", c, casenummer: nr, actie: acties[0].tekst, balBij, actieBij: acties.length === 1 ? acties[0].actieBij : undefined, datum, dagen, acties });
       } else {
         const bal = p.bal[0];
         uit.push({ soort: "afkeur", c, casenummer: nr, actie: `Opnieuw indienen (ronde ${c.rondes.length + 1})`, balBij,
@@ -63,5 +65,8 @@ export function aandachtItems(cases: CaseItem[], nu = amsterdamDatum()): Aandach
   const volgorde: AandachtSoort[] = ["hervatten", "afkeur", "afronden"];
   return uit.sort((a, b) => volgorde.indexOf(a.soort) - volgorde.indexOf(b.soort) || b.dagen - a.dagen);
 }
+
+/** Aantal acties (een samengevoegde kaart telt al zijn open acties). */
+export const aantalActies = (items: AandachtItem[]) => items.reduce((n, i) => n + (i.acties?.length ?? 1), 0);
 
 export const dossierLabel = (d: string | null | undefined) => d === "afgerond" ? "Afgerond" : d === "volledig" ? "Bevestigd volledig" : "Ingediend";

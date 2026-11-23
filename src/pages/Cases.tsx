@@ -3,7 +3,7 @@ import { useState } from "react";
 import { FileUp, MoreHorizontal, Plus } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { UitvoeringLabel } from "@/components/cases/UitvoeringLabel";
-import { aandachtItems, dossierLabel, SOORT_TITEL, type AandachtItem } from "@/lib/aandacht";
+import { aandachtItems, aantalActies, dossierLabel, SOORT_TITEL, type AandachtItem } from "@/lib/aandacht";
 import { bordItems, partijTellingen, type Lane } from "@/lib/bord-groepen";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { CaseToevoegenDialog } from "@/components/cases/CaseToevoegenDialog";
@@ -168,10 +168,11 @@ function Aandacht({ cases, open }: { cases: CaseItem[]; open: (s: UrlStation) =>
   if (!items.length) return null;
   const zicht = alles ? items : items.slice(0, 5);
   const uniek = new Set(items.map((i) => i.c.station.id)).size;
+  const nActies = aantalActies(items);
   return (
     <section aria-labelledby="aandacht-kop" style={{ ...card, padding: "14px 16px", marginBottom: 18 }}>
       <h2 id="aandacht-kop" className="font-display" style={{ margin: 0, fontWeight: 700, fontSize: 17, color: T.titleOnBg }}>
-        Aandacht <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 500, fontSize: 14, color: SUB }}>{items.length} {items.length === 1 ? "actie" : "acties"} · {uniek} {uniek === 1 ? "case" : "cases"}</span>
+        Aandacht <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 500, fontSize: 14, color: SUB }}>{nActies} {nActies === 1 ? "actie" : "acties"} · {uniek} {uniek === 1 ? "case" : "cases"}</span>
       </h2>
       <ul style={{ listStyle: "none", margin: "8px 0 0", padding: 0 }}>
         {zicht.map((i, k) => {
@@ -185,7 +186,20 @@ function Aandacht({ cases, open }: { cases: CaseItem[]; open: (s: UrlStation) =>
                   <UitvoeringLabel uitvoerder={uitvoerderVan(i.c)} variant="kort" />
                   <span style={{ fontSize: 13, color: SUB, marginLeft: "auto" }}>{i.datum}</span>
                 </span>
-                <span style={{ fontSize: 15, fontWeight: 600, color: T.titleOnBg, overflowWrap: "anywhere" }}>{i.actie}</span>
+                {i.acties && i.acties.length > 1 ? (
+                  <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: SUB }}>{i.acties.length} open acties</span>
+                    <ul style={{ margin: 0, paddingLeft: 18 }}>
+                      {i.acties.map((a, j) => (
+                        <li key={j} style={{ fontSize: 15, fontWeight: 600, color: T.titleOnBg, overflowWrap: "anywhere" }}>
+                          {a.tekst}{a.actieBij ? <span style={{ fontSize: 13, fontWeight: 400, color: SUB }}> · Actie bij: <b>{a.actieBij}</b></span> : null}
+                        </li>
+                      ))}
+                    </ul>
+                  </span>
+                ) : (
+                  <span style={{ fontSize: 15, fontWeight: 600, color: T.titleOnBg, overflowWrap: "anywhere" }}>{i.actie}</span>
+                )}
                 <span style={{ fontSize: 13, color: SUB }}>Bal bij: <b>{i.balBij}</b>{i.actieBij ? <> · Actie bij: <b>{i.actieBij}</b></> : null} · {caseNaam(i.c.station)}</span>
               </Pressable>
             </li>

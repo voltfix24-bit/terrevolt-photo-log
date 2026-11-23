@@ -34,7 +34,8 @@ describe("statusbetekenis en tellingen", () => {
     expect(groepenVan(items, "TerreVolt").open).toBe(0); // presentatie bij Van Gelder, actie blijft bewaard
     expect(items.every((i) => i.wie === "TerreVolt" && i.lane === "Van Gelder")).toBe(true);
     const a = aandachtItems([vgMetTV], "2026-03-05");
-    expect(a).toHaveLength(2); expect(a.every((x) => x.balBij === "Van Gelder" && x.actieBij === "TerreVolt" && x.soort === "afkeur")).toBe(true);
+    expect(a).toHaveLength(1); expect(a[0].balBij).toBe("Van Gelder"); expect(a[0].soort).toBe("afkeur");
+    expect(a[0].acties).toHaveLength(2); expect(a[0].acties!.every((x) => x.actieBij === "TerreVolt")).toBe(true);
     expect(partijTellingen(items)["Van Gelder"]).toEqual({ acties: 2, cases: 1 });
   });
   it("approved TO with open dossier stays for follow-up (not presented as finished); 'afgerond' disappears", () => {

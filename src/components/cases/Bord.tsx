@@ -34,7 +34,8 @@ function Wacht({ i }: { i: BordItem }) {
   return <span title={rood ? "Wacht 10 dagen of langer (indicatie, geen deadline)" : undefined} style={{ fontSize: 12, whiteSpace: "nowrap", color: rood ? "#B33A3A" : T.bodyOnBg, fontWeight: rood ? 600 : 400 }}>{dagenTekst(i.dagen)}</span>;
 }
 
-function Kaart({ i, open }: { i: BordItem; open: (s: UrlStation) => void }) {
+function Kaart({ alle, open }: { alle: BordItem[]; open: (s: UrlStation) => void }) {
+  const i = alle[0];
   const s = i.c.station;
   const naam = caseNaam(s);
   const station = (s.naam_msr as string | undefined)?.trim();
@@ -50,19 +51,29 @@ function Kaart({ i, open }: { i: BordItem; open: (s: UrlStation) => void }) {
       </div>
       <div style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.25, color: T.titleOnBg, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{naam}</div>
       {toonStation && <div style={{ fontSize: 12, color: T.subOnBg, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{station}</div>}
-      {(i.groep === "actiepunt" || i.groep === "onhold") && (
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 4, fontSize: 13, color: "#1F5C3A" }}>
-          <CornerDownRight size={14} style={{ flexShrink: 0, marginTop: 2 }} />
-          <span style={{ minWidth: 0, overflowWrap: "anywhere" }}>{i.txt}{i.lane === "Derden" && i.label !== "Derden" && i.wie === i.lane ? ` · ${i.label}` : ""}</span>
+      {(i.groep === "actiepunt" || i.groep === "onhold") && alle.map((a, j) => (
+        <div key={j} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 4, fontSize: 13, color: "#1F5C3A" }}>
+            <CornerDownRight size={14} style={{ flexShrink: 0, marginTop: 2 }} />
+            <span style={{ minWidth: 0, overflowWrap: "anywhere" }}>{a.txt}{a.lane === "Derden" && a.label !== "Derden" && a.wie === a.lane ? ` · ${a.label}` : ""}</span>
+          </div>
+          {a.groep !== "onhold" && a.wie !== a.lane && <div style={{ fontSize: 12, fontWeight: 600, color: T.bodyOnBg, paddingLeft: 18 }}>Actie bij: {a.label}</div>}
         </div>
-      )}
+      ))}
       {/* Onderliggende actiehouder wanneer die afwijkt van de casepartij (bijv. Van Gelder-case, actie bij TerreVolt). */}
-      {i.groep !== "onhold" && i.wie !== i.lane && (
+      {i.groep !== "actiepunt" && i.groep !== "onhold" && i.wie !== i.lane && (
         <div style={{ fontSize: 12, fontWeight: 600, color: T.bodyOnBg }}>Actie bij: {i.label}</div>
       )}
       {wv && <div style={{ fontSize: 12, overflowWrap: "anywhere", color: T.subOnBg }}>WV: {wv}</div>}
     </Pressable>
   );
+}
+
+/** Voeg acties van dezelfde case samen tot één kaart (volgorde van eerste voorkomen). */
+export function perCase(items: BordItem[]): BordItem[][] {
+  const m = new Map<string, BordItem[]>();
+  for (const i of items) { const k = i.c.station.id; const l = m.get(k); if (l) l.push(i); else m.set(k, [i]); }
+  return [...m.values()];
 }
 
 function Groep({ lane, g, titel, items, open }: { lane: Lane; g: GroepKey; titel: string; items: BordItem[]; open: (s: UrlStation) => void }) {
@@ -92,7 +103,7 @@ function Groep({ lane, g, titel, items, open }: { lane: Lane; g: GroepKey; titel
             </Pressable>
           ))}
         </div>
-      ) : zicht.map((i, k) => <Kaart key={i.c.station.id + k} i={i} open={open} />))}
+      ) : perCase(zicht).map((g) => <Kaart key={g[0].c.station.id} alle={g} open={open} />))}
       {!dicht && items.length > max && (
         <button type="button" onClick={() => setAlles((a) => !a)} className="focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1F5C3A] rounded-lg" style={{ alignSelf: "flex-start", fontSize: 14, fontWeight: 600, color: T.green, background: "none", border: 0, cursor: "pointer", padding: "0 8px", minHeight: 44 }}>
           {alles ? "Toon minder" : `Toon nog ${items.length - max}`}
