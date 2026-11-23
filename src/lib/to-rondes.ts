@@ -12,7 +12,7 @@ export type ToActie = { id: string; ronde_id: string; station_id: string; omschr
 export type ToRonde = { id: string; station_id: string; nummer: number; status: ToStatus; ingediend_op: string | null; ingediend_bij: "Van Gelder" | "Liander" | null; reactie_op: string | null; redenen: string[]; open_redenen?: string[]; notitie: string | null; to_acties: ToActie[] };
 export type BalItem = { wie: Partij; label: string; txt: string; dagen: number; geenDatum?: boolean };
 export type Uitvoerder = "terrevolt" | "van_gelder";
-export type CaseStation = { id: string; naam_msr: string; casenummer: string | null; casenaam: string | null; behuizingsnummer: string | null; status: string | null; dossier_status: string | null; dossier_notitie: string | null; case_verborgen: boolean; created_at: string | null; uitvoerder: Uitvoerder; wv: string | null; is_nummer: string | null; tg: boolean } & HoldVelden;
+export type CaseStation = { id: string; naam_msr: string; casenummer: string | null; casenaam: string | null; behuizingsnummer: string | null; status: string | null; dossier_status: string | null; dossier_notitie: string | null; case_verborgen: boolean; created_at: string | null; uitvoerder: Uitvoerder; wv: string | null; is_nummer: string | null; tg: boolean; technisch_gereed?: boolean | null } & HoldVelden;
 export type CaseItem = { station: Partial<CaseStation> & { id: string } & Record<string, unknown>; rondes: ToRonde[]; last: ToRonde | null; bal: BalItem[] };
 
 export const TO_STATUS: Record<ToStatus, { label: string; dot: string; bg: string; fg: string }> = {
@@ -95,12 +95,17 @@ export const dagenTekst = (d: number) => (d <= 0 ? "vandaag" : d === 1 ? "1 dag"
 // Alleen gezet als er geen datum is, zodat het bord die kaarten onderaan zet
 const nd = (d?: string | null) => (d ? {} : { geenDatum: true as const });
 
-export function balVan(station: { dossier_status?: string | null } & HoldVelden, rondes: ToRonde[]): BalItem[] {
+export const TECHNISCH_GEREED_VRAAG = "Technisch gereed?";
+export const TECHNISCH_NIET_GEREED = "Technisch gereed maken";
+
+export function balVan(station: { dossier_status?: string | null; technisch_gereed?: boolean | null } & HoldVelden, rondes: ToRonde[]): BalItem[] {
   const dagenSinds = (d?: string | null) => dagenZonderHold(d, null, station);
   const n = rondes.length;
   const r = rondes[n - 1];
   if (!r || r.status === "open") {
     const prev = rondes[n - 2];
+    // Technisch gereed komt vóór indienen: pas bij "ja" verschijnt de case als "TO klaarzetten en indienen".
+    if (station.technisch_gereed !== true) return [{ wie: "TerreVolt", label: "TerreVolt", txt: station.technisch_gereed === false ? TECHNISCH_NIET_GEREED : TECHNISCH_GEREED_VRAAG, dagen: dagenSinds(prev?.reactie_op), ...nd(prev?.reactie_op) }];
     return [{ wie: "TerreVolt", label: "TerreVolt", txt: "TO klaarzetten en indienen", dagen: dagenSinds(prev?.reactie_op), ...nd(prev?.reactie_op) }];
   }
   if (r.status === "controle") {

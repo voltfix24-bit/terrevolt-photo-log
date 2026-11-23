@@ -59,7 +59,9 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
     cur ? run(db.from("to_rondes").update(patch).eq("id", cur.id))
         : run(db.from("to_rondes").insert({ station_id: station.id, nummer: 1, ...patch }));
 
+  const gereed = station.technisch_gereed === true;
   const zetStatus = (k: ToStatus) => {
+    if (k !== "open" && curStatus === "open" && !gereed) { toast.error("Eerst technisch gereed: kies Ja voordat de TO ingediend wordt."); return; }
     const t = vandaag();
     const ingediend = !cur || cur.status === "open" ? t : cur.ingediend_op;
     if (k === "open") return updRonde({ status: k, ingediend_op: null, reactie_op: null });
@@ -165,7 +167,21 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
                 <div className="font-display" style={{ fontWeight: 700, fontSize: 20 }}>Ronde {n} <span style={{ fontFamily: "Inter, sans-serif", fontWeight: 500, fontSize: 14, color: SUB }}>· huidige ronde</span></div>
                 <div style={{ fontSize: 14, color: SUB }}>{dateLine}</div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 6 }}>
+              {curStatus === "open" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12, borderRadius: 12, background: gereed ? "#E3EFE0" : "#FFF6E5" }}>
+                  <div style={{ fontSize: 15, fontWeight: 700 }}>Technisch gereed?</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                    {([true, false] as const).map((v) => {
+                      const on = station.technisch_gereed === v;
+                      return <Pressable key={String(v)} onClick={() => updStation({ technisch_gereed: v })} scale={0.97} aria-pressed={on} style={{ minHeight: 46, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 15, fontWeight: 600, background: on ? (v ? T.green : T.danger) : T.surface, color: on ? T.surface : T.titleOnBg }}>
+                        <span className="material-symbols-rounded" style={{ fontSize: 20 }}>{v ? "check" : "close"}</span>{v ? "Ja" : "Nee"}
+                      </Pressable>;
+                    })}
+                  </div>
+                  {!gereed && <div style={{ fontSize: 13, color: T.bodyOnBg }}>{station.technisch_gereed === false ? "Nog niet technisch gereed. Indienen kan pas als dit Ja is." : "Nog niet beantwoord. Indienen kan pas als dit Ja is."}</div>}
+                </div>
+              )}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 6, opacity: 1 }}>
                 {TO_ORDER.map((k) => {
                   const s = TO_STATUS[k], on = curStatus === k;
                   return (

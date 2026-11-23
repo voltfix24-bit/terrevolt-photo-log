@@ -792,6 +792,7 @@ export type Database = {
           status: string | null
           submitted_at: string | null
           submitted_by: string | null
+          technisch_gereed: boolean | null
           tg: boolean
           type_ruimte: string | null
           uitvoerder: Database["public"]["Enums"]["case_uitvoerder"]
@@ -824,6 +825,7 @@ export type Database = {
           status?: string | null
           submitted_at?: string | null
           submitted_by?: string | null
+          technisch_gereed?: boolean | null
           tg?: boolean
           type_ruimte?: string | null
           uitvoerder?: Database["public"]["Enums"]["case_uitvoerder"]
@@ -856,6 +858,7 @@ export type Database = {
           status?: string | null
           submitted_at?: string | null
           submitted_by?: string | null
+          technisch_gereed?: boolean | null
           tg?: boolean
           type_ruimte?: string | null
           uitvoerder?: Database["public"]["Enums"]["case_uitvoerder"]

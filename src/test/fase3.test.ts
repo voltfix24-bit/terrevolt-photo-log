@@ -9,7 +9,11 @@ const ronde = (p: Partial<ToRonde>): ToRonde => ({ id: "r", station_id: "s", num
 
 describe("TO-rondes", () => {
   it("geen ronde: TerreVolt moet indienen", () => {
-    expect(balVan({}, [])[0]).toMatchObject({ wie: "TerreVolt", txt: "TO klaarzetten en indienen" });
+    expect(balVan({ technisch_gereed: true }, [])[0]).toMatchObject({ wie: "TerreVolt", txt: "TO klaarzetten en indienen" });
+  });
+  it("open TO: eerst technisch gereed (nog niet beantwoord of nee)", () => {
+    expect(balVan({}, [])[0].txt).toBe("Technisch gereed?");
+    expect(balVan({ technisch_gereed: false }, [])[0].txt).toBe("Technisch gereed maken");
   });
   it("in controle bij Liander", () => {
     expect(balVan({}, [ronde({ status: "controle", ingediend_bij: "Liander" })])[0].wie).toBe("Liander");

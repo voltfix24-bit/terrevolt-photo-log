@@ -3,23 +3,24 @@ import { casePresentatie } from "./case-presentatie";
 import type { BalItem, CaseItem, Partij } from "@/lib/to-rondes";
 
 export type Lane = Partij | "Derden";
-export type GroepKey = "opnieuw" | "actiepunt" | "klaarzetten" | "beoordelen" | "goedgekeurd" | "onhold";
+export type GroepKey = "technisch" | "opnieuw" | "actiepunt" | "klaarzetten" | "beoordelen" | "goedgekeurd" | "onhold";
 export type BordItem = BalItem & { c: CaseItem; lane: Lane; groep: GroepKey };
 
 export const GROEP_KLEUR: Partial<Record<GroepKey, string>> = { opnieuw: "#B33A3A", beoordelen: "#1F4E8C", goedgekeurd: "#1F5C3A", onhold: "#6B4E8C" };
 
 export const LANE_GROEPEN: Record<Lane, GroepKey[]> = {
-  TerreVolt: ["opnieuw", "actiepunt", "klaarzetten", "onhold"],
-  "Van Gelder": ["beoordelen", "actiepunt", "onhold"],
+  TerreVolt: ["technisch", "opnieuw", "actiepunt", "klaarzetten", "onhold"],
+  "Van Gelder": ["technisch", "beoordelen", "actiepunt", "onhold"],
   Liander: ["beoordelen", "actiepunt", "goedgekeurd", "onhold"],
   Derden: ["actiepunt", "onhold"],
 };
 
 export function groepTitel(lane: Lane, g: GroepKey) {
-  return { opnieuw: "Opnieuw indienen", actiepunt: `Actiepunt ${lane}`, klaarzetten: "TO klaarzetten en indienen", beoordelen: "TO beoordelen", goedgekeurd: "TO goedgekeurd · dossier nog niet afgerond", onhold: "On hold" }[g];
+  return { technisch: "Technisch gereed?", opnieuw: "Opnieuw indienen", actiepunt: `Actiepunt ${lane}`, klaarzetten: "TO klaarzetten en indienen", beoordelen: "TO beoordelen", goedgekeurd: "TO goedgekeurd · dossier nog niet afgerond", onhold: "On hold" }[g];
 }
 
 function groepVan(lane: Lane, txt: string): GroepKey {
+  if (txt === "Technisch gereed?" || txt === "Technisch gereed maken") return "technisch";
   if (txt === "TO beoordelen") return "beoordelen";
   if (txt === "TO goedgekeurd") return "goedgekeurd";
   if (lane === "TerreVolt" && txt.startsWith("Opnieuw indienen")) return "opnieuw";
