@@ -9,7 +9,7 @@ export type ToStatus = "open" | "controle" | "afgekeurd" | "goedgekeurd";
 export type Partij = "TerreVolt" | "Van Gelder" | "Liander" | "Derden";
 export type DossierStatus = "ingediend" | "volledig" | "afgerond";
 export type ToActie = { id: string; ronde_id: string; station_id: string; omschrijving: string; bij: Partij; derde_naam: string | null; notitie: string | null; afgehandeld_op: string | null; created_at: string };
-export type ToRonde = { id: string; station_id: string; nummer: number; status: ToStatus; ingediend_op: string | null; ingediend_bij: "Van Gelder" | "Liander" | null; reactie_op: string | null; redenen: string[]; notitie: string | null; to_acties: ToActie[] };
+export type ToRonde = { id: string; station_id: string; nummer: number; status: ToStatus; ingediend_op: string | null; ingediend_bij: "Van Gelder" | "Liander" | null; reactie_op: string | null; redenen: string[]; open_redenen?: string[]; notitie: string | null; to_acties: ToActie[] };
 export type BalItem = { wie: Partij; label: string; txt: string; dagen: number; geenDatum?: boolean };
 export type Uitvoerder = "terrevolt" | "van_gelder";
 export type CaseStation = { id: string; naam_msr: string; casenummer: string | null; casenaam: string | null; behuizingsnummer: string | null; status: string | null; dossier_status: string | null; dossier_notitie: string | null; case_verborgen: boolean; created_at: string | null; uitvoerder: Uitvoerder; wv: string | null; is_nummer: string | null; tg: boolean } & HoldVelden;
@@ -37,7 +37,22 @@ export const PARTIJ_STIJL: Record<Partij, { bg: string; fg: string; icon: string
   "Derden": { bg: "#EEF2ED", fg: "#3D4F42", icon: "engineering" },
 };
 
+/** Afkeurredenen (huidige keuzelijst). Eigen redenen via "Anders" worden opgeslagen als `eigen:<label>`. */
 export const REDENEN: { key: string; label: string }[] = [
+  { key: "naam_bord", label: "Naam bord" },
+  { key: "kwh_meter", label: "kWh meter" },
+  { key: "flex_ov", label: "Flex OV" },
+  { key: "svk_lt7", label: "SVK LT7 niet juist" },
+];
+/** Redenen waarom een TO open blijft (actiepunten/notities nodig). */
+export const OPEN_REDENEN: { key: string; label: string }[] = [
+  { key: "straatwerk", label: "Straatwerk" },
+  { key: "kwh_meter", label: "kWh meter" },
+  { key: "flex_ov", label: "Flex OV" },
+  { key: "svk_lt7", label: "SVK LT7 niet juist" },
+];
+/** Oude afkeurredenen: niet meer te kiezen, wel leesbaar in bestaande rondes. */
+const OUDE_REDENEN = [
   { key: "foto_ontbreekt", label: "Foto ontbreekt" },
   { key: "foto_onduidelijk", label: "Foto onduidelijk" },
   { key: "meting", label: "Meetrapport ontbreekt" },
@@ -45,7 +60,12 @@ export const REDENEN: { key: string; label: string }[] = [
   { key: "revisie", label: "Revisietekening" },
   { key: "overig", label: "Overig" },
 ];
-export const REDEN_LABEL = Object.fromEntries(REDENEN.map((r) => [r.key, r.label]));
+export const EIGEN = "eigen:";
+export const eigenKey = (label: string) => EIGEN + label.trim().replace(/\s+/g, " ");
+export const REDEN_LABEL: Record<string, string> = Object.fromEntries([...OUDE_REDENEN, ...OPEN_REDENEN, ...REDENEN].map((r) => [r.key, r.label]));
+/** Is dit een gekozen reden (vast of eigen), en geen vrije importtekst? */
+export const isReden = (k: string) => k in REDEN_LABEL || k.startsWith(EIGEN);
+export const redenLabel = (k: string) => REDEN_LABEL[k] ?? (k.startsWith(EIGEN) ? k.slice(EIGEN.length) : k);
 
 import { dagenZonderHold, type HoldVelden } from "@/lib/on-hold";
 
@@ -122,7 +142,7 @@ export function useCases(opts?: { inclVerborgen?: boolean }) {
         .map((s: any) => {
           const rondes: ToRonde[] = [...(s.to_rondes ?? [])]
             .sort((a, b) => a.nummer - b.nummer)
-            .map((r) => ({ ...r, redenen: r.redenen ?? [], to_acties: [...(r.to_acties ?? [])].sort((a, b) => a.created_at.localeCompare(b.created_at)) }));
+            .map((r) => ({ ...r, redenen: r.redenen ?? [], open_redenen: r.open_redenen ?? [], to_acties: [...(r.to_acties ?? [])].sort((a, b) => a.created_at.localeCompare(b.created_at)) }));
           return { station: s, rondes, last: rondes[rondes.length - 1] ?? null, bal: balVan(s, rondes) };
         });
     },
@@ -134,7 +154,7 @@ export function scoreVan(cases: CaseItem[]) {
   const ftrN = judged.filter((c) => c.rondes[0].status === "goedgekeurd").length;
   const appr = cases.map((c) => c.rondes.findIndex((r) => r.status === "goedgekeurd")).filter((k) => k >= 0);
   const cnt: Record<string, number> = {};
-  cases.forEach((c) => c.rondes.forEach((r) => r.redenen.forEach((k) => { cnt[k] = (cnt[k] ?? 0) + 1; })));
+  cases.forEach((c) => c.rondes.forEach((r) => r.redenen.filter(isReden).forEach((k) => { cnt[k] = (cnt[k] ?? 0) + 1; })));
   const controle = cases.filter((c) => c.last?.status === "controle");
   const ing = cases.map(c => indieningen(c.rondes)).filter(n => n > 0);
   return {
@@ -147,7 +167,7 @@ export function scoreVan(cases: CaseItem[]) {
     controleVG: controle.filter((c) => c.last?.ingediend_bij !== "Liander").length,
     controleLiander: controle.filter((c) => c.last?.ingediend_bij === "Liander").length,
     afgekeurdN: cases.filter((c) => c.last?.status === "afgekeurd").length,
-    redenen: REDENEN.map((r) => ({ ...r, n: cnt[r.key] ?? 0 })).filter((r) => r.n).sort((a, b) => b.n - a.n),
+    redenen: Object.entries(cnt).map(([key, n]) => ({ key, label: redenLabel(key), n })).sort((a, b) => b.n - a.n),
   };
 }
 
@@ -172,7 +192,7 @@ export function useCase(id?: string) {
       const { data: station, error } = await db.from("stations").select("*, to_rondes(*, to_acties(*)), hold_periodes(*)").eq("id", id).maybeSingle();
       if (error) throw error;
       if (!station) return null;
-      const rondes: ToRonde[] = [...(station.to_rondes ?? [])].sort((a,b) => a.nummer-b.nummer).map(r => ({ ...r, redenen: r.redenen ?? [], to_acties: r.to_acties ?? [] }));
+      const rondes: ToRonde[] = [...(station.to_rondes ?? [])].sort((a,b) => a.nummer-b.nummer).map(r => ({ ...r, redenen: r.redenen ?? [], open_redenen: r.open_redenen ?? [], to_acties: r.to_acties ?? [] }));
       return { station, rondes, last: rondes[rondes.length-1] ?? null, bal: balVan(station,rondes) };
     },
   });
@@ -187,4 +207,17 @@ export function useWvSuggesties() {
       if ((data?.length ?? 0)<250) return rows;
     }
   } });
+}
+
+export type RedenSoort = "open" | "afgekeurd";
+/** Zelf toegevoegde "Anders"-redenen, per soort, als `eigen:`-sleutels. */
+export function useEigenRedenen(soort: RedenSoort) {
+  return useQuery({
+    queryKey: ["reden-opties", soort],
+    queryFn: async (): Promise<string[]> => {
+      const { data, error } = await db.from("to_reden_opties").select("label").eq("soort", soort).order("label");
+      if (error) throw error;
+      return (data ?? []).map((r: { label: string }) => eigenKey(r.label));
+    },
+  });
 }

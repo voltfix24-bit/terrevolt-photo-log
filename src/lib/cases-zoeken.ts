@@ -1,7 +1,7 @@
 // Uitgebreid zoeken in Cases & TO: alle woorden moeten ergens in de case voorkomen (EN),
 // "aanhalingstekens" voor een exacte woordgroep, -woord om uit te sluiten,
 // en veld:waarde (case:, naam:, wv:, is:, behuizing:, og:, status:, dossier:, bal:, actie:, reden:, notitie:, uitvoering:, hold:).
-import { REDEN_LABEL, TO_STATUS, actieWie, type CaseItem } from "./to-rondes";
+import { redenLabel, TO_STATUS, actieWie, type CaseItem } from "./to-rondes";
 import { dossierLabel } from "./aandacht";
 import { casePresentatie } from "./case-presentatie";
 
@@ -58,7 +58,7 @@ export function caseVelden(c: CaseItem): Record<string, string> {
     dossier: normaliseer([dossierLabel(s.dossier_status as string | null), s.dossier_status, s.status].join(" ")),
     bal: normaliseer([bal, ...c.bal.map((b) => `${b.wie} ${b.txt}`)].join(" ")),
     actie: normaliseer(acties.map((a) => `${a.omschrijving} ${actieWie(a)} ${a.notitie ?? ""} ${a.afgehandeld_op ? "afgehandeld" : "open"}`).join(" ")),
-    reden: normaliseer(c.rondes.flatMap((r) => r.redenen.map((k) => `${REDEN_LABEL[k] ?? k}`)).join(" ")),
+    reden: normaliseer(c.rondes.flatMap((r) => [...r.redenen, ...(r.open_redenen ?? [])].map((k) => redenLabel(k))).join(" ")),
     notitie: normaliseer([s.dossier_notitie, ...c.rondes.map((r) => r.notitie)].join(" ")),
     uitvoering: normaliseer(s.uitvoerder === "van_gelder" ? "Van Gelder" : "TerreVolt"),
     hold: normaliseer(s.on_hold ? `on hold ${s.on_hold_reden ?? ""} ${s.on_hold_partij ?? ""}` : ""),

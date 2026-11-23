@@ -26,3 +26,4 @@
 - StationDetail: normal SharePoint status lives in Casegegevens (deel="normaal"), exceptions always outside (deel="uitzondering"); queue summary via getWachtrijSamenvattingVoor (key cursors). Why: calm header without hiding problems.
 - Dialogs, PIN and sheets size from --vvh/--vvt/--vvb (src/lib/viewport.ts) and scroll internally; mobile UI acceptance = scripts/mobile-ui-check.py + scripts/mobile-ui-acceptatie.py exiting 0. Why: keyboard/short viewports must keep actions reachable.
 - Normal warnings (SharePoint key banner) stay below z-50 (modals/sheets and their backdrops). Why: dialogs on short screens must never be covered.
+- TO reasons: fixed keys in `REDENEN` (afgekeurd → `to_rondes.redenen`) and `OPEN_REDENEN` (open → `to_rondes.open_redenen`); "Anders" stores `eigen:<label>` and optionally remembers it in `to_reden_opties` (per soort, PIN). Old keys stay readable via REDEN_LABEL. Why: stable keys for later per-reason filtering/overview.

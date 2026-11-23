@@ -923,6 +923,27 @@ export type Database = {
           },
         ]
       }
+      to_reden_opties: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          soort: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label: string
+          soort: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          soort?: string
+        }
+        Relationships: []
+      }
       to_rondes: {
         Row: {
           created_at: string
@@ -931,6 +952,7 @@ export type Database = {
           ingediend_op: string | null
           notitie: string | null
           nummer: number
+          open_redenen: string[]
           reactie_op: string | null
           redenen: string[]
           station_id: string
@@ -943,6 +965,7 @@ export type Database = {
           ingediend_op?: string | null
           notitie?: string | null
           nummer: number
+          open_redenen?: string[]
           reactie_op?: string | null
           redenen?: string[]
           station_id: string
@@ -955,6 +978,7 @@ export type Database = {
           ingediend_op?: string | null
           notitie?: string | null
           nummer?: number
+          open_redenen?: string[]
           reactie_op?: string | null
           redenen?: string[]
           station_id?: string

@@ -8,9 +8,10 @@ import { zorgVoorBeheer, BEHEER_NODIG } from "@/lib/require-pin";
 import { internetVereist } from "@/lib/internet";
 import { Pressable, T } from "@/components/apple/Primitives";
 import {
-  DOSSIER, PARTIJEN, PARTIJ_STIJL, Partij, REDENEN, REDEN_LABEL, TO_ORDER, TO_STATUS, ToRonde, ToStatus,
+  DOSSIER, PARTIJEN, PARTIJ_STIJL, Partij, isReden, redenLabel, TO_ORDER, TO_STATUS, ToRonde, ToStatus,
   actieWie, dagenSinds, dagenTekst, db, fmtDatum, useCase, useWvSuggesties, vandaag, caseNaam, caseNr, caseSub, indieningen,
 } from "@/lib/to-rondes";
+import { RedenKiezer } from "@/components/cases/RedenKiezer";
 import { VgVelden } from "@/components/cases/VgVelden";
 import { UitvoeringLabel } from "@/components/cases/UitvoeringLabel";
 import { OnHoldBalk, OnHoldKnop } from "@/components/cases/OnHold";
@@ -67,7 +68,11 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
   };
   const toggleReden = (k: string) => {
     const r = cur?.redenen ?? [];
-    updRonde({ redenen: r.includes(k) ? r.filter((x) => x !== k) : [...r, k] });
+    return updRonde({ redenen: r.includes(k) ? r.filter((x) => x !== k) : [...r, k] });
+  };
+  const toggleOpenReden = (k: string) => {
+    const r = cur?.open_redenen ?? [];
+    return updRonde({ open_redenen: r.includes(k) ? r.filter((x) => x !== k) : [...r, k] });
   };
   const addActie = async () => {
     if (!draft.txt.trim() || !cur) return;
@@ -179,10 +184,16 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
                   })}
                 </div>
               )}
-              {curStatus !== "afgekeurd" && cur && cur.redenen.some((k) => !REDEN_LABEL[k]) && (
+              {curStatus !== "afgekeurd" && cur && cur.redenen.some((k) => !isReden(k)) && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   <div style={{ fontSize: 13, fontWeight: 600 }}>Wat moet er gebeuren</div>
-                  {cur.redenen.filter((k) => !REDEN_LABEL[k]).map((k) => <div key={k} style={{ fontSize: 14, color: T.bodyOnBg }}>• {k}</div>)}
+                  {cur.redenen.filter((k) => !isReden(k)).map((k) => <div key={k} style={{ fontSize: 14, color: T.bodyOnBg }}>• {k}</div>)}
+                </div>
+              )}
+              {curStatus === "open" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>Waarom blijft de TO open?</div>
+                  <RedenKiezer soort="open" gekozen={cur?.open_redenen ?? []} onToggle={toggleOpenReden} kleur={{ aan: T.green, uit: T.soft }} />
                 </div>
               )}
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -194,13 +205,8 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
                 <div style={{ display: "flex", flexDirection: "column", gap: 16, borderTop: "1px solid #EEF2ED", paddingTop: 16 }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     <div style={{ ...kop, color: T.danger }}>Afkeurredenen</div>
-                    {cur.redenen.filter((k) => !REDEN_LABEL[k]).map((k) => <div key={k} style={{ fontSize: 14, color: T.danger }}>• {k}</div>)}
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                      {REDENEN.filter((r) => !vg || !r.key.startsWith("foto_") || cur.redenen.includes(r.key)).map((r) => {
-                        const on = cur.redenen.includes(r.key);
-                        return <Pressable key={r.key} onClick={() => toggleReden(r.key)} scale={0.97} style={{ ...chip(false), background: on ? T.danger : T.dangerBg, color: on ? T.surface : T.danger }}><span className="material-symbols-rounded" style={{ fontSize: 17 }}>{on ? "check" : "add"}</span>{r.label}</Pressable>;
-                      })}
-                    </div>
+                    {cur.redenen.filter((k) => !isReden(k)).map((k) => <div key={k} style={{ fontSize: 14, color: T.danger }}>• {k}</div>)}
+                    <RedenKiezer soort="afgekeurd" gekozen={cur.redenen} onToggle={toggleReden} kleur={{ aan: T.danger, uit: T.dangerBg }} />
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     <div style={{ display: "flex", justifyContent: "space-between" }}><div style={kop}>Actiepunten uit deze afkeur</div><div style={{ fontSize: 13, color: SUB }}>{openN} open</div></div>
@@ -267,7 +273,7 @@ export default function CaseDetail({ stationId }: { stationId?: string } = {}) {
                     </div>
                     <span style={{ fontSize: 13, color: SUB }}>{indieningTekst(r) ?? `Ingediend ${fmtDatum(r.ingediend_op)} bij ${r.ingediend_bij ?? "—"}`}{r.reactie_op ? ` · reactie ${fmtDatum(r.reactie_op)}` : ""}</span>
                   </div>
-                  {r.redenen.length > 0 && <div style={{ fontSize: 14, fontWeight: 600, color: T.danger }}>{r.redenen.map((k) => REDEN_LABEL[k] ?? k).join(" · ")}</div>}
+                  {r.redenen.length > 0 && <div style={{ fontSize: 14, fontWeight: 600, color: T.danger }}>{r.redenen.map(redenLabel).join(" · ")}</div>}
                   {r.notitie && <div style={{ fontSize: 14, color: SUB, lineHeight: 1.4 }}>{r.notitie}</div>}
                   {r.to_acties.length > 0 && (
                     <div style={{ fontSize: 13, color: SUB }}>
