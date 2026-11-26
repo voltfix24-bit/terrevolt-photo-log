@@ -26,7 +26,7 @@ describe("phase3 shared board/detail/score rules", () => {
   });
   for (const status of ["open","controle","afgekeurd","goedgekeurd"] as const) it(`VG ${status} uses the same responsible party everywhere without inventing a date`, () => {
     const c = fixture(status);
-    expect(casePresentatie(c).partijen).toEqual([status==="goedgekeurd" ? "Liander" : "Van Gelder"]);
+    expect(casePresentatie(c).partijen).toEqual([status==="goedgekeurd" || status==="controle" ? "Liander" : "Van Gelder"]);
     expect(bordItems([c]).map(b => b.lane)).toEqual(casePresentatie(c).partijen);
     expect(c.last?.ingediend_bij).toBe("Liander");
     expect(c.last?.ingediend_op).toBeNull();

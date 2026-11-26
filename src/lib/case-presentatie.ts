@@ -13,7 +13,9 @@ export function casePresentatie(c: CaseItem): { bal: BalItem[]; partijen: Partij
       ? [{ wie: "Liander" as const, label: "Liander", txt: "TO goedgekeurd", dagen: c.bal[0]?.dagen ?? 0, geenDatum: c.bal[0]?.geenDatum }]
       : (c.bal.length ? c.bal : [{ wie: "Van Gelder" as const, label: "Van Gelder", txt: "TO klaarzetten en indienen", dagen: 0 }])
     : c.bal;
-  return { hold: false, partijen: c.station.uitvoerder === "van_gelder" ? [c.last?.status === "goedgekeurd" ? "Liander" : "Van Gelder"] : [...new Set(bal.map(b => b.wie))], bal };
+  return { hold: false, partijen: c.station.uitvoerder === "van_gelder"
+    ? (c.last?.status === "goedgekeurd" ? ["Liander"] : [...new Set(bal.map(b => (b.wie === "TerreVolt" ? "Van Gelder" : b.wie) as Partij))])
+    : [...new Set(bal.map(b => b.wie))], bal };
 }
 
 export const indieningTekst = (r: { status: string; ingediend_op: string | null } | null) =>

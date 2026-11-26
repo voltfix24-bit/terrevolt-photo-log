@@ -3,6 +3,7 @@
 - Confirm intended rows returned by protected updates before proceeding; zero-photo dossiers update only their station. Why: RLS can return zero rows without an error.
 - Both example screens delete via verwijderVoorbeeld; background photo sync confirms a skip is absent before clearing its queue item. Why: no zero-row false success.
 - Case board, header and score responsibility use casePresentatie; preserve action owners separately from the displayed lane. Why: agreed executor routing must not hide actions.
+- Van Gelder cases in TO-controle sit with the party in ingediend_bij (Liander lane when submitted there). Why: user tracks who reviews.
 - Read case_overzicht in complete keyset pages; detail uses useCase and URLs use targeted candidates merged into the existing offline cache. Why: full scores without cold-link full-table payloads.
 - Fan existing mutation invalidations across all case/detail/WV/duplicate/resolver/station keys. Why: no divergent board or stale renamed links.
 - Count photo queues through counts/key cursors and refresh on queue events, never value cursors or polling photo blobs. Why: metadata reads must not deserialize files.
